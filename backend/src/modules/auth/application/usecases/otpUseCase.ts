@@ -6,17 +6,23 @@ import { IotpDocument } from "../../infrastructure/otpSchema.ts";
 export class OtpUseCase {
   constructor(
     private readonly otpRepository: IotpReposiroty,
-    private readonly registrUserUseCase: IuserRepository,
+    private readonly userRepository: IuserRepository,
   ) {}
 
-  async execute(data: IotpDocument) {
-    let { otp } = data;
-
+  async execute(data: any) {
+    console.log(data)
+    let { otp,purpose } = data;
+   
     const storedOtp = await this.otpRepository.findOtp(otp);
     if (storedOtp == null) {
       throw new InvalidOtpError();
     }
     const { userData } = storedOtp;
-    await this.registrUserUseCase.createUser(userData);
+     if(purpose=='regitser'){
+      await this.userRepository.createUser(userData);
+    }
+    if(purpose=='forget'){
+      return userData
+    }
   }
 }

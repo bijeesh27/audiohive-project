@@ -22,4 +22,9 @@ export class UserRpository implements IuserRepository {
   async deteleUser(email: string): Promise<void> {
     await UserModel.deleteOne({ email });
   }
+  async updateUser(userId:string,data: IuserDocument): Promise<IuserDocument> {
+    console.log('data from update user',data)
+    await UserModel.updateOne({_id:userId},{$set:data})
+    return data
+  }
 }
