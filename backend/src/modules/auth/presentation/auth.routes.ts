@@ -30,6 +30,7 @@ const controller = new AuthController(
   changePasswordUseCase
 );
 
+router.post("/refresh", controller.refreshToken.bind(controller));
 router.post("/register", controller.register.bind(controller));
 router.post("/verify-otp", controller.verifyOtp.bind(controller));
 router.post("/login", controller.login.bind(controller));

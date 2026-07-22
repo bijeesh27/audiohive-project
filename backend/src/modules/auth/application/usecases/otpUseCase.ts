@@ -18,7 +18,7 @@ export class OtpUseCase {
       throw new InvalidOtpError();
     }
     const { userData } = storedOtp;
-     if(purpose=='regitser'){
+     if(purpose=='register'){
       await this.userRepository.createUser(userData);
     }
     if(purpose=='forget'){
