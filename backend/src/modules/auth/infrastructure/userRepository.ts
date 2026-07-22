@@ -9,10 +9,10 @@ export class UserRpository implements IuserRepository {
   }
 
   async createUser(data: IuserDocument): Promise<void> {
-    const { name, email, password } = data;
+    const { username, email, password } = data;
     let passwordHash = await bcrypt.hash(password, 12);
     let newdata = {
-      name,
+      username,
       email,
       password: passwordHash,
     };
@@ -26,5 +26,10 @@ export class UserRpository implements IuserRepository {
     console.log('data from update user',data)
     await UserModel.updateOne({_id:userId},{$set:data})
     return data
+  }
+
+  async getUser(){
+    let user=await UserModel.find().sort({createdAt:-1}).limit(2)
+    return user
   }
 }
