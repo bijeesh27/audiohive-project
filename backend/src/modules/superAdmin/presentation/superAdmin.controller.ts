@@ -10,7 +10,7 @@ export class SuperAdminController {
   getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const users = await this.getAllUserUseCase.execute();
-      return ApiResposne.success(res,"getting all users",users,200)
+      return ApiResposne.success(res,"Retrieved all Workspaceadmin",users)
     } catch (error) {
       next(error);
     }

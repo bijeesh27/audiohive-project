@@ -10,7 +10,11 @@ import {
   OtpDTO,
   RegisterDTO,
 } from "../application/dtos/AuthDTO.ts";
-
+import { MESSAGES } from "../../../common/constant/messages.ts";
+import {
+  InvalidRefreshToken,
+  RefreshTokenNotFound,
+} from "../../../common/Errors/Error.ts";
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
@@ -25,7 +29,10 @@ export class AuthController {
   async register(req: Request, res: Response, next: NextFunction) {
     try {
       await this.registerUserUseCase.execute(req.body);
-      return ApiResposne.success(res, "registration in progress");
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.REGISTRATION_IN_PROGRESS,
+      );
     } catch (error) {
       next(error);
     }
@@ -33,7 +40,7 @@ export class AuthController {
   async verifyOtp(req: Request, res: Response, next: NextFunction) {
     try {
       let userData = await this.otpUseCase.execute(req.body);
-      return ApiResposne.success(res, "otp-verified suceesfully", userData);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.OTP_VERIFIED, userData);
     } catch (error) {
       next(error);
     }
@@ -57,9 +64,9 @@ export class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: parseInt(process.env.MAX_AGE!),
       });
-      return ApiResposne.success(res, "login successfully", {
+      return ApiResposne.success(res, MESSAGES.SUCCESS.LOGIN_SUCCESS, {
         accessToken,
         userRole,
       });
@@ -70,7 +77,7 @@ export class AuthController {
   async forgetPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const user = await this.forgetUseCase.execute(req.body);
-      return ApiResposne.success(res, "email verified", user);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.EMAIL_VERIFIED, user);
     } catch (error) {
       next(error);
     }
@@ -80,7 +87,7 @@ export class AuthController {
       const email = req.params.email;
 
       await this.changePasswordUseCase.execute({ ...req.body, email });
-      return ApiResposne.success(res, "password changed successfully");
+      return ApiResposne.success(res, MESSAGES.SUCCESS.PASSWORD_CHANGED);
     } catch (error) {
       next(error);
     }
@@ -90,23 +97,21 @@ export class AuthController {
     try {
       const refreshToken = req.cookies?.refreshToken;
       if (!refreshToken) {
-        return res.status(401).json({ message: "Refresh token not found" });
+        throw new RefreshTokenNotFound();
       }
       jwt.verify(
         refreshToken,
         process.env.JWT_REFRESH_SECRET!,
         (err: any, decoded: any) => {
           if (err) {
-            return res
-              .status(403)
-              .json({ message: "Invalid or expired refresh token" });
+            throw new InvalidRefreshToken();
           }
           const newAccessToken = jwt.sign(
             { username: decoded.username },
             process.env.JWT_SECRET!,
             { expiresIn: "15m" },
           );
-          return ApiResposne.success(res, "Token refreshed successfully", {
+          return ApiResposne.success(res, MESSAGES.SUCCESS.TOKEN_REFRESHED, {
             accessToken: newAccessToken,
           });
         },

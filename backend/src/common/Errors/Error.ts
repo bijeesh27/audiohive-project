@@ -1,3 +1,6 @@
+import { HttpStatus } from "../constant/HttpStatus";
+import { MESSAGES } from "../constant/messages";
+
 class AppError extends Error {
   public readonly statusCode: number;
   constructor(message: string, statusCode: number) {
@@ -7,23 +10,35 @@ class AppError extends Error {
 }
 
 export class UserAlreadyExist extends AppError {
-  constructor(message = "User already Exist") {
-    super(message, 400);
+  constructor(message = MESSAGES.ERRORS.USER_ALREADY_EXISTS) {
+    super(message, HttpStatus.BAD_REQUEST);
   }
 }
 
 export class InvalidOtpError extends AppError {
-  constructor(message = "Invalid Otp") {
-    super(message, 401);
+  constructor(message = MESSAGES.ERRORS.INVALID_OTP) {
+    super(message, HttpStatus.UNAUTHORIZED);
   }
 }
 export class UserNotFound extends AppError {
-  constructor(message = "user Not found") {
-    super(message, 401);
+  constructor(message = MESSAGES.ERRORS.USER_NOT_FOUND) {
+    super(message, HttpStatus.UNAUTHORIZED);
   }
 }
 export class PasswordMatchError extends AppError {
-  constructor(message = "password doesnot match") {
-    super(message, 401);
+  constructor(message = MESSAGES.ERRORS.PASSWORD_MISMATCH) {
+    super(message, HttpStatus.UNAUTHORIZED);
   }
 }
+export class RefreshTokenNotFound extends AppError {
+  constructor(message = MESSAGES.ERRORS.REFRESH_TOKEN_NOT_FOUND) {
+    super(message, HttpStatus.UNAUTHORIZED);
+  }
+}
+export class InvalidRefreshToken extends AppError {
+  constructor(message = MESSAGES.ERRORS.INVALID_REFRESH_TOKEN) {
+    super(message, HttpStatus.UNAUTHORIZED);
+  }
+}
+
+
