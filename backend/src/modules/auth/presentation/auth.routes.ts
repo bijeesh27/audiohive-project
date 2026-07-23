@@ -8,6 +8,7 @@ import { OtpUseCase } from "../application/usecases/otpUseCase.ts";
 import { LoginUserUseCase } from "../application/usecases/LoginUserUseCase.ts";
 import { ForgetUseCase } from "../application/usecases/ForgetUseCase.ts";
 import { ChangePasswordUseCase } from "../application/usecases/changePasswordUseCase.ts";
+import { API_ROUTES } from "../../../common/constant/ApiRoutes.ts";
 const router = express.Router();
 
 const userReopsitory = new UserRpository();
@@ -29,14 +30,17 @@ const controller = new AuthController(
   changePasswordUseCase,
 );
 
-router.post("/refresh", controller.refreshToken.bind(controller));
-router.post("/register", controller.register.bind(controller));
-router.post("/verify-otp", controller.verifyOtp.bind(controller));
-router.post("/login", controller.login.bind(controller));
+router.post(API_ROUTES.AUTH.REFRESH, controller.refreshToken.bind(controller));
+router.post(API_ROUTES.AUTH.REGISTER, controller.register.bind(controller));
+router.post(API_ROUTES.AUTH.VERIFY_OTP, controller.verifyOtp.bind(controller));
+router.post(API_ROUTES.AUTH.LOGIN, controller.login.bind(controller));
 // router.post('/verify-email',controller.verifyEmail.bind(controller))
-router.post("/forget-password", controller.forgetPassword.bind(controller));
 router.post(
-  "/change-password/:email",
+  API_ROUTES.AUTH.FORGET_PASSWORD,
+  controller.forgetPassword.bind(controller),
+);
+router.post(
+  API_ROUTES.AUTH.CHANGE_PASSWORD,
   controller.changePassword.bind(controller),
 );
 

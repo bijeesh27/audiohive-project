@@ -1,18 +1,20 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-
+import { UserRoles } from "../constants/userRole";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 const PublicRoute = () => {
   const { isAuthenticated, userRole } = useAuth();
 
   if (isAuthenticated) {
-    if (userRole === "superadmin") return <Navigate to="/superadmin/dashboard" replace />;
-    if (userRole === "workspaceadmin")
-      return <Navigate to="/workspaceadmin/dashboard" replace />;
-    if (userRole === "moderator") return <Navigate to="/moderator/dashboard" replace />;
+    if (userRole === UserRoles.SUPER_ADMIN)
+      return <Navigate to={API_ROUTES.SUPER_ADMIN.NAV.DASHBOARD} replace />;
+    if (userRole === UserRoles.WORKSPACE_ADMIN)
+      return <Navigate to={API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD} replace />;
+    if (userRole === UserRoles.MODERATOR)
+      return <Navigate to={API_ROUTES.MODERATOR.NAV.DASHBOARD} replace />;
 
-    return <Navigate to="/member/dashboard" replace />;
+    return <Navigate to={API_ROUTES.MEMBER.NAV.DASHBOARD} replace />;
   }
 
   return <Outlet />;

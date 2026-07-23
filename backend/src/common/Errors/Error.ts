@@ -1,4 +1,4 @@
-import { HttpStatus } from "../constant/HttpStatus";
+import { HttpStatus } from "../constant/httpStatus";
 import { MESSAGES } from "../constant/messages";
 
 class AppError extends Error {

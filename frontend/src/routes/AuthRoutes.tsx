@@ -4,6 +4,7 @@ import LoginPage from "../pages/auth/LoginPage";
 import RegisterPage from "../pages/auth/RegisterPage";
 import OtpPage from "../pages/auth/OtpPage";
 import PublicRoute from "./PublicRoute";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 const AuthRoutes = () => {
   return (
@@ -13,9 +14,9 @@ const AuthRoutes = () => {
 
         <Route element={<PublicRoute />}>
           <Route path="" element={<LandingPage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
-          <Route path="otp" element={<OtpPage />} />
+          <Route path={API_ROUTES.PUBLIC.LOGIN} element={<LoginPage />} />
+          <Route path={API_ROUTES.PUBLIC.REGISTER} element={<RegisterPage />} />
+          <Route path={API_ROUTES.PUBLIC.OTP} element={<OtpPage />} />
         </Route>
       </Routes>
     </div>
