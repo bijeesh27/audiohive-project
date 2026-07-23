@@ -1,28 +1,30 @@
 import { InvalidOtpError } from "../../../../common/Errors/Error.ts";
+import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
+import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import { IotpReposiroty } from "../../domain/IotpRepository.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
-import { IotpDocument } from "../../infrastructure/otpSchema.ts";
+import { OtpDTO } from "../dtos/AuthDTO.ts";
 
-export class OtpUseCase {
+export class OtpUseCase implements IuseCase<OtpDTO, IuserDocument | void> {
   constructor(
     private readonly otpRepository: IotpReposiroty,
     private readonly userRepository: IuserRepository,
   ) {}
 
-  async execute(data: any) {
-    console.log(data)
-    let { otp,purpose } = data;
-   
+  async execute(data: OtpDTO) {
+    console.log(data);
+    let { otp, purpose } = data;
+
     const storedOtp = await this.otpRepository.findOtp(otp);
     if (storedOtp == null) {
       throw new InvalidOtpError();
     }
     const { userData } = storedOtp;
-     if(purpose=='register'){
+    if (purpose == "register") {
       await this.userRepository.createUser(userData);
     }
-    if(purpose=='forget'){
-      return userData
+    if (purpose == "forget") {
+      return userData;
     }
   }
 }

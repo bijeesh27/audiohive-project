@@ -5,6 +5,7 @@ export interface IotpDocument extends Document {
   userEmail: string;
   otp: string;
   userData: IuserDocument;
+  purpose?: string;
 }
 
 const otpSchema = new Schema(
