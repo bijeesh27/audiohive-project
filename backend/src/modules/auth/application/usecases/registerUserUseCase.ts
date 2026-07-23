@@ -3,8 +3,10 @@ import { generateOtp } from "../../../../shared/utils/otp.utils.ts";
 import { IotpReposiroty } from "../../domain/IotpRepository.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
+import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
+import { RegisterDTO } from "../dtos/AuthDTO.ts";
 
-export class RegiterUserUseCase {
+export class RegiterUserUseCase implements IuseCase<RegisterDTO, void> {
   constructor(
     private readonly userRpository: IuserRepository,
     private readonly otpRepository: IotpReposiroty,

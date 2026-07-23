@@ -1,20 +1,26 @@
 import { NextFunction, Request, Response } from "express";
-import { RegiterUserUseCase } from "../application/usecases/registerUserUseCase.ts";
 import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
-import { OtpUseCase } from "../application/usecases/otpUseCase.ts";
-import { LoginUserUseCase } from "../application/usecases/LoginUserUseCase.ts";
 import jwt from "jsonwebtoken";
 import { ApiResposne } from "../../../common/Response/Response.ts";
-import { ForgetUseCase } from "../application/usecases/ForgetUseCase.ts";
-import { ChangePasswordUseCase } from "../application/usecases/changePasswordUseCase.ts";
+import { IuseCase } from "../../../shared/interface/IuseCase.ts";
+import {
+  ChangePasswordDTO,
+  ForgetPasswordDTO,
+  LoginDTO,
+  OtpDTO,
+  RegisterDTO,
+} from "../application/dtos/AuthDTO.ts";
 
 export class AuthController {
   constructor(
-    private readonly registerUserUseCase: RegiterUserUseCase,
-    private readonly otpUseCase: OtpUseCase,
-    private readonly loginUserUseCase: LoginUserUseCase,
-    private readonly forgetUseCase: ForgetUseCase,
-    private readonly changePasswordUseCase: ChangePasswordUseCase,
+    private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
+    private readonly otpUseCase: IuseCase<OtpDTO, IuserDocument | void>,
+    private readonly loginUserUseCase: IuseCase<LoginDTO, IuserDocument>,
+    private readonly forgetUseCase: IuseCase<ForgetPasswordDTO, IuserDocument>,
+    private readonly changePasswordUseCase: IuseCase<
+      ChangePasswordDTO & { email: string },
+      IuserDocument
+    >,
   ) {}
   async register(req: Request, res: Response, next: NextFunction) {
     try {
@@ -40,17 +46,17 @@ export class AuthController {
       const accessToken = jwt.sign(
         { username: user.username },
         process.env.JWT_SECRET!,
-        { expiresIn: "15m" }, // Access token expires in 15 minutes
+        { expiresIn: "15m" },
       );
-       const refreshToken = jwt.sign(
+      const refreshToken = jwt.sign(
         { username: user.username },
         process.env.JWT_REFRESH_SECRET!,
-        { expiresIn: '7d' } // Refresh token expires in 7 days
+        { expiresIn: "7d" },
       );
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // Ensure secure is true in production
-        sameSite: "lax", 
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
       return ApiResposne.success(res, "login successfully", {
@@ -61,9 +67,9 @@ export class AuthController {
       next(error);
     }
   }
-  async verifyEmail(req: Request, res: Response, next: NextFunction) {
+  async forgetPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const user = await this.forgetUseCase.excute(req.body);
+      const user = await this.forgetUseCase.execute(req.body);
       return ApiResposne.success(res, "email verified", user);
     } catch (error) {
       next(error);
@@ -73,7 +79,8 @@ export class AuthController {
     try {
       const email = req.params.email;
 
-      await this.changePasswordUseCase.execute(req.body, email);
+      await this.changePasswordUseCase.execute({ ...req.body, email });
+      return ApiResposne.success(res, "password changed successfully");
     } catch (error) {
       next(error);
     }
@@ -81,12 +88,10 @@ export class AuthController {
 
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      // Note: This requires cookie-parser middleware in your main app
       const refreshToken = req.cookies?.refreshToken;
       if (!refreshToken) {
         return res.status(401).json({ message: "Refresh token not found" });
       }
-      // Verify the refresh token
       jwt.verify(
         refreshToken,
         process.env.JWT_REFRESH_SECRET!,
@@ -96,7 +101,6 @@ export class AuthController {
               .status(403)
               .json({ message: "Invalid or expired refresh token" });
           }
-          // Generate a new access token
           const newAccessToken = jwt.sign(
             { username: decoded.username },
             process.env.JWT_SECRET!,
