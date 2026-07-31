@@ -51,12 +51,12 @@ export class AuthController {
       const user = await this.loginUserUseCase.execute(req.body);
       const userRole = user?.role;
       const accessToken = jwt.sign(
-        { username: user.username },
+        { id: user._id, username: user.username, role: userRole },
         process.env.JWT_SECRET!,
         { expiresIn: "15m" },
       );
       const refreshToken = jwt.sign(
-        { username: user.username },
+        { id: user._id, username: user.username, role: userRole },
         process.env.JWT_REFRESH_SECRET!,
         { expiresIn: "7d" },
       );
@@ -107,15 +107,28 @@ export class AuthController {
             throw new InvalidRefreshToken();
           }
           const newAccessToken = jwt.sign(
-            { username: decoded.username },
+            { id: decoded.id, username: decoded.username, role: decoded.role },
             process.env.JWT_SECRET!,
             { expiresIn: "15m" },
           );
           return ApiResposne.success(res, MESSAGES.SUCCESS.TOKEN_REFRESHED, {
             accessToken: newAccessToken,
+            userRole: decoded.role,
           });
         },
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+  async logout(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // true in production
+        sameSite: "lax",
+      });
+      return ApiResposne.success(res,MESSAGES.SUCCESS.LOGOUT_SUCCESSFULLY)
     } catch (error) {
       next(error);
     }

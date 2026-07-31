@@ -7,7 +7,7 @@ export const API_ROUTES = {
   },
   SUPER_ADMIN: {
     ROOT: "/superadmin/*",
-    DASHBOARD: "dasboard",
+    DASHBOARD: "dashboard",
     GET_USERS: "get-users",
     NAV: {
       DASHBOARD: "/superadmin/dashboard",
@@ -24,7 +24,7 @@ export const API_ROUTES = {
   },
   MODERATOR: {
     ROOT: "/moderator/*",
-    DASHBOARD: "dasboard",
+    DASHBOARD: "dashboard",
     GET_USERS: "get-users",
     NAV: {
       DASHBOARD: "/moderator/dashboard",
@@ -32,7 +32,7 @@ export const API_ROUTES = {
   },
   MEMBER: {
     ROOT: "/member/*",
-    DASHBOARD: "dasboard",
+    DASHBOARD: "dashboard",
     NAV: {
       DASHBOARD: "/member/dashboard",
     },

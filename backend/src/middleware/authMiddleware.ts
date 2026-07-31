@@ -1,8 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { ApiResposne } from "../common/Response/Response";
+import { AccessDeniedError, InvalidToken } from "../common/Errors/Error";
+export interface AuthRequest extends Request{
+  user?:any
+}
 
 export function authMiddleware(
-  req: Request,
+  req: AuthRequest,
   res: Response,
   next: NextFunction,
 ) {
@@ -16,11 +21,21 @@ export function authMiddleware(
 
   jwt.verify(token, process.env.JWT_SECRET!, (err, decodedUser) => {
     if (err) {
-      return res.status(401).json({ msg: "invalid token" });
+      throw new InvalidToken()
     }
 
-    // req.user=decodedUser
+    req.user=decodedUser
 
     next();
   });
+}
+
+
+export function roleMiddleware(allowedRoles:string[]){
+  return(req:AuthRequest,res:Response,next:NextFunction)=>{
+    if(!req.user || !allowedRoles.includes(req.user.role)){
+      throw new AccessDeniedError()
+    }
+    next()
+  }
 }
