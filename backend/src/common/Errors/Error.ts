@@ -35,9 +35,20 @@ export class RefreshTokenNotFound extends AppError {
     super(message, HttpStatus.UNAUTHORIZED);
   }
 }
+export class InvalidToken extends AppError {
+  constructor(message = MESSAGES.ERRORS.INVALID_TOKEN) {
+    super(message, HttpStatus.UNAUTHORIZED);
+  }
+}
 export class InvalidRefreshToken extends AppError {
   constructor(message = MESSAGES.ERRORS.INVALID_REFRESH_TOKEN) {
     super(message, HttpStatus.UNAUTHORIZED);
+  }
+}
+
+export class AccessDeniedError extends AppError{
+  constructor(message=MESSAGES.ERRORS.ACCESS_DENIED){
+    super(message,HttpStatus.FORBIDDEN)
   }
 }
 

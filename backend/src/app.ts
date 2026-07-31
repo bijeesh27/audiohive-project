@@ -13,7 +13,7 @@ export function connectApp() {
   app.use(urlencoded({ extended: true }));
   app.use(json());
 
-  app.use(globelErrorHandler);
+
 
   const PORT = process.env.PORT || 5000;
 
@@ -21,6 +21,8 @@ export function connectApp() {
 
   app.use("/api/auth", authRouter);
   app.use("/api/super-admin", superAdminRouter);
+
+  app.use(globelErrorHandler);
 
   app.listen(PORT, () => {
     console.log(`server running port = ${PORT}`);

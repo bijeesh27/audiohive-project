@@ -34,7 +34,8 @@ router.post(API_ROUTES.AUTH.REFRESH, controller.refreshToken.bind(controller));
 router.post(API_ROUTES.AUTH.REGISTER, controller.register.bind(controller));
 router.post(API_ROUTES.AUTH.VERIFY_OTP, controller.verifyOtp.bind(controller));
 router.post(API_ROUTES.AUTH.LOGIN, controller.login.bind(controller));
-// router.post('/verify-email',controller.verifyEmail.bind(controller))
+router.post(API_ROUTES.AUTH.LOGOUT,controller.logout.bind(controller))
+
 router.post(
   API_ROUTES.AUTH.FORGET_PASSWORD,
   controller.forgetPassword.bind(controller),

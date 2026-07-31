@@ -6,8 +6,8 @@ export const globelErrorHandler = (
   res: Response,
   next: NextFunction,
 ) => {
-  const message = err.message;
-  const statusCode = err.statusCode;
+  const message = err.message || "Internal Server Error";
+  const statusCode = err.statusCode || 500;
   return res.status(statusCode).json({
     status: statusCode,
     message: message,

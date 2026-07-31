@@ -7,6 +7,8 @@ export const MESSAGES = {
     INVALID_TOKEN: "invalid token",
     REFRESH_TOKEN_NOT_FOUND: "Refresh token not found",
     INVALID_REFRESH_TOKEN: "Invalid or expired refresh token",
+    ACCESS_DENIED:"access denied: insufficient permissions",
+    
   },
   SUCCESS: {
     REGISTRATION_IN_PROGRESS: "registration in progress",
@@ -15,5 +17,6 @@ export const MESSAGES = {
     EMAIL_VERIFIED: "email verified",
     PASSWORD_CHANGED: "password changed successfully",
     TOKEN_REFRESHED: "Token refreshed successfully",
+    LOGOUT_SUCCESSFULLY:'Logged out successfully'
   },
 };
