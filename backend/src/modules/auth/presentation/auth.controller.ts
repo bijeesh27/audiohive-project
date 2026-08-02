@@ -12,6 +12,7 @@ import {
 } from "../application/dtos/AuthDTO.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 import {
+  AccessDeniedError,
   InvalidRefreshToken,
   RefreshTokenNotFound,
 } from "../../../common/Errors/Error.ts";
@@ -49,14 +50,27 @@ export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const user = await this.loginUserUseCase.execute(req.body);
+      if (!user.status) {
+        throw new AccessDeniedError();
+      }
       const userRole = user?.role;
       const accessToken = jwt.sign(
-        { id: user._id, username: user.username, role: userRole },
+        {
+          id: user._id,
+          username: user.username,
+          userEmail: user.email,
+          role: userRole,
+        },
         process.env.JWT_SECRET!,
         { expiresIn: "15m" },
       );
       const refreshToken = jwt.sign(
-        { id: user._id, username: user.username, role: userRole },
+        {
+          id: user._id,
+          username: user.username,
+          userEmail: user.email,
+          role: userRole,
+        },
         process.env.JWT_REFRESH_SECRET!,
         { expiresIn: "7d" },
       );
@@ -84,7 +98,7 @@ export class AuthController {
   }
   async changePassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const email = req.params.email;
+      const email = req.user.userEmail;
 
       await this.changePasswordUseCase.execute({ ...req.body, email });
       return ApiResposne.success(res, MESSAGES.SUCCESS.PASSWORD_CHANGED);
@@ -128,7 +142,7 @@ export class AuthController {
         secure: process.env.NODE_ENV === "production", // true in production
         sameSite: "lax",
       });
-      return ApiResposne.success(res,MESSAGES.SUCCESS.LOGOUT_SUCCESSFULLY)
+      return ApiResposne.success(res, MESSAGES.SUCCESS.LOGOUT_SUCCESSFULLY);
     } catch (error) {
       next(error);
     }

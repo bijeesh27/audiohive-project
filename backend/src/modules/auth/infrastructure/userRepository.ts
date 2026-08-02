@@ -19,15 +19,8 @@ export class UserRpository
   }
 
   async createUser(data: IuserDocument): Promise<void> {
-    const { username, email, password } = data;
-    let passwordHash = await bcrypt.hash(password, 12);
-    let newdata = {
-      username,
-      email,
-      password: passwordHash,
-    };
-    console.log(newdata);
-    await this.create(newdata);
+    console.log(data);
+    await this.create(data);
   }
   async deteleUser(id: string): Promise<void> {
     await this.delete(id);

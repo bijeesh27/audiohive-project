@@ -9,6 +9,9 @@ import { LoginUserUseCase } from "../application/usecases/LoginUserUseCase.ts";
 import { ForgetUseCase } from "../application/usecases/ForgetUseCase.ts";
 import { ChangePasswordUseCase } from "../application/usecases/changePasswordUseCase.ts";
 import { API_ROUTES } from "../../../common/constant/ApiRoutes.ts";
+import { validateRequest } from "../../../middleware/validateRequest.ts";
+import { changePasswordSchema, forgetPasswordSchema, loginSchema, otpSchema, registerSchema } from "../../../common/validation/authValidation.ts";
+import { authMiddleware } from "../../../middleware/authMiddleware.ts";
 const router = express.Router();
 
 const userReopsitory = new UserRpository();
@@ -31,17 +34,17 @@ const controller = new AuthController(
 );
 
 router.post(API_ROUTES.AUTH.REFRESH, controller.refreshToken.bind(controller));
-router.post(API_ROUTES.AUTH.REGISTER, controller.register.bind(controller));
-router.post(API_ROUTES.AUTH.VERIFY_OTP, controller.verifyOtp.bind(controller));
-router.post(API_ROUTES.AUTH.LOGIN, controller.login.bind(controller));
-router.post(API_ROUTES.AUTH.LOGOUT,controller.logout.bind(controller))
+router.post(API_ROUTES.AUTH.REGISTER,validateRequest(registerSchema), controller.register.bind(controller));
+router.post(API_ROUTES.AUTH.VERIFY_OTP,validateRequest(otpSchema),controller.verifyOtp.bind(controller));
+router.post(API_ROUTES.AUTH.LOGIN,validateRequest(loginSchema), controller.login.bind(controller));
+router.post(API_ROUTES.AUTH.LOGOUT,authMiddleware,controller.logout.bind(controller))
 
 router.post(
-  API_ROUTES.AUTH.FORGET_PASSWORD,
+  API_ROUTES.AUTH.FORGET_PASSWORD,validateRequest(forgetPasswordSchema),
   controller.forgetPassword.bind(controller),
 );
 router.post(
-  API_ROUTES.AUTH.CHANGE_PASSWORD,
+  API_ROUTES.AUTH.CHANGE_PASSWORD,validateRequest(changePasswordSchema),authMiddleware,
   controller.changePassword.bind(controller),
 );
 
