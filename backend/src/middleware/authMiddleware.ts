@@ -16,7 +16,7 @@ export function authMiddleware(
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    throw new Error("invalid token");
+    throw new InvalidToken()
   }
 
   jwt.verify(token, process.env.JWT_SECRET!, (err, decodedUser) => {

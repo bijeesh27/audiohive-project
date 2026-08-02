@@ -5,7 +5,7 @@ export const API_ROUTES = {
     VERIFY_OTP: "/verify-otp",
     LOGIN: "/login",
     FORGET_PASSWORD: "/forget-password",
-    CHANGE_PASSWORD: "/change-password/:email",
+    CHANGE_PASSWORD: "/change-password",
     LOGOUT:'/logout'
   },
   SUPER_ADMIN: {

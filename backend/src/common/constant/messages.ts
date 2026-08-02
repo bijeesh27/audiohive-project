@@ -8,6 +8,8 @@ export const MESSAGES = {
     REFRESH_TOKEN_NOT_FOUND: "Refresh token not found",
     INVALID_REFRESH_TOKEN: "Invalid or expired refresh token",
     ACCESS_DENIED:"access denied: insufficient permissions",
+    VALIDATION_FAILED:"validation failed",
+    ACCOUNT_DISABLED:"Your account was disabled"
     
   },
   SUCCESS: {

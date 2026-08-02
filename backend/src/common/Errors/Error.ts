@@ -46,10 +46,32 @@ export class InvalidRefreshToken extends AppError {
   }
 }
 
-export class AccessDeniedError extends AppError{
-  constructor(message=MESSAGES.ERRORS.ACCESS_DENIED){
-    super(message,HttpStatus.FORBIDDEN)
+export class AccessDeniedError extends AppError {
+  constructor(message = MESSAGES.ERRORS.ACCESS_DENIED) {
+    super(message, HttpStatus.FORBIDDEN);
   }
 }
 
+type ValidationError = {
+  field: string;
+  message: string;
+};
+6
 
+export class ValidationFailedError extends AppError {
+  constructor(
+    message = MESSAGES.ERRORS.VALIDATION_FAILED,
+    public readonly errors:ValidationError[],
+  ) {
+    super(message, HttpStatus.UNPROCESSABLE_ENTITY);
+  }
+}
+
+export class AccountDisabledError extends AppError {
+    constructor() {
+        super(
+            MESSAGES.ERRORS.ACCOUNT_DISABLED,
+            HttpStatus.FORBIDDEN
+        );
+    }
+}
