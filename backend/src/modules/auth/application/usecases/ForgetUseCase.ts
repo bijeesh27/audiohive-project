@@ -23,7 +23,6 @@ export class ForgetUseCase implements IuseCase<
     }
 
     let newOtp = generateOtp();
-    console.log(newOtp);
 
     await this.otpRepository.createOtp(email, newOtp, user);
     return user;

@@ -19,7 +19,6 @@ export class UserRpository
   }
 
   async createUser(data: IuserDocument): Promise<void> {
-    console.log(data);
     await this.create(data);
   }
   async deteleUser(id: string): Promise<void> {
@@ -29,7 +28,6 @@ export class UserRpository
     userId: string,
     data: IuserDocument,
   ): Promise<IuserDocument> {
-    console.log("data from update user", data);
     await this.update(userId, data);
     return data;
   }

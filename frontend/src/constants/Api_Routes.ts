@@ -16,7 +16,7 @@ export const API_ROUTES = {
   },
   WORKSPACE_ADMIN: {
     ROOT: "/workspaceadmin/*",
-    DASHBOARD: "dasboard",
+    DASHBOARD: "dashboard",
     GET_USERS: "get-users",
     NAV: {
       DASHBOARD: "/workspaceadmin/dashboard",

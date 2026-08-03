@@ -5,19 +5,27 @@ import { setToken } from "../../config/axios";
 
 const Logout = () => {
   const navigate = useNavigate();
-  const {setAccessToken,setUserRole} =useAuth()
-  const handleLogout = async () => {
-    await logout();
-    setToken(null);
-    setAccessToken(null);
-    setUserRole(null);
+  const { setAccessToken, setUserRole } = useAuth();
 
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      setToken(null);
+      setAccessToken(null);
+      setUserRole(null);
+      localStorage.setItem("logout", Date.now().toString());
+      navigate("/login");
+    }
   };
+
   return (
-    <div>
-      <button onClick={handleLogout}>Logout</button>
-    </div>
+    <button
+      onClick={handleLogout}
+      className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+    >
+      Logout
+    </button>
   );
 };
 

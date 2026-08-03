@@ -26,8 +26,6 @@ export class RegiterUserUseCase implements IuseCase<RegisterDTO, void> {
       email,
       password:hashedPassword
     };
-    console.log(newOtp);
-
     await this.otpRepository.createOtp(email, newOtp, newUser);
   }
 }

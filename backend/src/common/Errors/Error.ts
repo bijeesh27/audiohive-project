@@ -56,8 +56,6 @@ type ValidationError = {
   field: string;
   message: string;
 };
-6
-
 export class ValidationFailedError extends AppError {
   constructor(
     message = MESSAGES.ERRORS.VALIDATION_FAILED,

@@ -1,6 +1,7 @@
 import {
   PasswordMatchError,
   UserNotFound,
+  AccountDisabledError,
 } from "../../../../common/Errors/Error.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import bcrypt from "bcrypt";
@@ -21,6 +22,10 @@ export class LoginUserUseCase implements IuseCase<LoginDTO, IuserDocument> {
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       throw new PasswordMatchError();
+    }
+
+    if (!user.status) {
+      throw new AccountDisabledError();
     }
 
     return user;

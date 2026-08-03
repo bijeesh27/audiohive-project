@@ -9,13 +9,17 @@ import {
   LoginDTO,
   OtpDTO,
   RegisterDTO,
+  ResetPasswordDTO
 } from "../application/dtos/AuthDTO.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 import {
   AccessDeniedError,
+  AccountDisabledError,
   InvalidRefreshToken,
+  InvalidToken,
   RefreshTokenNotFound,
 } from "../../../common/Errors/Error.ts";
+import { AuthRequest } from "../../../middleware/authMiddleware.ts";
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
@@ -26,6 +30,8 @@ export class AuthController {
       ChangePasswordDTO & { email: string },
       IuserDocument
     >,
+    private readonly resendOtpUseCase: IuseCase<{ email: string }, void>,
+    private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDocument>
   ) {}
   async register(req: Request, res: Response, next: NextFunction) {
     try {
@@ -41,7 +47,26 @@ export class AuthController {
   async verifyOtp(req: Request, res: Response, next: NextFunction) {
     try {
       let userData = await this.otpUseCase.execute(req.body);
+      
+      if (req.body.purpose === "forget") {
+         const resetToken = jwt.sign(
+           { email: (userData as any).email, type: "reset" },
+           process.env.JWT_SECRET!,
+           { expiresIn: "15m" }
+         );
+         return ApiResposne.success(res, MESSAGES.SUCCESS.OTP_VERIFIED, { resetToken });
+      }
+
       return ApiResposne.success(res, MESSAGES.SUCCESS.OTP_VERIFIED, userData);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resendOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      await this.resendOtpUseCase.execute(req.body);
+      return ApiResposne.success(res,MESSAGES.SUCCESS.OTP_SEND_SUCCESSFULLY );
     } catch (error) {
       next(error);
     }
@@ -50,9 +75,6 @@ export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const user = await this.loginUserUseCase.execute(req.body);
-      if (!user.status) {
-        throw new AccessDeniedError();
-      }
       const userRole = user?.role;
       const accessToken = jwt.sign(
         {
@@ -96,9 +118,9 @@ export class AuthController {
       next(error);
     }
   }
-  async changePassword(req: Request, res: Response, next: NextFunction) {
+  async changePassword(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const email = req.user.userEmail;
+      const email = req.user?.userEmail;
 
       await this.changePasswordUseCase.execute({ ...req.body, email });
       return ApiResposne.success(res, MESSAGES.SUCCESS.PASSWORD_CHANGED);
@@ -107,30 +129,52 @@ export class AuthController {
     }
   }
 
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token, password } = req.body;
+      
+      let decoded: any;
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      } catch (err) {
+        throw new InvalidToken();
+      }
+
+      if (decoded.type !== "reset" || !decoded.email) {
+        throw new InvalidToken();
+      }
+
+      await this.resetPasswordUseCase.execute({ email: decoded.email, password });
+      return ApiResposne.success(res, MESSAGES.SUCCESS.PASSWORD_CHANGED);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const refreshToken = req.cookies?.refreshToken;
-      if (!refreshToken) {
+      const token = req.cookies?.refreshToken;
+      if (!token) {
         throw new RefreshTokenNotFound();
       }
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET!,
-        (err: any, decoded: any) => {
-          if (err) {
-            throw new InvalidRefreshToken();
-          }
-          const newAccessToken = jwt.sign(
-            { id: decoded.id, username: decoded.username, role: decoded.role },
-            process.env.JWT_SECRET!,
-            { expiresIn: "15m" },
-          );
-          return ApiResposne.success(res, MESSAGES.SUCCESS.TOKEN_REFRESHED, {
-            accessToken: newAccessToken,
-            userRole: decoded.role,
-          });
-        },
+
+      let decoded: any;
+      try {
+        decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
+      } catch (err) {
+        throw new InvalidRefreshToken();
+      }
+
+      const newAccessToken = jwt.sign(
+        { id: decoded.id, username: decoded.username, userEmail: decoded.userEmail, role: decoded.role },
+        process.env.JWT_SECRET!,
+        { expiresIn: "15m" },
       );
+
+      return ApiResposne.success(res, MESSAGES.SUCCESS.TOKEN_REFRESHED, {
+        accessToken: newAccessToken,
+        userRole: decoded.role,
+      });
     } catch (error) {
       next(error);
     }
@@ -139,7 +183,7 @@ export class AuthController {
     try {
       res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // true in production
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
       });
       return ApiResposne.success(res, MESSAGES.SUCCESS.LOGOUT_SUCCESSFULLY);

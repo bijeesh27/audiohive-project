@@ -3,7 +3,7 @@ import { IuserRepository } from "../domain/IuserRepository.ts";
 
 export class UserRepository implements IuserRepository {
   async getAllUsers(): Promise<Array<IuserDocument> | null> {
-    const users = await UserModel.find();
+    const users = await UserModel.find().select('-password');
     return users;
   }
 }

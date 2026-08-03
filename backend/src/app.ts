@@ -1,6 +1,7 @@
 import express, { json, urlencoded } from "express";
 import dotenv from "dotenv";
 dotenv.config();
+
 import authRouter from "./modules/auth/presentation/auth.routes.ts";
 import superAdminRouter from "./modules/superAdmin/presentation/superAdmin.routes.ts";
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
@@ -9,11 +10,11 @@ import cookieParser from "cookie-parser";
 
 export function connectApp() {
   const app = express();
-  app.use(cors({origin:'http://localhost:5173',credentials:true}))
+
+
+  app.use(cors({origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials:true}))
   app.use(urlencoded({ extended: true }));
   app.use(json());
-
-
 
   const PORT = process.env.PORT || 5000;
 

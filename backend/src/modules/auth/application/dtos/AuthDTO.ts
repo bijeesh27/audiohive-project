@@ -5,6 +5,7 @@ export interface RegisterDTO{
 }
 
 export interface OtpDTO{
+    email:string,
     otp:string,
     purpose:string
 }
@@ -17,7 +18,12 @@ export interface LoginDTO{
 export interface ForgetPasswordDTO{
     email:string
 }
-export interface ChangePasswordDTO{
-    oldPassword:string;
-    password:string
+export interface ChangePasswordDTO {
+  oldPassword: string;
+  password?: string;
+}
+
+export interface ResetPasswordDTO {
+  email: string;
+  password?: string;
 }
