@@ -18,31 +18,38 @@ const Users = () => {
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [search,setSearch]=useState('')
   const limit = 5;
 
+  
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-
-    getUsers(page, limit)
-      .then((res) => {
-        if (!cancelled) {
-          setUsers(res.data.users);
-          setTotalPages(Math.ceil(res.data.total / limit));
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err?.response?.data?.message || "Failed to load users");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
+    const timer = setTimeout(() => {
+      getUsers(page, limit, search)
+        .then((res) => {
+          if (!cancelled) {
+            setUsers(res.data.users);
+            setTotalPages(Math.ceil(res.data.total / limit));
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) setError(err?.response?.data?.message || "Failed to load users");
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 400);
     return () => {
       cancelled = true;
+      clearTimeout(timer); 
     };
-  }, [page]);
+  }, [page, search]);
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
 
   return (
     
@@ -57,7 +64,18 @@ const Users = () => {
             {loading ? "Loading..." : `Page ${page} of ${totalPages || 1}`}
           </p>
         </div>
+        <div className="w-full sm:w-64">
+          <input
+            type="text"
+            placeholder="Search username or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
       </div>
+
+      
 
       {loading && (
         <div className="rounded-lg border border-gray-200 bg-white py-16 text-center text-sm text-gray-500 ">
