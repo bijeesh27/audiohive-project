@@ -19,6 +19,7 @@ export const MESSAGES = {
     EMAIL_VERIFIED: "email verified",
     PASSWORD_CHANGED: "password changed successfully",
     TOKEN_REFRESHED: "Token refreshed successfully",
-    LOGOUT_SUCCESSFULLY:'Logged out successfully'
+    LOGOUT_SUCCESSFULLY:'Logged out successfully',
+    OTP_SEND_SUCCESSFULLY:"A new OTP has been sent successfully"
   },
 };

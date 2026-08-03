@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -37,7 +37,7 @@ axiosInstance.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       try {
-        const res = await axios.post("http://localhost:3000/api/auth/refresh", {
+        const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/auth/refresh`, {}, {
           withCredentials: true,
         });
 
@@ -46,7 +46,7 @@ axiosInstance.interceptors.response.use(
           setToken(newAccessToken);
 
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return axios(originalRequest);
+          return axiosInstance(originalRequest);
         }
       } catch (refreshError) {
         setToken(null);

@@ -1,4 +1,4 @@
-import { UserNotFound } from "../../../../common/Errors/Error.ts";
+import { UserNotFound, PasswordMatchError } from "../../../../common/Errors/Error.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
@@ -17,6 +17,11 @@ export class ChangePasswordUseCase implements IuseCase<
     const user = await this.userRepository.findByEmail(data.email);
     if (!user) {
       throw new UserNotFound();
+    }
+
+    const isMatch = await bcrypt.compare(data.oldPassword, user.password);
+    if (!isMatch) {
+      throw new PasswordMatchError();
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);

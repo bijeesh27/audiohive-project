@@ -40,6 +40,18 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
     };
     initAuth();
   }, []);
+  useEffect(() => {
+    const handleLogoutEvent = (e: StorageEvent) => {
+      if (e.key === "logout") {
+        setToken(null);
+        setAccessToken(null);
+        setUserRole(null);
+      }
+    };
+    window.addEventListener("storage", handleLogoutEvent);
+    return () => window.removeEventListener("storage", handleLogoutEvent);
+  }, []);
+
   const isAuthenticated = !!accessToken; 
 
   return (

@@ -30,8 +30,8 @@ export const loginSchema = z.object({
 });
 
 export const otpSchema = z.object({
-  otp: z.string().length(4, "OTP must be exactly 4 digits"),
-
+  email: z.string().trim().email("Invalid email address"),
+  otp: z.string().length(6, "OTP must be exactly 6 digits"),
   purpose: z.enum(["register", "forget"]),
 });
 
@@ -40,5 +40,11 @@ export const forgetPasswordSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
+  oldPassword: z.string().min(1, "Current password is required"),
+  password: passwordSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token is required"),
   password: passwordSchema,
 });

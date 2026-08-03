@@ -1,9 +1,16 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { ApiResposne } from "../common/Response/Response";
 import { AccessDeniedError, InvalidToken } from "../common/Errors/Error";
-export interface AuthRequest extends Request{
-  user?:any
+
+export interface TokenPayload {
+  id: string;
+  username: string;
+  userEmail: string;
+  role: string;
+}
+
+export interface AuthRequest extends Request {
+  user?: TokenPayload;
 }
 
 export function authMiddleware(
@@ -12,30 +19,26 @@ export function authMiddleware(
   next: NextFunction,
 ) {
   const authHeader = req.headers["authorization"];
-
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    throw new InvalidToken()
+    return next(new InvalidToken());
   }
 
-  jwt.verify(token, process.env.JWT_SECRET!, (err, decodedUser) => {
-    if (err) {
-      throw new InvalidToken()
-    }
-
-    req.user=decodedUser
-
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    req.user = decoded;
     next();
-  });
+  } catch (err) {
+    next(new InvalidToken());
+  }
 }
 
-
-export function roleMiddleware(allowedRoles:string[]){
-  return(req:AuthRequest,res:Response,next:NextFunction)=>{
-    if(!req.user || !allowedRoles.includes(req.user.role)){
-      throw new AccessDeniedError()
+export function roleMiddleware(allowedRoles: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return next(new AccessDeniedError());
     }
-    next()
-  }
+    next();
+  };
 }

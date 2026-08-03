@@ -1,29 +1,32 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../../context/AuthContext";
 import { getUsers } from "../../services/authServices";
 
 import UserTable from "../../components/common/UserTables"
 
-const Users = () => {
-  const { accessToken } = useAuth();
+interface User {
+  _id: string;
+  username: string;
+  email: string;
+  role: string;
+  status: boolean;
+}
 
-  const [users, setUsers] = useState<[]>([]);
+const Users = () => {
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
-
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    getUsers(accessToken)
+    getUsers()
       .then((res) => {
         if (!cancelled) setUsers(res.data);
       })
       .catch((err) => {
-        if (!cancelled) setError(err?.message ?? "Failed to load users");
+        if (!cancelled) setError(err?.response?.data?.message || "Failed to load users");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -32,7 +35,7 @@ const Users = () => {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, []);
 
   return (
     
