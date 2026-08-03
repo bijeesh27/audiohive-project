@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getUsers } from "../../services/authServices";
+import { moderatorGetUsers} from "../../services/authServices";
 
 import UserTable from "../../components/common/UserTables"
 
@@ -25,7 +25,7 @@ const Users = () => {
     setLoading(true);
     setError(null);
 
-    getUsers(page, limit)
+    moderatorGetUsers(page, limit)
       .then((res) => {
         if (!cancelled) {
           setUsers(res.data.users);
