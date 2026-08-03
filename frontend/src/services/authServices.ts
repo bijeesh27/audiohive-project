@@ -30,9 +30,20 @@ export const forgotPassword = (email: string) => {
     .then((res) => res.data);
 };
 
-export const getUsers = () => {
+export const getUsers = (page: number = 1, limit: number = 10) => {
   return axiosInstance
-    .get("/api/super-admin/get-users")
+    .get(`/api/super-admin/get-users?page=${page}&limit=${limit}`)
+    .then((res) => res.data);
+};
+
+export const worspaceAdminGetUsers = (page: number = 1, limit: number = 10) => {
+  return axiosInstance
+    .get(`/api/workspaceadmin/get-users?page=${page}&limit=${limit}`)
+    .then((res) => res.data);
+};
+export const moderatorGetUsers = (page: number = 1, limit: number = 10) => {
+  return axiosInstance
+    .get(`/api/moderator/get-users?page=${page}&limit=${limit}`)
     .then((res) => res.data);
 };
 

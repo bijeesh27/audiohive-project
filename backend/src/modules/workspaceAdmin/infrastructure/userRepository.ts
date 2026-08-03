@@ -7,7 +7,9 @@ export class UserRepository implements IuserRepository {
     const skip = (page - 1) * limit;
     
     const [users, total] = await Promise.all([
-      UserModel.find({role:UserRoles.WORKSPACE_ADMIN}).select('-password').skip(skip).limit(limit),
+      UserModel.find({role: {
+    $in: [UserRoles.MODERATOR, UserRoles.MEMBER],
+  },}).select('-password').skip(skip).limit(limit),
       UserModel.countDocuments()
     ]);
 

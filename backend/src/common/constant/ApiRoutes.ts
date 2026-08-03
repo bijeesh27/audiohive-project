@@ -11,7 +11,11 @@ export const API_ROUTES = {
   SUPER_ADMIN: {
     GET_USERS: "/get-users",
   },
-  WORKSPACE_ADMIN: {},
-  MODERATOR: {},
+  WORKSPACE_ADMIN: {
+    GET_USERS: "/get-users",
+  },
+  MODERATOR: {
+    GET_USERS: "/get-users",
+  },
   MEMBER: {},
 };

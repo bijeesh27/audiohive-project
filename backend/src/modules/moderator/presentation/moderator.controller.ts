@@ -3,7 +3,7 @@ import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
 
-export class SuperAdminController {
+export class moderatorController {
   constructor(private readonly getAllUserUseCase: IuseCase<{ page: number; limit: number }, { users: IuserDocument[]; total: number } | null>) {}
   getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {

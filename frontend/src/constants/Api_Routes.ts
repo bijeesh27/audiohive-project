@@ -20,6 +20,7 @@ export const API_ROUTES = {
     GET_USERS: "get-users",
     NAV: {
       DASHBOARD: "/workspaceadmin/dashboard",
+      GET_USERS: "/workspaceadmin/get-users"
     },
   },
   MODERATOR: {
@@ -28,11 +29,13 @@ export const API_ROUTES = {
     GET_USERS: "get-users",
     NAV: {
       DASHBOARD: "/moderator/dashboard",
+      GET_USERS: "/moderator/get-users"
     },
   },
   MEMBER: {
     ROOT: "/member/*",
     DASHBOARD: "dashboard",
+    GET_USERS: "get-users",
     NAV: {
       DASHBOARD: "/member/dashboard",
     },
