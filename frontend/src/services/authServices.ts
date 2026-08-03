@@ -30,20 +30,32 @@ export const forgotPassword = (email: string) => {
     .then((res) => res.data);
 };
 
-export const getUsers = (page: number = 1, limit: number = 10) => {
+export const getUsers = (page: number = 1, limit: number = 10,search: string = "") => {
+   let url = `/api/super-admin/get-users?page=${page}&limit=${limit}`;
+   if(search){
+    url+=`&search=${encodeURIComponent(search)}`;
+   }
   return axiosInstance
-    .get(`/api/super-admin/get-users?page=${page}&limit=${limit}`)
+    .get(url)
     .then((res) => res.data);
 };
 
-export const worspaceAdminGetUsers = (page: number = 1, limit: number = 10) => {
+export const worspaceAdminGetUsers = (page: number = 1, limit: number = 10,search: string = "") => {
+ let url = `/api/workspaceadmin/get-users?page=${page}&limit=${limit}`;
+   if(search){
+    url+=`&search=${encodeURIComponent(search)}`;
+   }
   return axiosInstance
-    .get(`/api/workspaceadmin/get-users?page=${page}&limit=${limit}`)
+    .get(url)
     .then((res) => res.data);
 };
-export const moderatorGetUsers = (page: number = 1, limit: number = 10) => {
+export const moderatorGetUsers = (page: number = 1, limit: number = 10,search: string = "") => {
+  let url = `/api/moderator/get-users?page=${page}&limit=${limit}`;
+   if(search){
+    url+=`&search=${encodeURIComponent(search)}`;
+   }
   return axiosInstance
-    .get(`/api/moderator/get-users?page=${page}&limit=${limit}`)
+    .get(url)
     .then((res) => res.data);
 };
 
