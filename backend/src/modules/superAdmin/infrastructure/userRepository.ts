@@ -6,7 +6,7 @@ export class UserRepository implements IuserRepository {
   async getAllUsers(page: number, limit: number,searchQuery?:string): Promise<{ users: Array<IuserDocument>; total: number } | null> {
     const skip = (page - 1) * limit;
 
-    const query:any={role:UserRoles.WORKSPACE_ADMIN};
+    const query:Record<string, unknown> ={role:UserRoles.WORKSPACE_ADMIN};
     if(searchQuery){
         query.$or=[
             {username:{$regex:searchQuery,$options:'i'}},

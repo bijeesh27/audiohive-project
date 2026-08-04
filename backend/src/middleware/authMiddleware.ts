@@ -29,7 +29,7 @@ export function authMiddleware(
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
     next(new InvalidToken());
   }
 }

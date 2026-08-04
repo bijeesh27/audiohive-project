@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axiosInstance, { setToken } from "../config/axios";
 
@@ -30,7 +30,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
           setAccessToken(token); 
           setUserRole(role || null);
         }
-      } catch (err) {
+      } catch {
         setToken(null);
         setAccessToken(null);
         setUserRole(null);

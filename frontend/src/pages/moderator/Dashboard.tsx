@@ -12,7 +12,7 @@ const Dashboard = () => {
               Welcome, moderator
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Here's what's happening across your workspace.
+              Here&apos;s what&apos;s happening across your workspace.
             </p>
           </div>
           <Logout />

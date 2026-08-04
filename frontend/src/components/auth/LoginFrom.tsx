@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { setToken } from "../../config/axios";
 import { UserRoles } from "../../constants/userRole";
 import { API_ROUTES } from "../../constants/Api_Routes";
+import { isAxiosError } from "axios";
 
 const LoginFrom = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const LoginFrom = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setAccessToken, setUserRole } = useAuth();
-  
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -26,7 +27,7 @@ const LoginFrom = () => {
         setToken(res.data.accessToken);
         setAccessToken(res.data.accessToken);
         setUserRole(res.data.userRole);
-        
+
         if (res.data.userRole === UserRoles.SUPER_ADMIN) {
           navigate(API_ROUTES.SUPER_ADMIN.NAV.DASHBOARD);
         } else if (res.data.userRole === UserRoles.WORKSPACE_ADMIN) {
@@ -37,8 +38,10 @@ const LoginFrom = () => {
           navigate(API_ROUTES.MEMBER.NAV.DASHBOARD);
         }
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Login failed");
+    } catch (err: unknown) {
+      if (isAxiosError(err)) {
+        setError(err?.response?.data?.message || "Login failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +59,7 @@ const LoginFrom = () => {
           {error}
         </div>
       )}
- 
+
       <form onSubmit={handleSubmit}>
         <label className="text-sm font-medium text-slate-900 block mb-1.5">
           Email Address
@@ -66,11 +69,9 @@ const LoginFrom = () => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
- 
+
         <div className="flex items-center justify-between mt-4 mb-1.5">
-          <label className="text-sm font-medium text-slate-900">
-            Password
-          </label>
+          <label className="text-sm font-medium text-slate-900">Password</label>
           <Link
             to="/forgot-password"
             className="text-xs font-medium text-indigo-600 hover:underline"
@@ -84,12 +85,17 @@ const LoginFrom = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
- 
+
         <div className="mt-6">
-          <Button label="Sign In" buttonType="submit" loading={isLoading} disabled={isLoading} />
+          <Button
+            label="Sign In"
+            buttonType="submit"
+            loading={isLoading}
+            disabled={isLoading}
+          />
         </div>
       </form>
- 
+
       <p className="mt-6 text-center text-sm text-slate-500">
         Need a new workspace?{" "}
         <Link

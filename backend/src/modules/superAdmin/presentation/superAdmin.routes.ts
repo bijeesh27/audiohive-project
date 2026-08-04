@@ -1,5 +1,4 @@
 import express from "express";
-import { Router } from "express";
 import { SuperAdminController } from "./superAdmin.controller.ts";
 import { GetAllUserUseCase } from "../application/usecases/getAllUserUseCase.ts";
 import { UserRepository } from "../infrastructure/userRepository.ts";

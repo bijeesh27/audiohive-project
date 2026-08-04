@@ -22,7 +22,7 @@ export class ForgetUseCase implements IuseCase<
       throw new UserNotFound();
     }
 
-    let newOtp = generateOtp();
+    const newOtp = generateOtp();
 
     await this.otpRepository.createOtp(email, newOtp, user);
     return user;

@@ -8,7 +8,7 @@ export class ResendOtpUseCase implements IuseCase<{ email: string }, void> {
 
   async execute(data: { email: string }) {
     const { email } = data;
-    let newOtp = generateOtp();
+    const newOtp = generateOtp();
     const updated = await this.otpRepository.updateOtpCode(email, newOtp);
     
     if (!updated) {
