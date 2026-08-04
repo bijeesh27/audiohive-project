@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import OtpInput from "../common/OtpInput";
 import Button from "../common/Button";
 import { verifyOtp, resendOtp } from "../../services/authServices";
+import { isAxiosError } from "axios";
 
 const OtpFrom = () => {
   const location = useLocation();
@@ -42,8 +43,10 @@ const OtpFrom = () => {
           navigate("/login");
         }
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "OTP Verification failed");
+    } catch (err: unknown) {
+      if(isAxiosError(err)){
+        setError(err?.response?.data?.message || "OTP Verification failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -55,8 +58,10 @@ const OtpFrom = () => {
       await resendOtp(email);
       setTimeLeft(60);
       setError("A new OTP has been sent to your email!");
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to resend OTP");
+    } catch (err: unknown) {
+      if(isAxiosError(err)){
+        setError(err?.response?.data?.message || "Failed to resend OTP");
+      }
     }
   };
 
@@ -86,7 +91,7 @@ const OtpFrom = () => {
       </form>
  
       <p className="mt-6 text-center text-sm text-slate-500">
-        Didn't get a code?{" "}
+        Didn&apos;t get a code?{" "}
         <button 
           type="button" 
           onClick={handleResend}

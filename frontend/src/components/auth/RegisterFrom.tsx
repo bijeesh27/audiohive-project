@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Button from "../common/Button";
 import Input from "../common/Input";
 import { register } from "../../services/authServices";
+import { isAxiosError } from "axios";
 
 const RegisterFrom = () => {
   const navigate = useNavigate();
@@ -27,8 +28,10 @@ const RegisterFrom = () => {
       if (res.success) {
         navigate("/otp", { state: { purpose: "register", email } });
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Registration failed");
+    } catch (err: unknown) {
+      if(isAxiosError(err)){
+        setError(err?.response?.data?.message || "Registration failed");
+      }
     } finally {
       setIsLoading(false);
     }

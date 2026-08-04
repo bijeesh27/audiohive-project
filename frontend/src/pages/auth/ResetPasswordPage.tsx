@@ -3,6 +3,7 @@ import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import { resetPassword } from "../../services/authServices";
 import { useNavigate, useLocation } from "react-router-dom";
+import { isAxiosError } from "axios";
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -40,8 +41,10 @@ const ResetPasswordPage = () => {
           navigate("/login");
         }, 2000);
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to reset password");
+    } catch (err: unknown) {
+      if(isAxiosError(err)){
+        setError(err?.response?.data?.message || "Failed to reset password");
+      }
     } finally {
       setIsLoading(false);
     }

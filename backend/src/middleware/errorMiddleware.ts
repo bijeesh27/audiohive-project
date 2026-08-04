@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 
 export const globelErrorHandler = (
-  err: Error&{statusCode:number,errors:any},
+  err: Error&{statusCode:number,errors?: unknown},
   req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ) => {
   const message = err.message || "Internal Server Error";
   const statusCode = err.statusCode || 500;

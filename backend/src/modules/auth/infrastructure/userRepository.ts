@@ -3,7 +3,6 @@ import {
   IuserDocument,
   UserModel,
 } from "../../../shared/User.utils/userSchema.ts";
-import bcrypt from "bcrypt";
 import { BaseRepository } from "../../../shared/common/baseRepository.ts";
 
 export class UserRpository
@@ -14,7 +13,7 @@ export class UserRpository
     super(UserModel);
   }
   async findByEmail(email: string): Promise<IuserDocument | null> {
-    let user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email });
     return user;
   }
 

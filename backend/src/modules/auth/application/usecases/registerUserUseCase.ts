@@ -19,7 +19,7 @@ export class RegiterUserUseCase implements IuseCase<RegisterDTO, void> {
     if (exist) {
       throw new UserAlreadyExist();
     }
-    let newOtp = generateOtp();
+    const newOtp = generateOtp();
     const hashedPassword = await bcrypt.hash(password, 12);
     const newUser:IuserDocument = {
       username,

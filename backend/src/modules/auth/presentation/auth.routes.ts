@@ -1,5 +1,4 @@
 import express from "express";
-import { Router } from "express";
 import { AuthController } from "./auth.controller.ts";
 import { RegiterUserUseCase } from "../application/usecases/registerUserUseCase.ts";
 import { UserRpository } from "../infrastructure/userRepository.ts";

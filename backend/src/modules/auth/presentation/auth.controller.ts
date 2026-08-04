@@ -13,8 +13,6 @@ import {
 } from "../application/dtos/AuthDTO.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 import {
-  AccessDeniedError,
-  AccountDisabledError,
   InvalidRefreshToken,
   InvalidToken,
   RefreshTokenNotFound,
@@ -46,11 +44,11 @@ export class AuthController {
   }
   async verifyOtp(req: Request, res: Response, next: NextFunction) {
     try {
-      let userData = await this.otpUseCase.execute(req.body);
+      const userData = await this.otpUseCase.execute(req.body);
       
       if (req.body.purpose === "forget") {
          const resetToken = jwt.sign(
-           { email: (userData as any).email, type: "reset" },
+           { email: (userData as IuserDocument).email, type: "reset" },
            process.env.JWT_SECRET!,
            { expiresIn: "15m" }
          );
@@ -129,14 +127,15 @@ export class AuthController {
     }
   }
 
+  
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const { token, password } = req.body;
       
-      let decoded: any;
+      let decoded: jwt.JwtPayload;
       try {
         decoded = jwt.verify(token, process.env.JWT_SECRET!);
-      } catch (err) {
+      } catch{
         throw new InvalidToken();
       }
 
@@ -158,10 +157,10 @@ export class AuthController {
         throw new RefreshTokenNotFound();
       }
 
-      let decoded: any;
+      let decoded: jwt.JwtPayload;
       try {
         decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
-      } catch (err) {
+      } catch {
         throw new InvalidRefreshToken();
       }
 

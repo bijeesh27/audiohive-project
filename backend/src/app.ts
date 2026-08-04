@@ -9,10 +9,11 @@ import moderatorRouter from './modules/moderator/presentation/moderator.route.ts
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from 'cors'
 import cookieParser from "cookie-parser";
-
+import { morganMiddleware } from "./middleware/morganMiddleware.ts";
+import logger from "./shared/utils/logger.ts";
 export function connectApp() {
   const app = express();
-
+  app.use(morganMiddleware)
 
   app.use(cors({origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials:true}))
   app.use(urlencoded({ extended: true }));
@@ -30,6 +31,6 @@ export function connectApp() {
   app.use(globelErrorHandler);
 
   app.listen(PORT, () => {
-    console.log(`server running port = ${PORT}`);
+    logger.info(`the server running on -> ${PORT}`)
   });
 }

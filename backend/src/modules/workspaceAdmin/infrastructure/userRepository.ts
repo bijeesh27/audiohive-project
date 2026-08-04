@@ -13,7 +13,7 @@ export class UserRepository implements IuserRepository {
   ): Promise<{ users: Array<IuserDocument>; total: number } | null> {
     const skip = (page - 1) * limit;
 
-    const query: any = {
+    const query: Record<string, unknown>  = {
       role: { $in: [UserRoles.MODERATOR, UserRoles.MEMBER] },
     };
     if (searchQuery) {

@@ -3,6 +3,7 @@ import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import { forgotPassword } from "../../services/authServices";
 import { useNavigate, Link } from "react-router-dom";
+import { isAxiosError } from "axios";
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
@@ -20,8 +21,10 @@ const ForgotPasswordPage = () => {
       if (res.success) {
         navigate("/otp", { state: { purpose: "forget", email } });
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to send reset email");
+    } catch (err: unknown) {
+      if(isAxiosError(err)){
+        setError(err?.response?.data?.message || "Failed to send reset email");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +55,7 @@ const ForgotPasswordPage = () => {
         <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-xl border border-slate-100 transition-all">
           <h2 className="text-2xl font-bold text-slate-900">Forgot Password</h2>
           <p className="text-sm text-slate-500 mt-1 mb-6">
-            We'll send you an OTP to reset your password.
+            We&apos;ll send you an OTP to reset your password.
           </p>
 
           {error && (

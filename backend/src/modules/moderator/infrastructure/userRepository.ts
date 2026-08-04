@@ -2,11 +2,12 @@ import { UserRoles } from "../../../common/constant/userRoles.ts";
 import { IuserDocument, UserModel } from "../../../shared/User.utils/userSchema.ts";
 import { IuserRepository } from "../domain/IuserRepository.ts";
 
+
 export class UserRepository implements IuserRepository {
   async getAllUsers(page: number, limit: number,searchQuery?:string): Promise<{ users: Array<IuserDocument>; total: number } | null> {
     const skip = (page - 1) * limit;
 
-    const query:any={role:UserRoles.MEMBER};
+    const query:Record<string, unknown>={role:UserRoles.MEMBER};
     if(searchQuery){
         query.$or=[
             {username:{$regex:searchQuery,$options:'i'}},
