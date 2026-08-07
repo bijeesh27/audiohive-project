@@ -4,11 +4,14 @@ export const API_ROUTES = {
     LOGIN: "login",
     REGISTER: "register",
     OTP: "otp",
+    PRICING:'pricing'
+
   },
   SUPER_ADMIN: {
     ROOT: "/superadmin/*",
     DASHBOARD: "dashboard",
     GET_USERS: "get-users",
+    GET_SUBSCRIPTIONS:"subscriptions",
     NAV: {
       DASHBOARD: "/superadmin/dashboard",
       GET_USERS: "/superadmin/get-users",

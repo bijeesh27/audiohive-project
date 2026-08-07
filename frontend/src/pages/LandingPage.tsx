@@ -24,6 +24,9 @@ const LandingPage: FC = () => {
             <a href="#features" className="text-sm text-brand-text-muted transition hover:text-brand-text">
               Features
             </a>
+            <a href="/pricing" className="text-sm text-brand-text-muted transition hover:text-brand-text">
+              Plans
+            </a>
           </div>
 
           <div className="flex items-center gap-3">

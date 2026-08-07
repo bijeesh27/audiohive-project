@@ -13,6 +13,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path={API_ROUTES.PUBLIC.LANDING} element={<AuthRoutes />} />
+        
 
         <Route element={<RoleGuard allowedRoles={[UserRoles.SUPER_ADMIN]} />}>
           <Route path={API_ROUTES.SUPER_ADMIN.ROOT} element={<SuperAdminRoutes />} />
