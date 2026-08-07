@@ -2,7 +2,7 @@ import {
   PasswordMatchError,
   UserNotFound,
   AccountDisabledError,
-} from "../../../../common/Errors/Error.ts";
+} from "../../../../common/Errors/AuthError.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import bcrypt from "bcrypt";
 import { IuserRepository } from "../../domain/IuserRepository.ts";

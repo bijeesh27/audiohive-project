@@ -8,4 +8,5 @@ export interface IuserRepository {
     userId: string,
     data: Partial<IuserDocument>,
   ): Promise<IuserDocument>;
+
 }

@@ -6,6 +6,7 @@ import authRouter from "./modules/auth/presentation/auth.routes.ts";
 import superAdminRouter from "./modules/superAdmin/presentation/superAdmin.routes.ts";
 import workspaceAdminRouter from "./modules/workspaceAdmin/presentation/workspaceAdmin.route.ts";
 import moderatorRouter from './modules/moderator/presentation/moderator.route.ts'
+import subscriptionRouter from './modules/subscription/presentation/subscription.routes.ts'
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from 'cors'
 import cookieParser from "cookie-parser";
@@ -27,6 +28,7 @@ export function connectApp() {
   app.use("/api/super-admin", superAdminRouter);
   app.use("/api/workspaceadmin", workspaceAdminRouter);
   app.use("/api/moderator", moderatorRouter);
+  app.use("/api/subscription",subscriptionRouter)
 
   app.use(globelErrorHandler);
 

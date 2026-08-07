@@ -1,4 +1,4 @@
-import { UserNotFound, PasswordMatchError } from "../../../../common/Errors/Error.ts";
+import { UserNotFound, PasswordMatchError } from "../../../../common/Errors/AuthError.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";

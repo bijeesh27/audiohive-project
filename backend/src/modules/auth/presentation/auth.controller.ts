@@ -16,7 +16,7 @@ import {
   InvalidRefreshToken,
   InvalidToken,
   RefreshTokenNotFound,
-} from "../../../common/Errors/Error.ts";
+} from "../../../common/Errors/AuthError.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
 export class AuthController {
   constructor(

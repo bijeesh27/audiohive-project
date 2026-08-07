@@ -3,6 +3,10 @@ import { Model } from "mongoose";
 export abstract class BaseRepository<T> {
   constructor(protected readonly model: Model<T>) {}
 
+  async findOne(filter: Partial<T>) {
+    return this.model.findOne(filter);
+  }
+
   async findById(id: string) {
     return this.model.findById(id);
   }
