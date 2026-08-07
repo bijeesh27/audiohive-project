@@ -7,6 +7,7 @@ import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/auth/ResetPasswordPage";
 import PublicRoute from "./PublicRoute";
 import { API_ROUTES } from "../constants/Api_Routes";
+import PricingPage from "../pages/PricingPage";
 
 const AuthRoutes = () => {
   return (
@@ -14,6 +15,7 @@ const AuthRoutes = () => {
       <Routes>
         <Route element={<PublicRoute />}>
           <Route path="" element={<LandingPage />} />
+          <Route path={API_ROUTES.PUBLIC.PRICING} element={<PricingPage />} />
           <Route path={API_ROUTES.PUBLIC.LOGIN} element={<LoginPage />} />
           <Route path={API_ROUTES.PUBLIC.REGISTER} element={<RegisterPage />} />
           <Route path="otp" element={<OtpPage />} />
