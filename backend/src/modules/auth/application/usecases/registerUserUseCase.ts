@@ -1,4 +1,4 @@
-import { UserAlreadyExist } from "../../../../common/Errors/Error.ts";
+import { UserAlreadyExist } from "../../../../common/Errors/AuthError.ts";
 import { generateOtp } from "../../../../shared/utils/otp.utils.ts";
 import { IotpReposiroty } from "../../domain/IotpRepository.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";

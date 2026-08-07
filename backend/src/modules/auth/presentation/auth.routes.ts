@@ -43,7 +43,7 @@ const controller = new AuthController(
 router.post(API_ROUTES.AUTH.REFRESH, controller.refreshToken.bind(controller));
 router.post(API_ROUTES.AUTH.REGISTER, validateRequest(registerSchema), controller.register.bind(controller));
 router.post(API_ROUTES.AUTH.VERIFY_OTP, validateRequest(otpSchema),controller.verifyOtp.bind(controller));
-router.post('/resend-otp', validateRequest(forgetPasswordSchema), controller.resendOtp.bind(controller));
+router.post(API_ROUTES.AUTH.RESEND_OTP, validateRequest(forgetPasswordSchema), controller.resendOtp.bind(controller));
 router.post(API_ROUTES.AUTH.LOGIN,validateRequest(loginSchema), controller.login.bind(controller));
 router.post(API_ROUTES.AUTH.LOGOUT,authMiddleware,controller.logout.bind(controller))
 
@@ -56,7 +56,7 @@ router.post(
   controller.changePassword.bind(controller),
 );
 router.post(
-  '/reset-password', validateRequest(resetPasswordSchema),
+  API_ROUTES.AUTH.RESET_PASSWORD, validateRequest(resetPasswordSchema),
   controller.resetPassword.bind(controller),
 );
 

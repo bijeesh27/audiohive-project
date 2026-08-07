@@ -1,4 +1,4 @@
-import { UserNotFound } from "../../../../common/Errors/Error.ts";
+import { UserNotFound } from "../../../../common/Errors/AuthError.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import { generateOtp } from "../../../../shared/utils/otp.utils.ts";

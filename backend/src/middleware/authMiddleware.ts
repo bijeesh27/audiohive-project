@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { AccessDeniedError, InvalidToken } from "../common/Errors/Error";
+import { AccessDeniedError, InvalidToken } from "../common/Errors/AuthError";
 
 export interface TokenPayload {
   id: string;

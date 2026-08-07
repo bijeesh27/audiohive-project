@@ -1,4 +1,4 @@
-import { InvalidOtpError } from "../../../../common/Errors/Error.ts";
+import { InvalidOtpError } from "../../../../common/Errors/AuthError.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import { IotpReposiroty } from "../../domain/IotpRepository.ts";

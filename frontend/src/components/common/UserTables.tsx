@@ -32,6 +32,9 @@ const UserTable = ({ users }: UserTableProps) => {
             <th className="px-4 py-3 font-medium text-gray-500">
               email
             </th>
+            <th className="px-4 py-3 font-medium text-gray-500">
+              user roles
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 ">
@@ -53,6 +56,14 @@ const UserTable = ({ users }: UserTableProps) => {
               
                   <span className="font-medium text-gray-900 ">
                     {user.email}
+                  </span>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-3">
+              
+                  <span className="font-medium text-gray-900 ">
+                    {user.role}
                   </span>
                 </div>
               </td>
