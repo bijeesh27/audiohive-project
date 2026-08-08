@@ -3,8 +3,7 @@ import Dashboard from "../pages/superAdmin/Dashboard"
 import Users from "../pages/superAdmin/Users"
 import { API_ROUTES } from "../constants/Api_Routes"
 import SuperAdminLayout  from '../components/superAdmin/layout/SuperAdminLayout'
-import SubscriptionPlans from "../pages/superAdmin/SubscriptionPlans"
-
+import SubscriptionPlan from "../pages/superAdmin/SubscriptionPlan"
 
 const SuperAdminRoutes = () => {
   return (
@@ -13,8 +12,7 @@ const SuperAdminRoutes = () => {
       <Route element={<SuperAdminLayout />}>
         <Route path={API_ROUTES.SUPER_ADMIN.DASHBOARD} element={<Dashboard/>}/>
         <Route path={API_ROUTES.SUPER_ADMIN.GET_USERS} element={<Users/>}/>
-        <Route path={API_ROUTES.SUPER_ADMIN.GET_SUBSCRIPTIONS} element={<SubscriptionPlans/>}/>
-
+        <Route path={API_ROUTES.SUPER_ADMIN.GET_SUBSCRIPTIONS} element={<SubscriptionPlan/>}/>
       </Route>
     </Routes>
   )

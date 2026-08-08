@@ -24,8 +24,8 @@ export const subscriptionService = {
     return response.data;
   },
 
-  updateSubscription: async (data: SubscriptionDTO) => {
-    const response = await axios.post(`${API_URL}/updatesubscription`, data);
+  updateSubscription: async (subscriptionId:any,data: SubscriptionDTO) => {
+    const response = await axios.post(`${API_URL}/updatesubscription`,{subscriptionId, data});
     return response.data;
   },
 
