@@ -22,7 +22,7 @@ export default function Navbar() {
           <Bell className="h-5 w-5" />
         </button>
         <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium cursor-pointer">
-          AU
+          SA
         </div>
       </div>
     </header>
