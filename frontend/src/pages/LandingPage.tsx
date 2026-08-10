@@ -5,7 +5,7 @@ const LandingPage: FC = () => {
   const navigate = useNavigate();
 
   const handleLogin = (): void => navigate("/login");
-  const handleCreateWorkspace = (): void => navigate("/create-workspace");
+  const handleCreateWorkspace = (): void => navigate("/createworkspace");
   const handleAccessWorkspace = (): void => navigate("/login");
 
   return (

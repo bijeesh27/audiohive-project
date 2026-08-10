@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, CreditCard, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, LogOut,Building2  } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
@@ -12,7 +12,8 @@ export default function Sidebar() {
   const navItems = [
     { name: "Dashboard", path: "/superadmin/dashboard", icon: LayoutDashboard },
     { name: "Users", path: "/superadmin/get-users", icon: Users },
-    { name: "Sunscriptions", path: "/superadmin/subscriptions", icon: CreditCard },
+    { name: "Subscriptions", path: "/superadmin/subscriptions", icon: CreditCard },
+    { name: "Workspaces", path: "/superadmin/workspaces", icon: Building2  },
   ];
 
   const handleLogout = async () => {

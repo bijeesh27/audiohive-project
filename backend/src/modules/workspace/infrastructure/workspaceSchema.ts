@@ -41,7 +41,7 @@ const workspaceSchema = new Schema<IWorkspaceDocument>(
     status: {
       type: String,
       required: true,
-      enum: ["pending", "active", "suspended"],
+      enum: ["pending", "active", "suspended",'reject'],
       default: "pending",
     },
 

@@ -2,7 +2,7 @@ import { BaseRepository } from "../../../shared/common/baseRepository";
 import { IworkspaceRepository } from "../domain/IworkspaceRepository";
 import { IWorkspaceDocument, WorkspaceModel } from "./workspaceSchema";
 
-export class workspaceReopsitory extends BaseRepository<IWorkspaceDocument> implements IworkspaceRepository{
+export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> implements IworkspaceRepository{
     constructor(){
         super(WorkspaceModel)
     }

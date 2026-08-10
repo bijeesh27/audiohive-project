@@ -99,7 +99,7 @@ const LoginFrom = () => {
       <p className="mt-6 text-center text-sm text-slate-500">
         Need a new workspace?{" "}
         <Link
-          to="/register"
+          to="/createworkspace"
           className="font-medium text-indigo-600 hover:underline"
         >
           Create Workspace
