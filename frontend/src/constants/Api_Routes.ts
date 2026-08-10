@@ -12,6 +12,7 @@ export const API_ROUTES = {
     DASHBOARD: "dashboard",
     GET_USERS: "get-users",
     GET_SUBSCRIPTIONS:"subscriptions",
+    GET_WORKSPACES:'workspaces',
     NAV: {
       DASHBOARD: "/superadmin/dashboard",
       GET_USERS: "/superadmin/get-users",

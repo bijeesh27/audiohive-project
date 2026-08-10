@@ -15,6 +15,9 @@ export const MESSAGES = {
     SUBCRIPTION_NAME_UNDEFINED: "Subscription name is required",
     SUBSCRIPTION_NOT_FOUND: "Subscription not found",
     SUBSCRIPTION_DELETE_FAILED: "Subscription deletion failed",
+    WORKSPACE_CREATION_FAILED:'Workspace creation failed',
+    WORKSPACE_INVALID_DATA:"Didnt get any data",
+    WORKSPACE_INVALID_ID:"invalid workspace id"
   },
 
   SUCCESS: {
@@ -30,5 +33,9 @@ export const MESSAGES = {
     SUBSCRIPTION_UPDATED: "Subscription updated successfully",
     SUBSCRIPTION_DELETED: "Subscription deleted successfully",
     GET_ALL_SUBSCRIPTIONS: "All subscriptions retrieved successfully",
+    WORSPACE_CREATED:'workspace created sucessfully',
+    WORKSPACE_UPDATED:"Workspace updated successfully",
+    WORKSPACE_DELETED:"Workspace deleted successfully",
+    WORKSPACE_GET_ALL:'suceesfully get all workspaces'
   },
 };

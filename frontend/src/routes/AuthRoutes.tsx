@@ -8,6 +8,8 @@ import ResetPasswordPage from "../pages/auth/ResetPasswordPage";
 import PublicRoute from "./PublicRoute";
 import { API_ROUTES } from "../constants/Api_Routes";
 import PricingPage from "../pages/PricingPage";
+import CreateWorkspace from "../pages/CreateWorkspace";
+import PendingApproval from "../pages/PendingApproval";
 
 const AuthRoutes = () => {
   return (
@@ -21,6 +23,8 @@ const AuthRoutes = () => {
           <Route path="otp" element={<OtpPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
           <Route path="reset-password" element={<ResetPasswordPage />} />
+          <Route path="/createworkspace" element={<CreateWorkspace/>}/>
+          <Route path="/pendingapproval" element={<PendingApproval/>}/>
         </Route>
       </Routes>
     </div>
