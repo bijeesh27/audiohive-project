@@ -8,10 +8,15 @@ export const API_ROUTES = {
     FORGET_PASSWORD: "/forget-password",
     CHANGE_PASSWORD: "/change-password",
     RESET_PASSWORD:'/reset-password',
-    LOGOUT:'/logout'
+    LOGOUT:'/logout',
+    GET_INVITATION: '/invitation/:token',
+    REGISTER_ADMIN: '/register-admin', 
+    REGISTER_WORKSPACE_ADMIN  :'/register-admin',
+    INVITATION:'/invitation/:token'
   },
   SUPER_ADMIN: {
     GET_USERS: "/get-users",
+    APPROVE_WORKSPACE: "/approve-workspace",
   },
   WORKSPACE_ADMIN: {
     GET_USERS: "/get-users",

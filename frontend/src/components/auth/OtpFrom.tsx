@@ -14,7 +14,8 @@ const OtpFrom = () => {
 
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const [timeLeft, setTimeLeft] = useState(60);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ const OtpFrom = () => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setFieldErrors([])
     try {
       const res = await verifyOtp(email, otp, purpose);
       if (res.success) {
@@ -44,9 +46,18 @@ const OtpFrom = () => {
         }
       }
     } catch (err: unknown) {
-      if(isAxiosError(err)){
-        setError(err?.response?.data?.message || "OTP Verification failed");
-      }
+     if (isAxiosError(err)) {
+    const data = err?.response?.data;
+    const raw = data?.errors;
+  const fields: {field:string; message:string}[] = Array.isArray(raw) ? raw : [];
+    if (fields.length > 0) {
+      setFieldErrors(fields.map(e => e.message));
+      setError(null);
+    } else {
+      setError(data?.message || "Login failed");
+      setFieldErrors([]);
+    }
+  }
     } finally {
       setIsLoading(false);
     }
@@ -73,10 +84,17 @@ const OtpFrom = () => {
       </p>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      )}
+    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+      {error}
+    </div>
+  )}
+  {fieldErrors.length > 0 && (
+    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+      <ul className="list-disc list-inside space-y-1">
+        {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
+      </ul>
+    </div>
+  )}
  
       <form onSubmit={handleSubmit}>
         <OtpInput

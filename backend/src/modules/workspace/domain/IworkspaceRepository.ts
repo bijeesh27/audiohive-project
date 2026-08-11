@@ -1,3 +1,4 @@
+import { IInvitationDocument } from "../infrastructure/invitationSchema";
 import { IWorkspaceDocument } from "../infrastructure/workspaceSchema";
 
 
@@ -6,4 +7,5 @@ export interface IworkspaceRepository{
     updateWorkspace(workspaceId:string,date:Partial<IWorkspaceDocument>):Promise<void>
     deleteWorkspace(workspaceId:string):Promise<void>
     getAllWorkspaces():Promise<IWorkspaceDocument[]>
+    createInvitation(data:IInvitationDocument):Promise<void>
 }

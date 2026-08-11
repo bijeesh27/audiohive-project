@@ -3,6 +3,7 @@ import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
 import jwt from "jsonwebtoken";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
+import { InvitationModel } from "../../workspace/infrastructure/invitationSchema.ts";
 import {
   ChangePasswordDTO,
   ForgetPasswordDTO,
@@ -18,6 +19,7 @@ import {
   RefreshTokenNotFound,
 } from "../../../common/Errors/AuthError.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
+import { UserRoles } from "../../../common/constant/userRoles.ts";
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
@@ -29,7 +31,8 @@ export class AuthController {
       IuserDocument
     >,
     private readonly resendOtpUseCase: IuseCase<{ email: string }, void>,
-    private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDocument>
+    private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDocument>,
+    private readonly registerWorkspaceAdminUseCase:IuseCase<RegisterDTO,void>
   ) {}
   async register(req: Request, res: Response, next: NextFunction) {
     try {
@@ -134,7 +137,7 @@ export class AuthController {
       
       let decoded: jwt.JwtPayload;
       try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET!);
+        decoded = jwt.verify(token, process.env.JWT_SECRET!)as jwt.JwtPayload;
       } catch{
         throw new InvalidToken();
       }
@@ -159,7 +162,7 @@ export class AuthController {
 
       let decoded: jwt.JwtPayload;
       try {
-        decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
+        decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET! )as jwt.JwtPayload;
       } catch {
         throw new InvalidRefreshToken();
       }
@@ -190,4 +193,49 @@ export class AuthController {
       next(error);
     }
   }
+
+async getInvitationDetails(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { token } = req.params;
+        const invitation = await InvitationModel.findOne({
+            token,
+            isUsed: false,
+            expiresAt: { $gt: new Date() }
+        });
+        if (!invitation) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+        }
+        return ApiResposne.success(res, 'Invitation valid', { email: invitation.email });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async registerAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { token, username, password } = req.body;
+        const invitation = await InvitationModel.findOne({
+            token,
+            isUsed: false,
+            expiresAt: { $gt: new Date() }
+        });
+        if (!invitation) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+        }
+        const bcrypt = await import('bcrypt');
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const newWorkspaceAdmin:RegisterDTO ={
+            username,
+            email: invitation.email,
+            password: hashedPassword,
+            role: UserRoles.WORKSPACE_ADMIN,
+        } ;
+        await this.registerWorkspaceAdminUseCase.execute(newWorkspaceAdmin)
+        invitation.isUsed = true;
+        await invitation.save();
+        return ApiResposne.success(res, 'Workspace Admin registered successfully', null);
+    } catch (error) {
+        next(error);
+    }
+}
 }

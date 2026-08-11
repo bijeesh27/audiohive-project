@@ -23,7 +23,7 @@ const SubscriptionPlan = () => {
       key={plan._id}
       className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
     >
-      {/* Header */}
+      
       <div className="mb-6">
         <h3 className="text-xl font-semibold text-gray-900">
           {plan.subscriptionName}
@@ -34,7 +34,7 @@ const SubscriptionPlan = () => {
         </p>
       </div>
 
-      {/* Price */}
+      
       <div className="mb-6">
         <div className="flex items-end gap-1">
           <span className="text-4xl font-bold text-gray-900">
@@ -47,7 +47,7 @@ const SubscriptionPlan = () => {
         </div>
       </div>
 
-      {/* Limits */}
+      
       <div className="border-t border-gray-100 pt-5 mb-6 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">
@@ -70,7 +70,6 @@ const SubscriptionPlan = () => {
         </div>
       </div>
 
-      {/* Features */}
       <div className="border-t border-gray-100 pt-5">
         <h4 className="text-sm font-semibold text-gray-900 mb-4">
           Features
@@ -92,7 +91,7 @@ const SubscriptionPlan = () => {
         </ul>
       </div>
 
-      {/* Status */}
+      
       <div className="mt-6 pt-5 border-t border-gray-100">
         <span
           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${

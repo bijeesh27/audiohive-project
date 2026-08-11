@@ -1,5 +1,4 @@
 import LoginFrom from "../../components/auth/LoginFrom";
-import type { API_ROUTES } from "../../constants/Api_Routes";
 
 const LoginPage = () => {
    return (

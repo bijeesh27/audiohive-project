@@ -5,6 +5,8 @@ import { updateWorkspaceUsecase } from "../application/usecase/updateWorkspaceUs
 import { DeleteWorkspaceUseCase } from "../application/usecase/deleteWorkspaceUseCase";
 import { GetAllWorkspacesUseCase } from "../application/usecase/getAllWorkspacesUseCase";
 import { WorkspaceReopsitory } from "../infrastructure/workspaceRepository";
+import { validateRequest } from "../../../middleware/validateRequest";
+import { registerWorkspaceSchema } from "../../../common/validation/authValidation";
 
 const router = express.Router();
 
@@ -22,7 +24,7 @@ const controller = new WorkspaceController(
     getAllWorkspacesUseCase
 );
 
-router.post("/createworkspace", controller.createWorkspace.bind(controller));
+router.post("/createworkspace",validateRequest(registerWorkspaceSchema) ,controller.createWorkspace.bind(controller));
 router.put("/updateworkspace/:id", controller.updateWorkspace.bind(controller));
 router.delete("/deleteworkspace/:id", controller.deleteWorkspace.bind(controller));
 router.get("/getallworkspaces", controller.getAllWorkspaces.bind(controller));

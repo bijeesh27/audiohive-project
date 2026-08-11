@@ -1,5 +1,6 @@
 import { BaseRepository } from "../../../shared/common/baseRepository";
 import { IworkspaceRepository } from "../domain/IworkspaceRepository";
+import { IInvitationDocument, InvitationModel } from "./invitationSchema";
 import { IWorkspaceDocument, WorkspaceModel } from "./workspaceSchema";
 
 export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> implements IworkspaceRepository{
@@ -18,5 +19,8 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
  async getAllWorkspaces(): Promise<IWorkspaceDocument[]> {
      const allWorkspace=await WorkspaceModel.find()
      return allWorkspace
+ }
+ async createInvitation(data: IInvitationDocument): Promise<void> {
+     await InvitationModel.create(data)
  }
 }

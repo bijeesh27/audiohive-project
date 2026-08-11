@@ -2,7 +2,6 @@ import { MESSAGES } from "../../../../common/constant/messages";
 import { UpdateSubscriptionError } from "../../../../common/Errors/SubscriptionError";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IsubscriptionRepository } from "../../domain/IsubscriptionRepository";
-import { ISubscriptionDocument } from "../../infrastructure/subscriptionSchema";
 import { updateSubscriptionDTO } from "../dto/subcriptionDTOs";
 
 export class UpdateSubscriptionUseCase implements IuseCase<updateSubscriptionDTO,void> {
