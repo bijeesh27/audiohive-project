@@ -22,8 +22,17 @@ const ForgotPasswordPage = () => {
         navigate("/otp", { state: { purpose: "forget", email } });
       }
     } catch (err: unknown) {
-      if(isAxiosError(err)){
-        setError(err?.response?.data?.message || "Failed to send reset email");
+      if (isAxiosError(err)) {
+        const data = err?.response?.data;
+        const raw = data?.errors;
+        const fields: { field: string; message: string }[] = Array.isArray(raw)
+          ? raw
+          : [];
+        if (fields.length > 0) {
+          setError(fields.map((e) => e.message).join(", "));
+        } else {
+          setError(data?.message || "Failed to send reset email");
+        }
       }
     } finally {
       setIsLoading(false);
@@ -35,18 +44,19 @@ const ForgotPasswordPage = () => {
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-between bg-slate-950 text-white px-12 py-10 overflow-hidden">
         <div className="pointer-events-none absolute -top-20 right-0 h-96 w-96 rounded-full bg-indigo-600/30 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-0 h-72 w-72 rounded-full bg-purple-700/20 blur-3xl" />
- 
+
         <div className="relative font-semibold text-lg">AudioHive</div>
- 
+
         <div className="relative max-w-md">
           <h1 className="text-4xl font-bold leading-tight">
             Reset your password.
           </h1>
           <p className="mt-4 text-slate-300 text-sm leading-relaxed">
-            Enter your email to get a verification code and regain access to your workspace.
+            Enter your email to get a verification code and regain access to
+            your workspace.
           </p>
         </div>
- 
+
         <div className="relative text-xs text-slate-500">
           © 2026 AudioHive. All rights reserved.
         </div>
@@ -75,13 +85,21 @@ const ForgotPasswordPage = () => {
             />
 
             <div className="mt-6">
-              <Button label="Send OTP" buttonType="submit" loading={isLoading} disabled={isLoading} />
+              <Button
+                label="Send OTP"
+                buttonType="submit"
+                loading={isLoading}
+                disabled={isLoading}
+              />
             </div>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate-500">
             Remembered your password?{" "}
-            <Link to="/login" className="font-medium text-indigo-600 hover:underline">
+            <Link
+              to="/login"
+              className="font-medium text-indigo-600 hover:underline"
+            >
               Sign In
             </Link>
           </p>

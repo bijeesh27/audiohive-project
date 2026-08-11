@@ -4,6 +4,7 @@ import {
   UserModel,
 } from "../../../shared/User.utils/userSchema.ts";
 import { BaseRepository } from "../../../shared/common/baseRepository.ts";
+import { RegisterDTO } from "../application/dtos/AuthDTO.ts";
 
 export class UserRpository
   extends BaseRepository<IuserDocument>
@@ -17,7 +18,7 @@ export class UserRpository
     return user;
   }
 
-  async createUser(data: IuserDocument): Promise<void> {
+  async createUser(data: RegisterDTO): Promise<void> {
     await this.create(data);
   }
   async deteleUser(id: string): Promise<void> {

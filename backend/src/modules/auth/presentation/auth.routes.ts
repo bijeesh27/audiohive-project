@@ -9,10 +9,11 @@ import { ForgetUseCase } from "../application/usecases/ForgetUseCase.ts";
 import { ChangePasswordUseCase } from "../application/usecases/changePasswordUseCase.ts";
 import { API_ROUTES } from "../../../common/constant/ApiRoutes.ts";
 import { validateRequest } from "../../../middleware/validateRequest.ts";
-import { changePasswordSchema, forgetPasswordSchema, loginSchema, otpSchema, registerSchema, resetPasswordSchema } from "../../../common/validation/authValidation.ts";
+import { changePasswordSchema, forgetPasswordSchema, loginSchema, otpSchema, registerSchema, registerWorkspaceSchema, resetPasswordSchema } from "../../../common/validation/authValidation.ts";
 import { authMiddleware } from "../../../middleware/authMiddleware.ts";
 import { ResendOtpUseCase } from "../application/usecases/ResendOtpUseCase.ts";
 import { ResetPasswordUseCase } from "../application/usecases/ResetPasswordUseCase.ts";
+import { RegisterWorkspaceAdminUseCase } from "../application/usecases/registerWorkspaceAdminUseCase.ts";
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ const forgetUseCase = new ForgetUseCase(userReopsitory, otpRepository);
 const changePasswordUseCase = new ChangePasswordUseCase(userReopsitory);
 const resendOtpUseCase = new ResendOtpUseCase(otpRepository);
 const resetPasswordUseCase = new ResetPasswordUseCase(userReopsitory);
+const registerWorkspaceAdminUseCase=new RegisterWorkspaceAdminUseCase(userReopsitory)
 
 const controller = new AuthController(
   registerUserUseCase,
@@ -37,7 +39,8 @@ const controller = new AuthController(
   forgetUseCase,
   changePasswordUseCase,
   resendOtpUseCase,
-  resetPasswordUseCase
+  resetPasswordUseCase,
+  registerWorkspaceAdminUseCase
 );
 
 router.post(API_ROUTES.AUTH.REFRESH, controller.refreshToken.bind(controller));
@@ -59,5 +62,9 @@ router.post(
   API_ROUTES.AUTH.RESET_PASSWORD, validateRequest(resetPasswordSchema),
   controller.resetPassword.bind(controller),
 );
+
+router.get(API_ROUTES.AUTH.INVITATION, controller.getInvitationDetails.bind(controller));
+
+router.post(API_ROUTES.AUTH.REGISTER_WORKSPACE_ADMIN,validateRequest(registerWorkspaceSchema) ,controller.registerAdmin.bind(controller));
 
 export default router;

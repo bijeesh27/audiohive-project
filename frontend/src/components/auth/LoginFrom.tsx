@@ -15,12 +15,14 @@ const LoginFrom = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const { setAccessToken, setUserRole } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setFieldErrors([])
     try {
       const res = await login(email, password);
       if (res.success) {
@@ -40,8 +42,17 @@ const LoginFrom = () => {
       }
     } catch (err: unknown) {
       if (isAxiosError(err)) {
-        setError(err?.response?.data?.message || "Login failed");
-      }
+    const data = err?.response?.data;
+    const raw = data?.errors;
+  const fields: {field:string; message:string}[] = Array.isArray(raw) ? raw : [];
+    if (fields.length > 0) {
+      setFieldErrors(fields.map(e => e.message));
+      setError(null);
+    } else {
+      setError(data?.message || "Login failed");
+      setFieldErrors([]);
+    }
+  }
     } finally {
       setIsLoading(false);
     }
@@ -55,10 +66,17 @@ const LoginFrom = () => {
       </p>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      )}
+    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+      {error}
+    </div>
+  )}
+  {fieldErrors.length > 0 && (
+    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+      <ul className="list-disc list-inside space-y-1">
+        {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
+      </ul>
+    </div>
+  )}
 
       <form onSubmit={handleSubmit}>
         <label className="text-sm font-medium text-slate-900 block mb-1.5">

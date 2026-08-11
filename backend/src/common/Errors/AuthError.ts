@@ -17,17 +17,17 @@ export class UserAlreadyExist extends AppError {
 
 export class InvalidOtpError extends AppError {
   constructor(message = MESSAGES.ERRORS.INVALID_OTP) {
-    super(message, HttpStatus.UNAUTHORIZED);
+    super(message, HttpStatus.BAD_REQUEST);
   }
 }
 export class UserNotFound extends AppError {
   constructor(message = MESSAGES.ERRORS.USER_NOT_FOUND) {
-    super(message, HttpStatus.UNAUTHORIZED);
+    super(message, HttpStatus.NOT_FOUND);
   }
 }
 export class PasswordMatchError extends AppError {
   constructor(message = MESSAGES.ERRORS.PASSWORD_MISMATCH) {
-    super(message, HttpStatus.UNAUTHORIZED);
+    super(message, HttpStatus.BAD_REQUEST);
   }
 }
 export class RefreshTokenNotFound extends AppError {

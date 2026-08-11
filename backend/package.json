@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-   "scripts": {
+  "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
     "lint": "eslint \"src/**/*.ts\"",
@@ -16,13 +16,16 @@
   "dependencies": {
     "@types/cookie-parser": "^1.4.10",
     "bcrypt": "^6.0.0",
+    "bullmq": "^6.0.11",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
     "morgan": "^1.11.0",
+    "nodemailer": "^9.0.5",
     "winston": "^3.19.0",
     "zod": "^4.4.3"
   },
@@ -33,6 +36,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
+    "@types/nodemailer": "^8.0.1",
     "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.66.0",
     "eslint": "^10.8.0",
@@ -40,6 +44,7 @@
     "globals": "^17.9.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.9.6",
+    "ts-node": "^10.9.2",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.66.0"

@@ -33,13 +33,18 @@ axiosInstance.interceptors.response.use(
       error.response &&
       error.response.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== "/api/auth/refresh"
+      originalRequest.url !== "/api/auth/refresh" &&
+      originalRequest.url !== "/api/auth/forget-password"
     ) {
       originalRequest._retry = true;
       try {
-        const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/auth/refresh`, {}, {
-          withCredentials: true,
-        });
+        const res = await axios.post(
+          `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
+          },
+        );
 
         if (res.data && res.data.success) {
           const newAccessToken = res.data.data.accessToken;

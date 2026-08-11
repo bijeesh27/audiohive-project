@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -9,6 +8,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { subscriptionService } from "../services/subscriptionServices";
+import { createWorkspace } from "../services/workspaceServices";
+import { isAxiosError } from "axios";
 
 interface ISubscription {
   _id: string;
@@ -34,6 +35,9 @@ const CreateWorkspace = () => {
   const [plans, setPlans] = useState<ISubscription[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<IFormData>({
     companyName: "",
@@ -64,18 +68,15 @@ const CreateWorkspace = () => {
     fetchPlans();
   }, []);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (
       !formData.companyName.trim() ||
       !formData.workspaceAdminName.trim() ||
@@ -89,48 +90,63 @@ const CreateWorkspace = () => {
       return;
     }
 
-    const plan = plans.find(
-      (subscription) => subscription._id === selectedPlan
-    );
+    const plan = plans.find((subscription) => subscription._id === selectedPlan);
 
     if (!plan) {
       return;
     }
+
+    setFieldErrors([]);
+    setError(null);
+    setIsLoading(true);
 
     const workspaceData = {
       companyName: formData.companyName.trim(),
       workspaceAdminName: formData.workspaceAdminName.trim(),
       workspaceAdminEmail: formData.workspaceAdminEmail.trim(),
       planId: plan._id,
-      status:'pending',
+      status: 'pending',
       workspaceSlug: formData.workspaceSlug.trim().toLowerCase(),
       amountPaid: plan.price,
     };
-    if (plan.price === 0) {
-      navigate("/pendingapproval", {
-        state: workspaceData,
-      });
 
-      return;
+    try {
+      await createWorkspace(workspaceData);
+
+      if (plan.price === 0) {
+        navigate("/pendingapproval", {
+          state: workspaceData,
+        });
+      } else {
+        navigate("/payment", {
+          state: workspaceData,
+        });
+      }
+    } catch (err: unknown) {
+      if (isAxiosError(err)) {
+        const data = err?.response?.data;
+        const raw = data?.errors;
+        const fields: { field: string; message: string }[] = Array.isArray(raw) ? raw : [];
+        if (fields.length > 0) {
+          setFieldErrors(fields.map((e) => e.message));
+        } else {
+          setError(data?.message || "Failed to create workspace");
+        }
+      }
+    } finally {
+      setIsLoading(false);
     }
-    navigate("/payment", {
-      state: workspaceData,
-    });
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-gray-900">
-              <div className="h-2 w-2 rounded-full bg-gray-900" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600">
+              <span className="text-sm font-bold text-white">A</span>
             </div>
-
-            <span className="text-xl font-bold text-gray-900">
-              AudioHive
-            </span>
+            <span className="text-lg font-semibold text-brand-text">AudioHive</span>
           </div>
 
           <button
@@ -145,7 +161,6 @@ const CreateWorkspace = () => {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-12">
-       
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900">
             Create Your Workspace
@@ -157,24 +172,32 @@ const CreateWorkspace = () => {
           </p>
         </div>
 
-     
         <section className="mb-6 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-5">
             <Building2 size={20} className="text-gray-700" />
-
             <h2 className="text-sm font-semibold text-gray-900">
               Organization Details
             </h2>
           </div>
 
+          {error && (
+            <div className="mt-4 mx-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+          {fieldErrors.length > 0 && (
+            <div className="mt-4 mx-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+              <ul className="list-disc list-inside space-y-1">
+                {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
+              </ul>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-     
             <div>
               <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Company Name{" "}
-                <span className="text-red-500">*</span>
+                Company Name <span className="text-red-500">*</span>
               </label>
-
               <input
                 type="text"
                 name="companyName"
@@ -187,10 +210,8 @@ const CreateWorkspace = () => {
 
             <div>
               <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Workspace Admin Name{" "}
-                <span className="text-red-500">*</span>
+                Workspace Admin Name <span className="text-red-500">*</span>
               </label>
-
               <input
                 type="text"
                 name="workspaceAdminName"
@@ -201,13 +222,10 @@ const CreateWorkspace = () => {
               />
             </div>
 
-           
             <div>
               <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Workspace Admin Email{" "}
-                <span className="text-red-500">*</span>
+                Workspace Admin Email <span className="text-red-500">*</span>
               </label>
-
               <input
                 type="email"
                 name="workspaceAdminEmail"
@@ -220,10 +238,8 @@ const CreateWorkspace = () => {
 
             <div>
               <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Workspace Slug{" "}
-                <span className="text-red-500">*</span>
+                Workspace Slug <span className="text-red-500">*</span>
               </label>
-
               <input
                 type="text"
                 name="workspaceSlug"
@@ -232,7 +248,6 @@ const CreateWorkspace = () => {
                 placeholder="e.g. acme-corp"
                 className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
-
               <p className="mt-1 text-xs text-gray-400">
                 This will be used as your workspace identifier.
               </p>
@@ -244,13 +259,12 @@ const CreateWorkspace = () => {
         <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-5">
             <CreditCard size={20} className="text-gray-700" />
-
             <h2 className="text-sm font-semibold text-gray-900">
               Select a Plan
             </h2>
           </div>
 
-          {isLoading ? (
+          {isLoading && plans.length === 0 ? (
             <div className="flex justify-center py-12">
               <p className="text-sm text-gray-500">
                 Loading subscription plans...
@@ -278,7 +292,6 @@ const CreateWorkspace = () => {
                         : "border-gray-200 bg-white hover:border-gray-300"
                     }`}
                   >
-      
                     <div className="flex items-center justify-between">
                       <h3
                         className={`text-sm font-bold ${
@@ -307,7 +320,6 @@ const CreateWorkspace = () => {
                           <span className="text-3xl font-bold text-gray-900">
                             ${plan.price}
                           </span>
-
                           <span className="ml-1 text-xs text-gray-500">
                             /mo
                           </span>
@@ -326,7 +338,6 @@ const CreateWorkspace = () => {
                           strokeWidth={2.5}
                           className="shrink-0 text-gray-900"
                         />
-
                         <span className="text-xs text-gray-700">
                           Up to {plan.maxUsers} Users
                         </span>
@@ -338,7 +349,6 @@ const CreateWorkspace = () => {
                           strokeWidth={2.5}
                           className="shrink-0 text-gray-900"
                         />
-
                         <span className="text-xs text-gray-700">
                           {plan.maxRooms} Virtual Rooms
                         </span>
@@ -354,7 +364,6 @@ const CreateWorkspace = () => {
                             strokeWidth={2.5}
                             className="shrink-0 text-gray-900"
                           />
-
                           <span className="text-xs text-gray-700">
                             {feature}
                           </span>
@@ -381,9 +390,7 @@ const CreateWorkspace = () => {
               }
               className="flex items-center gap-2 rounded-md bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {plans.find(
-                (plan) => plan._id === selectedPlan
-              )?.price === 0
+              {plans.find((plan) => plan._id === selectedPlan)?.price === 0
                 ? "Submit Request"
                 : "Continue To Payment"}
 
@@ -397,4 +404,3 @@ const CreateWorkspace = () => {
 };
 
 export default CreateWorkspace;
-

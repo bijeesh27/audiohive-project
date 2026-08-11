@@ -68,3 +68,13 @@ export const resendOtp = (email: string) => {
 export const logout = () => {
   return axiosInstance.post("/api/auth/logout");
 };
+
+
+export const getInvitationDetails = (token: string) => {
+    return axiosInstance.get(`/api/auth/invitation/${token}`).then(res => res.data);
+};
+
+
+export const registerWorkspaceAdmin = (username: string, password: string, token: string) => {
+    return axiosInstance.post('/api/auth/register-admin', { username, password, token }).then(res => res.data);
+};

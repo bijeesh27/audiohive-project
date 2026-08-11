@@ -12,3 +12,9 @@ export const createWorkspace=(data:any)=>{
 export const updateWorkspace=(workspaceId:string,data:any)=>{
     return axiosInstance.put(`/api/workspace/updateworkspace/${workspaceId}`,data).then(res=>res.data)
 }
+
+// Add this new function
+export const approveWorkspaceApi = (data: { workspaceId: string, adminEmail: string, workspaceName: string }) => {
+    // Make sure the URL matches whatever your superadmin base route is in your backend
+    return axiosInstance.post("/api/super-admin/approve-workspace", data).then(res => res.data);
+}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  approveWorkspaceApi,
   getAllWorkspaces,
   updateWorkspace,
 } from "../../services/workspaceServices";
@@ -42,23 +43,19 @@ const Workspaces = () => {
     fetchWorkspaces();
   }, []);
 
-  const handleApprove = async (workspaceId: string) => {
+  const handleApprove = async (workspace: IWorkspace) => {
     try {
-      setUpdatingId(workspaceId);
-
-      await updateWorkspace(workspaceId, {
-        status: "active",
+      setUpdatingId(workspace._id);
+      // Call the NEW backend endpoint instead of updateWorkspace
+      await approveWorkspaceApi({
+        workspaceId: workspace._id,
+        adminEmail: workspace.workspaceAdminEmail,
+        workspaceName: workspace.companyName,
       });
-
       setWorkspaces((prev) =>
-        prev.map((workspace) =>
-          workspace._id === workspaceId
-            ? {
-                ...workspace,
-                status: "active",
-              }
-            : workspace
-        )
+        prev.map((w) =>
+          w._id === workspace._id ? { ...w, status: "active" } : w,
+        ),
       );
     } catch (error) {
       console.error("Failed to approve workspace:", error);
@@ -82,8 +79,8 @@ const Workspaces = () => {
                 ...workspace,
                 status: "reject",
               }
-            : workspace
-        )
+            : workspace,
+        ),
       );
     } catch (error) {
       console.error("Failed to reject workspace:", error);
@@ -104,9 +101,7 @@ const Workspaces = () => {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">
-          Workspaces
-        </h1>
+        <h1 className="text-xl font-semibold text-gray-900">Workspaces</h1>
 
         <p className="mt-1 text-sm text-gray-500">
           Manage workspace requests and subscriptions.
@@ -159,9 +154,7 @@ const Workspaces = () => {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700">
-                        {workspace.companyName
-                          ?.charAt(0)
-                          .toUpperCase()}
+                        {workspace.companyName?.charAt(0).toUpperCase()}
                       </div>
 
                       <div>
@@ -201,8 +194,8 @@ const Workspaces = () => {
                         workspace.paymentStatus === "paid"
                           ? "bg-green-50 text-green-600"
                           : workspace.paymentStatus === "pending"
-                          ? "bg-yellow-50 text-yellow-600"
-                          : "bg-red-50 text-red-600"
+                            ? "bg-yellow-50 text-yellow-600"
+                            : "bg-red-50 text-red-600"
                       }`}
                     >
                       {workspace.paymentStatus}
@@ -211,8 +204,7 @@ const Workspaces = () => {
 
                   {/* Amount Paid */}
                   <td className="px-5 py-4 text-sm font-medium text-gray-900">
-                    ₹
-                    {workspace.amountPaid?.toLocaleString("en-IN") ?? "0"}
+                    ₹{workspace.amountPaid?.toLocaleString("en-IN") ?? "0"}
                   </td>
 
                   {/* Status */}
@@ -222,8 +214,8 @@ const Workspaces = () => {
                         workspace.status === "active"
                           ? "bg-green-50 text-green-600"
                           : workspace.status === "pending"
-                          ? "bg-yellow-50 text-yellow-600"
-                          : "bg-red-50 text-red-600"
+                            ? "bg-yellow-50 text-yellow-600"
+                            : "bg-red-50 text-red-600"
                       }`}
                     >
                       {workspace.status}
@@ -236,9 +228,7 @@ const Workspaces = () => {
                       {workspace.status === "pending" && (
                         <>
                           <button
-                            onClick={() =>
-                              handleApprove(workspace._id)
-                            }
+                            onClick={() => handleApprove(workspace)} // Changed from workspace._id
                             disabled={updatingId === workspace._id}
                             type="button"
                             className="rounded-md bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 transition hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -249,9 +239,7 @@ const Workspaces = () => {
                           </button>
 
                           <button
-                            onClick={() =>
-                              handleReject(workspace._id)
-                            }
+                            onClick={() => handleReject(workspace._id)}
                             disabled={updatingId === workspace._id}
                             type="button"
                             className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -291,9 +279,7 @@ const Workspaces = () => {
         {/* Loading State */}
         {loading && (
           <div className="px-6 py-12 text-center">
-            <p className="text-sm text-gray-500">
-              Loading workspaces...
-            </p>
+            <p className="text-sm text-gray-500">Loading workspaces...</p>
           </div>
         )}
 

@@ -48,3 +48,32 @@ export const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token is required"),
   password: passwordSchema,
 });
+
+export const registerWorkspaceSchema = z.object({
+  companyName: z
+    .string()
+    .trim()
+    .min(2, "Company name must be at least 2 characters")
+    .max(100, "Company name must not exceed 100 characters"),
+
+  workspaceAdminName: z
+    .string()
+    .trim()
+    .min(2, "Admin name must be at least 2 characters")
+    .max(50, "Admin name must not exceed 50 characters"),
+
+  workspaceAdminEmail: z
+    .string()
+    .trim()
+    .email("Please enter a valid email address"),
+
+  workspaceSlug: z
+    .string()
+    .trim()
+    .min(3, "Workspace slug must be at least 3 characters")
+    .max(50, "Workspace slug must not exceed 50 characters")
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Workspace slug can contain only lowercase letters, numbers, and hyphens"
+    ),
+});

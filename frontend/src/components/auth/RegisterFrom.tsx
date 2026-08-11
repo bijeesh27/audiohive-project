@@ -1,18 +1,34 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../common/Button";
 import Input from "../common/Input";
-import { register } from "../../services/authServices";
+import { getInvitationDetails, register, registerWorkspaceAdmin } from "../../services/authServices";
 import { isAxiosError } from "axios";
 
 const RegisterFrom = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (token) {
+      getInvitationDetails(token)
+        .then((res) => {
+          if (res.success) {
+            setUsername(res.data.username)
+            setEmail(res.data.email);
+          }
+        })
+        .catch(() => setError("This invitation link is invalid or has expired."));
+    }
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -20,18 +36,30 @@ const RegisterFrom = () => {
       setError("Passwords don't match");
       return;
     }
-    
     setIsLoading(true);
     setError(null);
+    setFieldErrors([])
     try {
-      const res = await register(username, email, password);
-      if (res.success) {
-        navigate("/otp", { state: { purpose: "register", email } });
+      if (token) {
+        const res = await registerWorkspaceAdmin(username, password, token);
+        if (res.success) navigate("/login");
+      } else {
+        const res = await register(username, email, password);
+        if (res.success) navigate("/otp", { state: { purpose: "register", email } });
       }
     } catch (err: unknown) {
-      if(isAxiosError(err)){
-        setError(err?.response?.data?.message || "Registration failed");
-      }
+      if (isAxiosError(err)) {
+    const data = err?.response?.data;
+    const raw = data?.errors;
+  const fields: {field:string; message:string}[] = Array.isArray(raw) ? raw : [];
+    if (fields.length > 0) {
+      setFieldErrors(fields.map(e => e.message));
+      setError(null);
+    } else {
+      setError(data?.message || "Login failed");
+      setFieldErrors([]);
+    }
+  }
     } finally {
       setIsLoading(false);
     }
@@ -44,11 +72,18 @@ const RegisterFrom = () => {
         Sign up to get started with AudioHive.
       </p>
 
-      {error && (
-        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      )}
+     {error && (
+    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+      {error}
+    </div>
+  )}
+  {fieldErrors.length > 0 && (
+    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+      <ul className="list-disc list-inside space-y-1">
+        {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
+      </ul>
+    </div>
+  )}
  
       <form onSubmit={handleSubmit}>
         <label className="text-sm font-medium text-slate-900 block mb-1.5">

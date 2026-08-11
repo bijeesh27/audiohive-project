@@ -14,7 +14,7 @@ export class AuthController{
         private readonly getAllSubscriptionUseCase:IuseCase<AllSubscriptionsDTO,ISubscriptionDocument[]>
     ){}
 
-    async createSubscription(req:Request,res:Response,next:NextFunction):Promise<any>{
+    async createSubscription(req:Request,res:Response,next:NextFunction){
        try {
          const response= await this.createSubscriptionUseCase.execute(req.body)
          return ApiResposne.success(res,MESSAGES.SUCCESS.SUBSCRIPTION_CREATED,response)
@@ -23,7 +23,7 @@ export class AuthController{
         next(error)
        }
     }
-    async updateSubscription(req:Request,res:Response,next:NextFunction):Promise<any>{
+    async updateSubscription(req:Request,res:Response,next:NextFunction){
         try {
             const updatedSubscription=await this.updateSubscriptionUseCase.execute(req.body)
             return ApiResposne.success(res,MESSAGES.SUCCESS.SUBSCRIPTION_UPDATED,updatedSubscription)
@@ -32,20 +32,20 @@ export class AuthController{
         }
     }
 
-    async deleteSubscription(req:Request,res:Response,next:NextFunction):Promise<any>{
+    async deleteSubscription(req:Request,res:Response,next:NextFunction){
         try {
             const deletedsubscription=await this.deleteSubscriptionUseCase.execute(req.body)
             return ApiResposne.success(res,MESSAGES.SUCCESS.SUBSCRIPTION_DELETED,deletedsubscription)
         } catch (error) {
-            console.log(error)
+            next(error)
         }
     }
-    async getAllSubscriptions(req:Request,res:Response,next:NextFunction):Promise<any>{
+    async getAllSubscriptions(req:Request,res:Response,next:NextFunction){
         try {
             const allSubscriptions=await this.getAllSubscriptionUseCase.execute()
             return ApiResposne.success(res,MESSAGES.SUCCESS.GET_ALL_SUBSCRIPTIONS,allSubscriptions)
         } catch (error) {
-            console.log(error)
+            next(error)
         }
     }
 }
