@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axiosInstance, { setToken } from "../config/axios";
+import { ContextError } from "../Errors/error";
 
 interface AuthContextType {
   accessToken: string | null;
@@ -73,7 +74,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used inside AuthContextProvider");
+    throw new ContextError("useAuth must be used inside AuthContextProvider")
   }
   return context;
 };

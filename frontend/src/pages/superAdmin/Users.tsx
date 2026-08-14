@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { getUsers } from "../../services/authServices";
+import { getUsers, updateUser } from "../../services/authServices";
 
-import UserTable from "../../components/common/UserTables"
+
 
 interface User {
   _id: string;
@@ -52,10 +52,21 @@ const Users = () => {
     setPage(1);
   }, [search]);
 
+const handleToggleStatus = async (user: User) => {
+  try {
+    const newStatus = !user.status;
+    await updateUser(user._id, { status: newStatus });
+    setUsers(users.map(u => 
+      u._id === user._id ? { ...u, status: newStatus } : u
+    ));
+  } catch (err) {
+    console.error("Failed to update user:", err);
+  }
+};
 
   return (
     
-    <div className="mx-auto max-w-4xl px-6 py-8">
+    <div>
       
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -93,7 +104,90 @@ const Users = () => {
 
       {!loading && !error && (
         <>
-          <UserTable users={users} />
+          {users.length === 0 ? (
+            <div className="flex items-center justify-center rounded-lg border border-gray-200 bg-white py-12">
+              <p className="text-sm text-gray-500">No users found.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="border-b border-gray-200 bg-gray-50">
+                    <tr>
+                    <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Username
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Email
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      User Role
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Status
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr
+                      key={user._id}
+                      className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-sm font-medium">
+                            {user.username.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {user.username}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-sm text-gray-700">
+                          {user.email}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-sm font-medium text-gray-900">
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                            user.status
+                              ? "bg-green-50 text-green-600"
+                              : "bg-red-50 text-red-600"
+                          }`}
+                        >
+                          {user.status ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <button
+                          type="button"
+                          onClick={()=>handleToggleStatus(user)}
+                          className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                            user.status
+                              ? "bg-red-50 text-red-600 hover:bg-red-100"
+                              : "bg-green-50 text-green-600 hover:bg-green-100"
+                          }`}
+                        >
+                          {user.status ? "Block" : "Unblock"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          )}
           
           <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
             <button

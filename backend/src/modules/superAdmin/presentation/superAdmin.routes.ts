@@ -7,6 +7,8 @@ import { API_ROUTES } from "../../../common/constant/ApiRoutes.ts";
 import { UserRoles } from "../../../common/constant/userRoles.ts";
 import { ApproveWorkspaceUseCase } from "../application/usecases/approveWorkspaceUseCase.ts";
 import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository.ts";
+import { UpdateUserUseCase } from "../application/usecases/updateUserUseCase.ts";
+import { UserRpository as AuthUserRepository } from "../../auth/infrastructure/userRepository.ts";
 
 const router = express.Router();
 const userRepository = new UserRepository();
@@ -15,7 +17,10 @@ const workspaceRepository=new WorkspaceReopsitory()
 const getAllUserUseCase = new GetAllUserUseCase(userRepository);
 const approveWorkspaceUseCase=new ApproveWorkspaceUseCase(workspaceRepository)
 
-const controller = new SuperAdminController(getAllUserUseCase,approveWorkspaceUseCase);
+const authUserRepository = new AuthUserRepository();
+const updateUserUseCase = new UpdateUserUseCase(authUserRepository);
+
+const controller = new SuperAdminController(getAllUserUseCase,approveWorkspaceUseCase,updateUserUseCase);
 
 router.get(
   API_ROUTES.SUPER_ADMIN.GET_USERS,
@@ -28,5 +33,11 @@ router.post(
   authMiddleware,
   roleMiddleware([UserRoles.SUPER_ADMIN]),
   controller.approveWorkspace.bind(controller)
+);
+router.patch(
+  API_ROUTES.SUPER_ADMIN.GET_USER,
+  authMiddleware,
+  roleMiddleware([UserRoles.SUPER_ADMIN]),
+  controller.updateUser.bind(controller)
 );
 export default router;

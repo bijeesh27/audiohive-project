@@ -1,4 +1,5 @@
 import LoginFrom from "../../components/auth/LoginFrom";
+import { API_ROUTES } from "../../constants/Api_Routes";
 
 const LoginPage = () => {
    return (
@@ -7,7 +8,7 @@ const LoginPage = () => {
         <div className="pointer-events-none absolute -top-20 right-0 h-96 w-96 rounded-full bg-indigo-600/30 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-0 h-72 w-72 rounded-full bg-purple-700/20 blur-3xl" />
  
-        <a href="/" className="relative font-semibold text-lg">AudioHive</a>
+        <a href={API_ROUTES.PUBLIC.NAV.LANDING} className="relative font-semibold text-lg">AudioHive</a>
  
         <div className="relative max-w-md">
           <h1 className="text-4xl font-bold leading-tight">

@@ -9,7 +9,6 @@ import Workspaces from "../pages/superAdmin/Workspaces"
 const SuperAdminRoutes = () => {
   return (
     <Routes>
-      {/* The Layout wraps all the routes inside it */}
       <Route element={<SuperAdminLayout />}>
         <Route path={API_ROUTES.SUPER_ADMIN.DASHBOARD} element={<Dashboard/>}/>
         <Route path={API_ROUTES.SUPER_ADMIN.GET_USERS} element={<Users/>}/>

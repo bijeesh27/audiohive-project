@@ -14,12 +14,14 @@ import {
 } from "../application/dtos/AuthDTO.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 import {
+  InvalidOtpError,
   InvalidRefreshToken,
   InvalidToken,
   RefreshTokenNotFound,
 } from "../../../common/Errors/AuthError.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
 import { UserRoles } from "../../../common/constant/userRoles.ts";
+import { InvitationError } from "../../../common/Errors/WorkspaceError.ts";
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
@@ -203,9 +205,9 @@ async getInvitationDetails(req: Request, res: Response, next: NextFunction) {
             expiresAt: { $gt: new Date() }
         });
         if (!invitation) {
-            return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+          throw new InvitationError()
         }
-        return ApiResposne.success(res, 'Invitation valid', { email: invitation.email });
+        return ApiResposne.success(res,MESSAGES.SUCCESS.INVITATION_VALID , { email: invitation.email,username: invitation.workspaceAdminName  });
     } catch (error) {
         next(error);
     }
@@ -220,7 +222,7 @@ async registerAdmin(req: Request, res: Response, next: NextFunction) {
             expiresAt: { $gt: new Date() }
         });
         if (!invitation) {
-            return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+            throw new InvalidOtpError()
         }
         const bcrypt = await import('bcrypt');
         const hashedPassword = await bcrypt.hash(password, 12);
@@ -233,7 +235,7 @@ async registerAdmin(req: Request, res: Response, next: NextFunction) {
         await this.registerWorkspaceAdminUseCase.execute(newWorkspaceAdmin)
         invitation.isUsed = true;
         await invitation.save();
-        return ApiResposne.success(res, 'Workspace Admin registered successfully', null);
+        return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
     } catch (error) {
         next(error);
     }

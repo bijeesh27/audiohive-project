@@ -76,4 +76,19 @@ export const registerWorkspaceSchema = z.object({
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Workspace slug can contain only lowercase letters, numbers, and hyphens"
     ),
+  planId: z.string().min(1, "Plan ID is required"),
+  status: z.string().optional(),
+  amountPaid: z.number().optional(),
+});
+
+export const registerAdminSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3, "Username must be at least 3 characters")
+    .max(30, "Username cannot exceed 30 characters"),
+
+  password: passwordSchema,
+  
+  token: z.string().min(1, "Token is required"),
 });

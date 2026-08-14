@@ -1,78 +1,64 @@
+
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IWorkspaceDocument extends Document {
-  companyName: string;
-  workspaceAdminName: string;
-  workspaceAdminEmail: string;
-  planId: Types.ObjectId;
-  status: string;
-  workspaceSlug: string;
-  paymentStatus: string;
-  amountPaid: number;
+  organizationId: Types.ObjectId;
+  workspaceName: string;
+  slug: string;
+  adminId: Types.ObjectId;
+  status: "active" | "suspended" | "archived";
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const workspaceSchema = new Schema<IWorkspaceDocument>(
   {
-    companyName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    workspaceAdminName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    workspaceAdminEmail: {
-      type: String,
-      required: true,
-      trim: true,
-      lowercase: true,
-    },
-
-    planId: {
+    organizationId: {
       type: Schema.Types.ObjectId,
-      ref: "Subscription",
+      ref: "Organization",
       required: true,
     },
 
-    status: {
+    workspaceName: {
       type: String,
       required: true,
-      enum: ["pending", "active", "suspended",'reject'],
-      default: "pending",
+      trim: true,
+      minlength: 2,
+      maxlength: 100,
     },
 
-    workspaceSlug: {
+    slug: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       lowercase: true,
+      minlength: 3,
+      maxlength: 63,
+      match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     },
 
-    paymentStatus: {
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    status: {
       type: String,
+      enum: ["active", "suspended", "archived"],
+      default: "active",
       required: true,
-      enum: ["pending", "paid", "failed"],
-      default: "pending",
-    },
-
-    amountPaid: {
-      type: Number,
-      required: true,
-      min: 0,
-      default: 0,
     },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true }
 );
+
+// workspaceSchema.index({ slug: 1 }, { unique: true });
+// workspaceSchema.index({ organizationId: 1 });
+// workspaceSchema.index({ status: 1 });
 
 export const WorkspaceModel = mongoose.model<IWorkspaceDocument>(
   "Workspace",
-  workspaceSchema,
+  workspaceSchema
 );

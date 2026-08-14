@@ -3,8 +3,18 @@ export const API_ROUTES = {
     LANDING: "/*",
     LOGIN: "login",
     REGISTER: "register",
+    FORGOT_PASSWORD:"forgot-password",
+    RESET_PASSWORD:"reset-password",
     OTP: "otp",
-    PRICING:'pricing'
+    PRICING:'pricing',
+    NAV:{
+      LANDING:'/',
+      LOGIN:"/login",
+      RESET_PASSWORD:"/reset-password",
+      OTP:"/otp",
+      PENDING_APPROVAL:"/pendingapproval",
+      PAYMENT:"/payment"
+    }
 
   },
   SUPER_ADMIN: {
@@ -16,6 +26,8 @@ export const API_ROUTES = {
     NAV: {
       DASHBOARD: "/superadmin/dashboard",
       GET_USERS: "/superadmin/get-users",
+      SUBSCRIPTIONS:"/superadmin/subscriptions",
+      WORKSPACES:"/superadmin/workspaces"
     },
   },
   WORKSPACE_ADMIN: {
@@ -43,5 +55,48 @@ export const API_ROUTES = {
     NAV: {
       DASHBOARD: "/member/dashboard",
     },
+  },
+  WORKSPACE:{
+    NAV:{
+      CREATE_WORKSPACE:"/createworkspace",
+      PENDING_APPROVAL:"/pendingapproval"
+    }
+  }
+};
+
+
+export const API_ENDPOINTS = {
+  AUTH: {
+    LOGIN: "/api/auth/login",
+    REGISTER: "/api/auth/register",
+    VERIFY_OTP: "/api/auth/verify-otp",
+    RESEND_OTP: "/api/auth/resend-otp",
+    FORGOT_PASSWORD: "/api/auth/forget-password",
+    RESET_PASSWORD: "/api/auth/reset-password",
+    LOGOUT: "/api/auth/logout",
+    INVITATION_DETAILS: (token: string) => `/api/auth/invitation/${token}`,
+    REGISTER_ADMIN: "/api/auth/register-admin",
+    UPDATE_USER:(userId:string)=>`/api/super-admin/users/${userId}`
+  },
+  SUPER_ADMIN: {
+    GET_USERS: "/api/super-admin/get-users",
+    APPROVE_WORKSPACE: "/api/super-admin/approve-workspace",
+  },
+  WORKSPACE_ADMIN: {
+    GET_USERS: "/api/workspaceadmin/get-users",
+  },
+  MODERATOR: {
+    GET_USERS: "/api/moderator/get-users",
+  },
+  SUBSCRIPTION: {
+    GET_ALL: "/api/subscription/getallsubscriptions",
+    CREATE: "/api/subscription/createsubcription",
+    UPDATE: "/api/subscription/updatesubscription",
+    DELETE: "/api/subscription/deletesubscription",
+  },
+  WORKSPACE: {
+    GET_ALL: "/api/workspace/getallworkspaces",
+    CREATE: "/api/workspace/createworkspace",
+    UPDATE: (workspaceId: string) => `/api/workspace/updateworkspace/${workspaceId}`,
   },
 };

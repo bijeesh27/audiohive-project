@@ -20,11 +20,11 @@ const AuthRoutes = () => {
           <Route path={API_ROUTES.PUBLIC.PRICING} element={<PricingPage />} />
           <Route path={API_ROUTES.PUBLIC.LOGIN} element={<LoginPage />} />
           <Route path={API_ROUTES.PUBLIC.REGISTER} element={<RegisterPage />} />
-          <Route path="otp" element={<OtpPage />} />
-          <Route path="forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="reset-password" element={<ResetPasswordPage />} />
-          <Route path="/createworkspace" element={<CreateWorkspace/>}/>
-          <Route path="/pendingapproval" element={<PendingApproval/>}/>
+          <Route path={API_ROUTES.PUBLIC.OTP} element={<OtpPage />} />
+          <Route path={API_ROUTES.PUBLIC.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+          <Route path={API_ROUTES.PUBLIC.RESET_PASSWORD} element={<ResetPasswordPage />} />
+          <Route path={API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE} element={<CreateWorkspace/>}/>
+          <Route path={API_ROUTES.WORKSPACE.NAV.PENDING_APPROVAL} element={<PendingApproval/>}/>
         </Route>
       </Routes>
     </div>

@@ -4,6 +4,7 @@ import Button from "../../components/common/Button";
 import { resetPassword } from "../../services/authServices";
 import { useNavigate, useLocation } from "react-router-dom";
 import { isAxiosError } from "axios";
+import { API_ROUTES } from "../../constants/Api_Routes";
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ const ResetPasswordPage = () => {
 
   useEffect(() => {
     if (!resetToken) {
-      navigate("/login");
+      navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
     }
   }, [resetToken, navigate]);
 
@@ -38,7 +39,7 @@ const ResetPasswordPage = () => {
       if (res.success) {
         setSuccess(true);
         setTimeout(() => {
-          navigate("/login");
+          navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
         }, 2000);
       }
     } catch (err: unknown) {

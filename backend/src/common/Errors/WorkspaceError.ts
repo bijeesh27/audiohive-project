@@ -15,3 +15,8 @@ export class CreateWorkspaceError extends AppError{
         super(message,HttpStatus.BAD_REQUEST)
     }
 }
+export class InvitationError extends AppError{
+    constructor(message=MESSAGES.ERRORS.INVALID_TOKEN){
+        super(message,HttpStatus.BAD_REQUEST)
+    }
+}

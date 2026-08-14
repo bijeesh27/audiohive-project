@@ -68,11 +68,7 @@ const PricingPage = () => {
               </ul>
             </div>
             
-            <div className="p-8 sm:p-10 bg-gray-50 mt-auto">
-              <button className="w-full py-4 px-6 rounded-xl shadow-md bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg transition-colors duration-200">
-                Subscribe Now
-              </button>
-            </div>
+        
           </div>
         ))}
       </div>

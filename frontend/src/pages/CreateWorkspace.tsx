@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { subscriptionService } from "../services/subscriptionServices";
 import { createWorkspace } from "../services/workspaceServices";
 import { isAxiosError } from "axios";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 interface ISubscription {
   _id: string;
@@ -114,11 +115,11 @@ const CreateWorkspace = () => {
       await createWorkspace(workspaceData);
 
       if (plan.price === 0) {
-        navigate("/pendingapproval", {
+        navigate(API_ROUTES.PUBLIC.NAV.PENDING_APPROVAL, {
           state: workspaceData,
         });
       } else {
-        navigate("/payment", {
+        navigate(API_ROUTES.PUBLIC.NAV.PAYMENT, {
           state: workspaceData,
         });
       }
@@ -151,7 +152,7 @@ const CreateWorkspace = () => {
 
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() => navigate(API_ROUTES.PUBLIC.NAV.LOGIN)}
             className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft size={16} />

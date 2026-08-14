@@ -16,11 +16,26 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
  async deleteWorkspace(workspaceId: string): Promise<void> {
      await this.delete(workspaceId)
  }
- async getAllWorkspaces(): Promise<IWorkspaceDocument[]> {
-     const allWorkspace=await WorkspaceModel.find()
-     return allWorkspace
- }
+async getAllWorkspaces(page: number, limit: number, search?: string) {
+  const query = search 
+    ? { companyName: { $regex: search, $options: "i" } } 
+    : {};
+
+  const workspaces = await this.model
+    .find(query)
+    .populate("planId")
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .sort({ createdAt: -1 });
+
+  const total = await this.model.countDocuments(query);
+
+  return { workspaces, total };
+}
  async createInvitation(data: IInvitationDocument): Promise<void> {
      await InvitationModel.create(data)
  }
+
+
+ 
 }

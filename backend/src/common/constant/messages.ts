@@ -18,6 +18,7 @@ export const MESSAGES = {
     WORKSPACE_CREATION_FAILED: "Workspace creation failed",
     WORKSPACE_INVALID_DATA: "Invalid workspace data",
     WORKSPACE_INVALID_ID: "Invalid workspace ID",
+    SESSION_EXPIRED:"Session expired. Please register or login again."
   },
 
   SUCCESS: {
@@ -37,5 +38,14 @@ export const MESSAGES = {
     WORKSPACE_UPDATED: "Workspace updated successfully",
     WORKSPACE_DELETED: "Workspace deleted successfully",
     WORKSPACE_GET_ALL: "All workspaces retrieved successfully",
+    INVITATION_VALID:'Invitation valid',
+    REGISTARTION_SUCCESSFULLY:'Workspace Admin registered successfully',
+    GET_WORKSPACE_ADMIN:"Retrieved all Workspaceadmin",
+    WORKSPACE_APPROVED:"Workspace approved and invitation sent",
+    GET_ALL_MEMBERS:"Retrieved all moderator and members",
+    ORGANIZATION_CREATED:'organization created',
+    ORGANIZATION_UPDATED:'organization updated',
+    ORGANIZATION_DELETED:'organization deleted',
+    GET_ALL_ORGANIZATIONS:'organization fetched'
   },
 };

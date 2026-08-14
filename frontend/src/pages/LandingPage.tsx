@@ -1,12 +1,13 @@
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 const LandingPage: FC = () => {
   const navigate = useNavigate();
 
-  const handleLogin = (): void => navigate("/login");
-  const handleCreateWorkspace = (): void => navigate("/createworkspace");
-  const handleAccessWorkspace = (): void => navigate("/login");
+  const handleLogin = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
+  const handleCreateWorkspace = (): void => navigate(API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE);
+  const handleAccessWorkspace = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -90,7 +91,6 @@ const LandingPage: FC = () => {
             </button>
           </div>
 
-          {/* Dashboard preview mockup */}
           <div className="relative mx-auto mt-16 w-full max-w-5xl">
             <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-r from-indigo-200 via-violet-200 to-fuchsia-200 blur-3xl" />
             <div className="overflow-hidden rounded-2xl border border-brand-border bg-brand-surface shadow-2xl shadow-slate-200/50">

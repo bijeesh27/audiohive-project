@@ -7,6 +7,7 @@ import { GetAllWorkspacesUseCase } from "../application/usecase/getAllWorkspaces
 import { WorkspaceReopsitory } from "../infrastructure/workspaceRepository";
 import { validateRequest } from "../../../middleware/validateRequest";
 import { registerWorkspaceSchema } from "../../../common/validation/authValidation";
+import { API_ROUTES } from "../../../common/constant/ApiRoutes";
 
 const router = express.Router();
 
@@ -24,9 +25,10 @@ const controller = new WorkspaceController(
     getAllWorkspacesUseCase
 );
 
-router.post("/createworkspace",validateRequest(registerWorkspaceSchema) ,controller.createWorkspace.bind(controller));
-router.put("/updateworkspace/:id", controller.updateWorkspace.bind(controller));
-router.delete("/deleteworkspace/:id", controller.deleteWorkspace.bind(controller));
-router.get("/getallworkspaces", controller.getAllWorkspaces.bind(controller));
+router.post(API_ROUTES.WORKSSPACE.CREATE_WORKSPACE,validateRequest(registerWorkspaceSchema) ,controller.createWorkspace.bind(controller));
+router.put(API_ROUTES.WORKSSPACE.UPDATE_WORKSPACE, controller.updateWorkspace.bind(controller));
+router.delete(API_ROUTES.WORKSSPACE.DELETE_WORKSPACE, controller.deleteWorkspace.bind(controller));
+router.get(API_ROUTES.WORKSSPACE.GET_ALL_WORKSPACES, controller.getAllWorkspaces.bind(controller));
+
 
 export default router;

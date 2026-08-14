@@ -4,6 +4,7 @@ import Button from "../common/Button";
 import Input from "../common/Input";
 import { getInvitationDetails, register, registerWorkspaceAdmin } from "../../services/authServices";
 import { isAxiosError } from "axios";
+import { API_ROUTES } from "../../constants/Api_Routes";
 
 const RegisterFrom = () => {
   const navigate = useNavigate();
@@ -42,10 +43,10 @@ const RegisterFrom = () => {
     try {
       if (token) {
         const res = await registerWorkspaceAdmin(username, password, token);
-        if (res.success) navigate("/login");
+        if (res.success) navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
       } else {
         const res = await register(username, email, password);
-        if (res.success) navigate("/otp", { state: { purpose: "register", email } });
+        if (res.success) navigate(API_ROUTES.PUBLIC.NAV.OTP, { state: { purpose: "register", email } });
       }
     } catch (err: unknown) {
       if (isAxiosError(err)) {
@@ -93,6 +94,7 @@ const RegisterFrom = () => {
           placeHolder="username..."
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          readOnly={!!token}
         />
  
         <label className="text-sm font-medium text-slate-900 block mt-4 mb-1.5">
@@ -102,6 +104,7 @@ const RegisterFrom = () => {
           placeHolder="email..."
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          readOnly={!!token}
         />
  
         <label className="text-sm font-medium text-slate-900 block mt-4 mb-1.5">
@@ -131,7 +134,7 @@ const RegisterFrom = () => {
  
       <p className="mt-6 text-center text-sm text-slate-500">
         Already have an account?{" "}
-        <Link to="/login" className="font-medium text-indigo-600 hover:underline">
+        <Link to={API_ROUTES.PUBLIC.NAV.LOGIN} className="font-medium text-indigo-600 hover:underline">
           Sign In
         </Link>
       </p>

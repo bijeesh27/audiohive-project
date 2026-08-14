@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 interface RoleGuardProps {
   allowedRoles: string[];
@@ -17,11 +18,11 @@ const RoleGuard = ({ allowedRoles }: RoleGuardProps) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={API_ROUTES.PUBLIC.NAV.LOGIN} replace />;
   }
 
   if (!userRole || !allowedRoles.includes(userRole)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={API_ROUTES.PUBLIC.NAV.LOGIN} replace />;
   }
 
   return <Outlet />;

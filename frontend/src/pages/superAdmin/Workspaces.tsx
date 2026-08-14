@@ -28,27 +28,46 @@ const Workspaces = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchWorkspaces = async () => {
-      try {
-        const res = await getAllWorkspaces();
-        setWorkspaces(res.data);
-      } catch (error) {
-        console.error("Failed to fetch workspaces:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+  const limit = 5;
 
-    fetchWorkspaces();
-  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const timer = setTimeout(() => {
+      getAllWorkspaces(page, limit, search)
+        .then((res) => {
+          if (!cancelled) {
+            setWorkspaces(res.data.workspaces);
+            setTotalPages(Math.ceil(res.data.total / limit));
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to fetch workspaces:", error);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [page, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const handleApprove = async (workspace: IWorkspace) => {
     try {
       setUpdatingId(workspace._id);
-      // Call the NEW backend endpoint instead of updateWorkspace
       await approveWorkspaceApi({
         workspaceId: workspace._id,
+        workspaceAdminName: workspace.workspaceAdminName,
         adminEmail: workspace.workspaceAdminEmail,
         workspaceName: workspace.companyName,
       });
@@ -89,7 +108,9 @@ const Workspaces = () => {
     }
   };
 
-  const getPlanName = (planId: ISubscription | string) => {
+  const getPlanName = (planId: ISubscription | string | null) => {
+    if (!planId) return "N/A";
+    
     if (typeof planId === "object") {
       return planId.subscriptionName;
     }
@@ -100,12 +121,23 @@ const Workspaces = () => {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Workspaces</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Workspaces</h1>
 
-        <p className="mt-1 text-sm text-gray-500">
-          Manage workspace requests and subscriptions.
-        </p>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage workspace requests and subscriptions.
+          </p>
+        </div>
+        <div className="w-full sm:w-64">
+          <input
+            type="text"
+            placeholder="Search workspace..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
       </div>
 
       {/* Table */}
@@ -228,7 +260,7 @@ const Workspaces = () => {
                       {workspace.status === "pending" && (
                         <>
                           <button
-                            onClick={() => handleApprove(workspace)} // Changed from workspace._id
+                            onClick={() => handleApprove(workspace)}
                             disabled={updatingId === workspace._id}
                             type="button"
                             className="rounded-md bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 transition hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -293,6 +325,29 @@ const Workspaces = () => {
             <p className="mt-1 text-xs text-gray-500">
               Workspace requests will appear here.
             </p>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && workspaces.length > 0 && (
+          <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-700">
+              Page {page} of {totalPages || 1}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || totalPages === 0}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>

@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, CreditCard, LogOut,Building2  } from "lucide-re
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
+import { API_ROUTES } from "../../../constants/Api_Routes";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -10,10 +11,10 @@ export default function Sidebar() {
   const { setAccessToken, setUserRole } = useAuth();
 
   const navItems = [
-    { name: "Dashboard", path: "/superadmin/dashboard", icon: LayoutDashboard },
-    { name: "Users", path: "/superadmin/get-users", icon: Users },
-    { name: "Subscriptions", path: "/superadmin/subscriptions", icon: CreditCard },
-    { name: "Workspaces", path: "/superadmin/workspaces", icon: Building2  },
+    { name: "Dashboard", path: API_ROUTES.SUPER_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
+    { name: "Users", path: API_ROUTES.SUPER_ADMIN.NAV.GET_USERS, icon: Users },
+    { name: "Subscriptions", path:API_ROUTES.SUPER_ADMIN.NAV.SUBSCRIPTIONS, icon: CreditCard },
+    { name: "Workspaces", path:API_ROUTES.SUPER_ADMIN.NAV.WORKSPACES , icon: Building2  },
   ];
 
   const handleLogout = async () => {
@@ -26,7 +27,7 @@ export default function Sidebar() {
       setAccessToken(null);
       setUserRole(null);
       localStorage.setItem("logout", Date.now().toString()); 
-      navigate("/login");
+      navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
     }
   };
 

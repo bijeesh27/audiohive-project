@@ -8,6 +8,7 @@ import workspaceAdminRouter from "./modules/workspaceAdmin/presentation/workspac
 import moderatorRouter from './modules/moderator/presentation/moderator.route.ts'
 import subscriptionRouter from './modules/subscription/presentation/subscription.routes.ts'
 import workspaceRouter from './modules/workspace/presentation/workspace.route.ts'
+import organizationRouter from './modules/organization/presentation/organization.route.ts'
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from 'cors'
 import cookieParser from "cookie-parser";
@@ -31,6 +32,7 @@ export function connectApp() {
   app.use("/api/moderator", moderatorRouter);
   app.use("/api/subscription",subscriptionRouter)
   app.use('/api/workspace',workspaceRouter)
+  app.use('/api/organization',organizationRouter)
 
   app.use(globelErrorHandler);
 
