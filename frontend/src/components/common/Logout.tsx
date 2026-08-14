@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "../../services/authServices";
 import { useAuth } from "../../context/AuthContext";
 import { setToken } from "../../config/axios";
+import { API_ROUTES } from "../../constants/Api_Routes";
 
 const Logout = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const Logout = () => {
       setAccessToken(null);
       setUserRole(null);
       localStorage.setItem("logout", Date.now().toString());
-      navigate("/login");
+      navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
     }
   };
 

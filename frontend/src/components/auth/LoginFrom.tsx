@@ -117,7 +117,7 @@ const LoginFrom = () => {
       <p className="mt-6 text-center text-sm text-slate-500">
         Need a new workspace?{" "}
         <Link
-          to="/createworkspace"
+          to={API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE}
           className="font-medium text-indigo-600 hover:underline"
         >
           Create Workspace

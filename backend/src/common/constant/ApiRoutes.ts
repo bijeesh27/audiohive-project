@@ -17,6 +17,7 @@ export const API_ROUTES = {
   SUPER_ADMIN: {
     GET_USERS: "/get-users",
     APPROVE_WORKSPACE: "/approve-workspace",
+    GET_USER:"/users/:id"
   },
   WORKSPACE_ADMIN: {
     GET_USERS: "/get-users",
@@ -30,5 +31,17 @@ export const API_ROUTES = {
     UPDATE_SUBSCRIPTION:'/updatesubscription',
     DELETE_SUBSCRIPTION:'/deletesubscription',
     GET_ALL_SUBSCRIPTIONS:'/getallsubscriptions'
+  },
+  ORGANIZATION:{
+    CREATE_ORGANIZATION:'/create-organization',
+    UPDATE_ORGANIZATION:'/update-organization/:id',
+    DELETE_ORGANIZATION:'/delete-organization/:id',
+    GET_ALL_ORGANIZATIONS:'/getall-organizations'
+  },
+  WORKSSPACE:{
+    CREATE_WORKSPACE:"/createworkspace",
+    UPDATE_WORKSPACE:"/updateworkspace/:id",
+    DELETE_WORKSPACE:"/deleteworkspace/:id",
+    GET_ALL_WORKSPACES:"/getallworkspaces"
   }
 };

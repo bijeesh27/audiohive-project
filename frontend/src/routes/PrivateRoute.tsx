@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 const PrivateRoute = () => {
     const { isAuthenticated, isLoading } = useAuth();
@@ -13,7 +14,7 @@ const PrivateRoute = () => {
     }
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to={API_ROUTES.PUBLIC.NAV.LOGIN} replace />;
     }
 
     return <Outlet />;

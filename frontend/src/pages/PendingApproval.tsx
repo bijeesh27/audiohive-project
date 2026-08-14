@@ -2,6 +2,7 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createWorkspace } from "../services/workspaceServices";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 interface IWorkspaceData {
   companyName: string;
@@ -33,7 +34,7 @@ const PendingApproval = () => {
 
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() => navigate(API_ROUTES.PUBLIC.NAV.LANDING)}
             className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-700"
           >
             Return to Home
@@ -124,7 +125,7 @@ const PendingApproval = () => {
             <div className="px-8 py-7 text-center">
               <button
                 type="button"
-                onClick={() => navigate("/")}
+                onClick={() => navigate(API_ROUTES.PUBLIC.NAV.LANDING)}
                 className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               >
                 <ArrowLeft size={16} />

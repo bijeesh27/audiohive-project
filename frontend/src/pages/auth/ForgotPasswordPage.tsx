@@ -4,6 +4,7 @@ import Button from "../../components/common/Button";
 import { forgotPassword } from "../../services/authServices";
 import { useNavigate, Link } from "react-router-dom";
 import { isAxiosError } from "axios";
+import { API_ROUTES } from "../../constants/Api_Routes";
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const ForgotPasswordPage = () => {
     try {
       const res = await forgotPassword(email);
       if (res.success) {
-        navigate("/otp", { state: { purpose: "forget", email } });
+        navigate(API_ROUTES.PUBLIC.NAV.OTP, { state: { purpose: "forget", email } });
       }
     } catch (err: unknown) {
       if (isAxiosError(err)) {
@@ -97,7 +98,7 @@ const ForgotPasswordPage = () => {
           <p className="mt-6 text-center text-sm text-slate-500">
             Remembered your password?{" "}
             <Link
-              to="/login"
+              to={API_ROUTES.PUBLIC.NAV.LOGIN}
               className="font-medium text-indigo-600 hover:underline"
             >
               Sign In

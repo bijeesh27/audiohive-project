@@ -1,3 +1,4 @@
+import { MESSAGES } from "../../../../common/constant/messages.ts";
 import { UserNotFound } from "../../../../common/Errors/AuthError.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { generateOtp } from "../../../../shared/utils/otp.utils.ts";
@@ -12,7 +13,7 @@ export class ResendOtpUseCase implements IuseCase<{ email: string }, void> {
     const updated = await this.otpRepository.updateOtpCode(email, newOtp);
     
     if (!updated) {
-      throw new UserNotFound("Session expired. Please register or login again.");
+      throw new UserNotFound(MESSAGES.ERRORS.SESSION_EXPIRED);
     }
   }
 }

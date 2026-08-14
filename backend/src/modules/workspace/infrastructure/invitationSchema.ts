@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IInvitationDocument extends Document {
-  workspaceId: mongoose.Types.ObjectId;
+  workspaceId:string;
+  workspaceAdminName:string;
   email: string;
   token: string;
   isUsed: boolean;
@@ -11,10 +12,11 @@ export interface IInvitationDocument extends Document {
 const invitationSchema = new Schema<IInvitationDocument>(
   {
     workspaceId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: "Workspace",
       required: true,
     },
+    workspaceAdminName:{type:String},
     email: { type: String, required: true },
     token: { type: String, required: true, unique: true },
     isUsed: { type: Boolean, default: false },

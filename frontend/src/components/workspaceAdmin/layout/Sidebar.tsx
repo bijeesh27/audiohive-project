@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, LogOut,  } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
+import { API_ROUTES } from "../../../constants/Api_Routes";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -10,8 +11,8 @@ export default function Sidebar() {
   const { setAccessToken, setUserRole } = useAuth();
 
   const navItems = [
-    { name: "Dashboard", path: "/workspaceadmin/dashboard", icon: LayoutDashboard },
-    { name: "Users", path: "/workspaceadmin/get-users", icon: Users },
+    { name: "Dashboard", path: API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
+    { name: "Users", path: API_ROUTES.WORKSPACE_ADMIN.NAV.GET_USERS, icon: Users },
   ];
 
   const handleLogout = async () => {
@@ -24,7 +25,7 @@ export default function Sidebar() {
       setAccessToken(null);
       setUserRole(null);
       localStorage.setItem("logout", Date.now().toString()); 
-      navigate("/login");
+      navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
     }
   };
 

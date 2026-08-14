@@ -9,7 +9,7 @@ import { ForgetUseCase } from "../application/usecases/ForgetUseCase.ts";
 import { ChangePasswordUseCase } from "../application/usecases/changePasswordUseCase.ts";
 import { API_ROUTES } from "../../../common/constant/ApiRoutes.ts";
 import { validateRequest } from "../../../middleware/validateRequest.ts";
-import { changePasswordSchema, forgetPasswordSchema, loginSchema, otpSchema, registerSchema, registerWorkspaceSchema, resetPasswordSchema } from "../../../common/validation/authValidation.ts";
+import { changePasswordSchema, forgetPasswordSchema, loginSchema, otpSchema, registerAdminSchema, registerSchema, resetPasswordSchema } from "../../../common/validation/authValidation.ts";
 import { authMiddleware } from "../../../middleware/authMiddleware.ts";
 import { ResendOtpUseCase } from "../application/usecases/ResendOtpUseCase.ts";
 import { ResetPasswordUseCase } from "../application/usecases/ResetPasswordUseCase.ts";
@@ -49,22 +49,10 @@ router.post(API_ROUTES.AUTH.VERIFY_OTP, validateRequest(otpSchema),controller.ve
 router.post(API_ROUTES.AUTH.RESEND_OTP, validateRequest(forgetPasswordSchema), controller.resendOtp.bind(controller));
 router.post(API_ROUTES.AUTH.LOGIN,validateRequest(loginSchema), controller.login.bind(controller));
 router.post(API_ROUTES.AUTH.LOGOUT,authMiddleware,controller.logout.bind(controller))
-
-router.post(
-  API_ROUTES.AUTH.FORGET_PASSWORD, validateRequest(forgetPasswordSchema),
-  controller.forgetPassword.bind(controller),
-);
-router.post(
-  API_ROUTES.AUTH.CHANGE_PASSWORD,validateRequest(changePasswordSchema),authMiddleware,
-  controller.changePassword.bind(controller),
-);
-router.post(
-  API_ROUTES.AUTH.RESET_PASSWORD, validateRequest(resetPasswordSchema),
-  controller.resetPassword.bind(controller),
-);
-
+router.post(API_ROUTES.AUTH.FORGET_PASSWORD, validateRequest(forgetPasswordSchema),controller.forgetPassword.bind(controller),)
+router.post(API_ROUTES.AUTH.CHANGE_PASSWORD,validateRequest(changePasswordSchema),authMiddleware,controller.changePassword.bind(controller),);
+router.post(API_ROUTES.AUTH.RESET_PASSWORD, validateRequest(resetPasswordSchema),controller.resetPassword.bind(controller),);
 router.get(API_ROUTES.AUTH.INVITATION, controller.getInvitationDetails.bind(controller));
-
-router.post(API_ROUTES.AUTH.REGISTER_WORKSPACE_ADMIN,validateRequest(registerWorkspaceSchema) ,controller.registerAdmin.bind(controller));
+router.post(API_ROUTES.AUTH.REGISTER_WORKSPACE_ADMIN,validateRequest(registerAdminSchema) ,controller.registerAdmin.bind(controller));
 
 export default router;

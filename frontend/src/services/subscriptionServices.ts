@@ -1,5 +1,6 @@
-import axios from "axios";
-const API_URL = "http://localhost:3000/api/subscription";
+
+import axiosInstance from "../config/axios";
+import { API_ENDPOINTS } from "../constants/Api_Routes";
 
 export interface SubscriptionDTO {
   _id?: string;
@@ -14,26 +15,25 @@ export interface SubscriptionDTO {
 
 export const subscriptionService = {
   getAllSubscriptions: async () => {
-    const response = await axios.get(`${API_URL}/getallsubscriptions`);
-    console.log(response.data)
+    const response = await axiosInstance.get(API_ENDPOINTS.SUBSCRIPTION.GET_ALL);
     return response.data;
   },
 
   createSubscription: async (data: SubscriptionDTO) => {
-    const response = await axios.post(`${API_URL}/createsubcription`, data);
+    const response = await axiosInstance.post(API_ENDPOINTS.SUBSCRIPTION.CREATE, data);
     return response.data;
   },
 
-  updateSubscription: async (subscriptionId:any,data: SubscriptionDTO) => {
-    const response = await axios.post(`${API_URL}/updatesubscription`,{subscriptionId, data});
+  updateSubscription: async (subscriptionId: any, data: SubscriptionDTO) => {
+    const response = await axiosInstance.post(API_ENDPOINTS.SUBSCRIPTION.UPDATE, {
+      subscriptionId,
+      data,
+    });
     return response.data;
   },
 
   deleteSubscription: async (id: string) => {
-    const response = await axios.post(`${API_URL}/deletesubscription`, { id });
+    const response = await axiosInstance.post(API_ENDPOINTS.SUBSCRIPTION.DELETE, { id });
     return response.data;
   },
-
 };
-
-

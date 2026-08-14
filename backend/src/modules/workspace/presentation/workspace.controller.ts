@@ -64,16 +64,17 @@ export class WorkspaceController {
     }
   }
 
-  async getAllWorkspaces(req: Request, res: Response, next: NextFunction) {
-    try {
-      const workspaces = await this.getAllWorkspacesUseCase.execute();
-      return ApiResposne.success(
-        res,
-        MESSAGES.SUCCESS.WORKSPACE_GET_ALL,
-        workspaces,
-      );
-    } catch (error) {
-      next(error);
-    }
+ async getAllWorkspaces(req: Request, res: Response, next: NextFunction) {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string | undefined;
+
+    const data = await this.getAllWorkspacesUseCase.execute({ page, limit, search });
+    
+    return ApiResposne.success(res, "Workspaces retrieved", data);
+  } catch (error) {
+    next(error);
   }
+}
 }

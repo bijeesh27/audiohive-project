@@ -4,6 +4,7 @@ import OtpInput from "../common/OtpInput";
 import Button from "../common/Button";
 import { verifyOtp, resendOtp } from "../../services/authServices";
 import { isAxiosError } from "axios";
+import { API_ROUTES } from "../../constants/Api_Routes";
 
 const OtpFrom = () => {
   const location = useLocation();
@@ -20,7 +21,7 @@ const OtpFrom = () => {
 
   useEffect(() => {
     if (!location.state) {
-      navigate("/login");
+      navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
       return;
     }
 
@@ -40,9 +41,9 @@ const OtpFrom = () => {
       if (res.success) {
         if (purpose === "forget") {
           const resetToken = res.data?.resetToken;
-          navigate("/reset-password", { state: { resetToken } });
+          navigate(API_ROUTES.PUBLIC.NAV.RESET_PASSWORD, { state: { resetToken } });
         } else if (purpose === "register") {
-          navigate("/login");
+          navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
         }
       }
     } catch (err: unknown) {
