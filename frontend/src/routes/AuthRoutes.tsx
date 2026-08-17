@@ -10,6 +10,8 @@ import { API_ROUTES } from "../constants/Api_Routes";
 import PricingPage from "../pages/PricingPage";
 import CreateWorkspace from "../pages/CreateWorkspace";
 import PendingApproval from "../pages/PendingApproval";
+import CreateOrganization from "../pages/CreateOrganization";
+import InvitationSent from "../pages/InvitationSent";
 
 const AuthRoutes = () => {
   return (
@@ -25,6 +27,8 @@ const AuthRoutes = () => {
           <Route path={API_ROUTES.PUBLIC.RESET_PASSWORD} element={<ResetPasswordPage />} />
           <Route path={API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE} element={<CreateWorkspace/>}/>
           <Route path={API_ROUTES.WORKSPACE.NAV.PENDING_APPROVAL} element={<PendingApproval/>}/>
+          <Route path={API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION} element={<CreateOrganization/>}/>
+          <Route path="/invitation-sent" element={<InvitationSent/>}/>
         </Route>
       </Routes>
     </div>

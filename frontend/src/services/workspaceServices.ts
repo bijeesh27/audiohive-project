@@ -10,6 +10,14 @@ export const getAllWorkspaces = (page: number = 1, limit: number = 10, search: s
   return axiosInstance.get(url).then((res) => res.data);
 };
 
+export const getMyWorkspaces = (page: number = 1, limit: number = 10, search: string = "") => {
+  let url = `${API_ENDPOINTS.WORKSPACE.GET_MY}?page=${page}&limit=${limit}`;
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  return axiosInstance.get(url).then((res) => res.data);
+};
+
 export const createWorkspace = (data: any) => {
   return axiosInstance.post(API_ENDPOINTS.WORKSPACE.CREATE, data).then((res) => res.data);
 };

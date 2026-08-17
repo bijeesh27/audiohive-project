@@ -5,7 +5,6 @@ export interface IWorkspaceDocument extends Document {
   organizationId: Types.ObjectId;
   workspaceName: string;
   slug: string;
-  adminId: Types.ObjectId;
   status: "active" | "suspended" | "archived";
   createdAt: Date;
   updatedAt: Date;
@@ -38,17 +37,10 @@ const workspaceSchema = new Schema<IWorkspaceDocument>(
       match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     },
 
-    adminId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
     status: {
       type: String,
       enum: ["active", "suspended", "archived"],
       default: "active",
-      required: true,
     },
   },
   { timestamps: true }

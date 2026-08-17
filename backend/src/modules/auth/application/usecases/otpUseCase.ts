@@ -13,6 +13,7 @@ export class OtpUseCase implements IuseCase<OtpDTO, IuserDocument | void> {
 
   async execute(data: OtpDTO) {
     const { email, otp, purpose } = data;
+    console.log(data)
 
     const storedOtp = await this.otpRepository.findOtp(email, otp);
     if (storedOtp == null) {

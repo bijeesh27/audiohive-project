@@ -76,6 +76,11 @@ export const registerWorkspaceAdmin = (username: string, password: string, token
     .post(API_ENDPOINTS.AUTH.REGISTER_ADMIN, { username, password, token })
     .then((res) => res.data);
 };
+export const registerOwner = (username: string, password: string, token: string) => {
+  return axiosInstance
+    .post('api/auth/create-owner', { username, password, token })
+    .then((res) => res.data);
+};
 
 export const updateUser = (userId: string, data: Partial<User>) => {
   return axiosInstance

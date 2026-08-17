@@ -9,10 +9,10 @@ export class UpdateSubscriptionUseCase implements IuseCase<updateSubscriptionDTO
         private readonly subscrptionRepository:IsubscriptionRepository
     ){}
     async execute(data:updateSubscriptionDTO):Promise<void>{
-        if(!data.subscriptionName){
-            throw new UpdateSubscriptionError(MESSAGES.ERRORS.SUBCRIPTION_NAME_UNDEFINED)
+        if(!data.id){
+            throw new UpdateSubscriptionError("Subscription ID is required.")
         }
-        const subscription=await this.subscrptionRepository.findSubscription(data.subscriptionName)
+        const subscription=await this.subscrptionRepository.findSubscriptionById(data.id)
         if(!subscription){
             throw new UpdateSubscriptionError(MESSAGES.ERRORS.SUBSCRIPTION_NOT_FOUND)
         }

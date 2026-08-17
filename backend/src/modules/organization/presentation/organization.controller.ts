@@ -11,6 +11,7 @@ export class OrganizationController {
         private readonly updateOrganizationUseCase: IuseCase<updateOrganizationDTO, void>,
         private readonly deleteOrganizationUseCase: IuseCase<string, void>,
         private readonly getAllOrganizationUseCase: IuseCase<void, IorganizationDocument[]>,
+        private readonly getMyOrganizationUseCase: IuseCase<string, IorganizationDocument>
     ) {}
 
     async createOrganization(req: Request, res: Response, next: NextFunction) {
@@ -44,10 +45,28 @@ export class OrganizationController {
 
     async getAllOrganizations(req: Request, res: Response, next: NextFunction) {
         try {
-            const organizations = await this.getAllOrganizationUseCase.execute()
-            return ApiResposne.success(res, MESSAGES.SUCCESS.GET_ALL_ORGANIZATIONS, organizations, 200)
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 10;
+            const sort = req.query.sort as string|undefined;
+            const search = req.query.search as string|undefined;
+
+            const data = await this.getAllOrganizationUseCase.execute({ page, limit, search, sort })
+            return ApiResposne.success(res, MESSAGES.SUCCESS.GET_ALL_ORGANIZATIONS, data, 200)
         } catch (error) {
             next(error)
+        }
+    }
+
+    async getMyOrganization(req: any, res: Response, next: NextFunction) {
+        try {
+            const userEmail = req.user?.userEmail;
+            if (!userEmail) {
+                return res.status(401).json({ success: false, message: "Unauthorized" });
+            }
+            const data = await this.getMyOrganizationUseCase.execute(userEmail);
+            return ApiResposne.success(res, "Organization fetched successfully", data, 200);
+        } catch (error) {
+            next(error);
         }
     }
 }

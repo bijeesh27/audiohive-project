@@ -7,6 +7,7 @@ import AuthRoutes from "./routes/AuthRoutes";
 import RoleGuard from "./routes/RoleGuard";
 import { API_ROUTES } from "./constants/Api_Routes";
 import { UserRoles } from "./constants/userRole";
+import OrganizationRoutes from "./routes/OrganizationRoutes";
 
 function App() {
   return (
@@ -19,6 +20,9 @@ function App() {
           <Route path={API_ROUTES.SUPER_ADMIN.ROOT} element={<SuperAdminRoutes />} />
         </Route>
 
+        <Route element={<RoleGuard allowedRoles={[UserRoles.ORGANIZATION_OWNER]} />}>
+          <Route path={API_ROUTES.ORGANIZATION_ADMIN.ROOT} element={<OrganizationRoutes />} />
+        </Route>
         <Route element={<RoleGuard allowedRoles={[UserRoles.WORKSPACE_ADMIN]} />}>
           <Route path={API_ROUTES.WORKSPACE_ADMIN.ROOT} element={<WorkspaceAdminRoutes />} />
         </Route>

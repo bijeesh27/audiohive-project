@@ -6,8 +6,8 @@ const LandingPage: FC = () => {
   const navigate = useNavigate();
 
   const handleLogin = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
-  const handleCreateWorkspace = (): void => navigate(API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE);
-  const handleAccessWorkspace = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
+  const handleCreateOrganization = (): void => navigate(API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION);
+  const handleAccessOrganization = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -40,10 +40,10 @@ const LandingPage: FC = () => {
             </button>
             <button
               type="button"
-              onClick={handleCreateWorkspace}
+              onClick={handleCreateOrganization}
               className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:opacity-90"
             >
-              Create Workspace
+              Create Organization
             </button>
           </div>
         </div>
@@ -77,14 +77,14 @@ const LandingPage: FC = () => {
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
               type="button"
-              onClick={handleCreateWorkspace}
+              onClick={handleCreateOrganization}
               className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:opacity-90 sm:w-auto"
             >
               Create Your Workspace
             </button>
             <button
               type="button"
-              onClick={handleAccessWorkspace}
+              onClick={handleAccessOrganization}
               className="w-full rounded-lg border border-brand-border bg-white px-6 py-3 text-sm font-semibold text-brand-text shadow-sm transition hover:bg-slate-50 sm:w-auto"
             >
               Access Existing Workspace

@@ -4,8 +4,9 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 export interface IorganizationDocument extends Document {
   companyName: string;
   slug: string;
-  ownerId: Types.ObjectId;
-  planId: Types.ObjectId;
+  ownerName:string
+  ownerEmail:string
+  planId: string;
   status: "active" | "suspended" | "pending" | "archived";
   maxWorkspaces: number;
   createdAt: Date;
@@ -32,24 +33,24 @@ const organizationSchema = new Schema<IorganizationDocument>(
       maxlength: 63,
       match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     },
-
-    ownerId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    ownerName:{
+      type:String,
+      required:true
+    },
+    ownerEmail:{
+      type:String,
+      required:true
     },
 
     planId: {
-      type: Schema.Types.ObjectId,
-      ref: "Plan",
-      required: true,
+      type: String,
+      default:'free'
     },
 
     status: {
       type: String,
       enum: ["active", "suspended", "pending", "archived"],
       default: "pending",
-      required: true,
     },
     maxWorkspaces: {
       type: Number,
