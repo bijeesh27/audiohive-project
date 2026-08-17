@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../common/Button";
 import Input from "../common/Input";
-import { getInvitationDetails, register, registerWorkspaceAdmin } from "../../services/authServices";
+import { getInvitationDetails, register, registerOwner, registerWorkspaceAdmin } from "../../services/authServices";
 import { isAxiosError } from "axios";
 import { API_ROUTES } from "../../constants/Api_Routes";
 
@@ -23,8 +23,9 @@ const RegisterFrom = () => {
       getInvitationDetails(token)
         .then((res) => {
           if (res.success) {
-            setUsername(res.data.username)
-            setEmail(res.data.email);
+            console.log(res)
+            setUsername(res.data.ownerName)
+            setEmail(res.data.ownerEmail);
           }
         })
         .catch(() => setError("This invitation link is invalid or has expired."));
@@ -42,7 +43,7 @@ const RegisterFrom = () => {
     setFieldErrors([])
     try {
       if (token) {
-        const res = await registerWorkspaceAdmin(username, password, token);
+        const res = await registerOwner(username, password, token);
         if (res.success) navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
       } else {
         const res = await register(username, email, password);
@@ -68,7 +69,7 @@ const RegisterFrom = () => {
 
   return (
     <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-xl border border-slate-100 transition-all">
-      <h2 className="text-2xl font-bold text-slate-900">Create Workspace</h2>
+      <h2 className="text-2xl font-bold text-slate-900">Create Organization</h2>
       <p className="text-sm text-slate-500 mt-1 mb-6">
         Sign up to get started with AudioHive.
       </p>

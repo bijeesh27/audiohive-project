@@ -16,7 +16,7 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
  async deleteWorkspace(workspaceId: string): Promise<void> {
      await this.delete(workspaceId)
  }
-async getAllWorkspaces(page: number, limit: number, search?: string) {
+ async getAllWorkspaces(page: number, limit: number, search?: string) {
   const query = search 
     ? { companyName: { $regex: search, $options: "i" } } 
     : {};
@@ -32,10 +32,32 @@ async getAllWorkspaces(page: number, limit: number, search?: string) {
 
   return { workspaces, total };
 }
+
+ async getWorkspacesByOrg(organizationId: string, page: number, limit: number, search?: string) {
+  const query: Record<string, unknown> = { organizationId };
+  if (search) {
+    query.workspaceName = { $regex: search, $options: "i" };
+  }
+
+  const workspaces = await this.model
+    .find(query)
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .sort({ createdAt: -1 });
+
+  const total = await this.model.countDocuments(query);
+
+  return { workspaces, total };
+}
  async createInvitation(data: IInvitationDocument): Promise<void> {
      await InvitationModel.create(data)
- }
+   }
 
+   async findInvitationByToken(token: string): Promise<IInvitationDocument | null> {
+     return await InvitationModel.findOne({ token });
+   }
 
- 
+   async updateInvitation(token: string, data: Partial<IInvitationDocument>): Promise<void> {
+     await InvitationModel.updateOne({ token }, data);
+   }
 }

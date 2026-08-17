@@ -42,6 +42,7 @@ export const API_ROUTES = {
     CREATE_WORKSPACE:"/createworkspace",
     UPDATE_WORKSPACE:"/updateworkspace/:id",
     DELETE_WORKSPACE:"/deleteworkspace/:id",
-    GET_ALL_WORKSPACES:"/getallworkspaces"
+    GET_ALL_WORKSPACES:"/getallworkspaces",
+    GET_MY_WORKSPACES:"/my-workspaces"
   }
 };

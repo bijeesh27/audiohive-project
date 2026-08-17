@@ -5,8 +5,7 @@ export interface ISubscriptionDocument extends Document {
   subscriptionName: string;
   price: number;
   description: string;
-  maxRooms: number;
-  maxUsers: number;
+  maxWorkspaces: number;
   features: string[];
   isActive: boolean;
 }
@@ -29,12 +28,7 @@ const subscriptionSchema = new Schema<ISubscriptionDocument>(
       required: true,
       trim: true,
     },
-    maxRooms: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    maxUsers: {
+    maxWorkspaces: {
       type: Number,
       required: true,
       min: 1,

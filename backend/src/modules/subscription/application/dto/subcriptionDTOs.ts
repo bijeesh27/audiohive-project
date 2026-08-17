@@ -2,18 +2,18 @@ export interface createSubscriptionDTO {
   subscriptionName: string;
   price: number;
   description: string;
-  maxRooms: number;
-  maxUsers: number;
+  maxWorkspaces: number;
   features: string[];
+  isActive?: boolean;
 }
 export interface updateSubscriptionDTO {
   id?: string;
   subscriptionName?: string;
   price?: number;
   description?: string;
-  maxRooms?: number;
-  maxUsers?: number;
+  maxWorkspaces?: number;
   features?: string[];
+  isActive?: boolean;
 }
 
 export interface deleteSubscriptionDTO {
@@ -25,7 +25,7 @@ export interface AllSubscriptionsDTO{
   subscriptionName: string;
   price: number;
   description: string;
-  maxRooms: number;
-  maxUsers: number;
+  maxWorkspaces: number;
   features: string[];
+  isActive?: boolean;
 }

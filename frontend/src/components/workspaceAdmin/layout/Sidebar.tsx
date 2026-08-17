@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, LogOut,  } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, LogOut,Building2  } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
@@ -11,15 +11,17 @@ export default function Sidebar() {
   const { setAccessToken, setUserRole } = useAuth();
 
   const navItems = [
-    { name: "Dashboard", path: API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
-    { name: "Users", path: API_ROUTES.WORKSPACE_ADMIN.NAV.GET_USERS, icon: Users },
+    { name: "Dashboard", path: API_ROUTES.SUPER_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
+    { name: "Users", path: API_ROUTES.SUPER_ADMIN.NAV.GET_USERS, icon: Users },
+    { name: "Subscriptions", path:API_ROUTES.SUPER_ADMIN.NAV.SUBSCRIPTIONS, icon: CreditCard },
+    { name: "Workspaces", path:API_ROUTES.SUPER_ADMIN.NAV.WORKSPACES , icon: Building2  },
   ];
 
   const handleLogout = async () => {
     try {
       await logout();
     } catch {
-      throw new Error
+        
     } finally {
       setToken(null);
       setAccessToken(null);

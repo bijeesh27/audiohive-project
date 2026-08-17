@@ -23,11 +23,13 @@ export const API_ROUTES = {
     GET_USERS: "get-users",
     GET_SUBSCRIPTIONS:"subscriptions",
     GET_WORKSPACES:'workspaces',
+    GET_ORGANIZATIONS:'organizations',
     NAV: {
       DASHBOARD: "/superadmin/dashboard",
       GET_USERS: "/superadmin/get-users",
       SUBSCRIPTIONS:"/superadmin/subscriptions",
-      WORKSPACES:"/superadmin/workspaces"
+      WORKSPACES:"/superadmin/workspaces",
+      ORGANIZATIONS:"/superadmin/organizations"
     },
   },
   WORKSPACE_ADMIN: {
@@ -37,6 +39,17 @@ export const API_ROUTES = {
     NAV: {
       DASHBOARD: "/workspaceadmin/dashboard",
       GET_USERS: "/workspaceadmin/get-users"
+    },
+  },
+  ORGANIZATION_ADMIN: {
+    ROOT: "/organization-owner/*",
+    DASHBOARD: "dashboard",
+    WORKSPACES:"workspace",
+    SUBSCRIPTION:"subscription",
+    NAV: {
+       DASHBOARD: "/organization-owner/dashboard",
+       WORKSPACES:"/organization-owner/workspace",
+       SUBSCRIPTION:"/organization-owner/subscription"
     },
   },
   MODERATOR: {
@@ -60,6 +73,12 @@ export const API_ROUTES = {
     NAV:{
       CREATE_WORKSPACE:"/createworkspace",
       PENDING_APPROVAL:"/pendingapproval"
+    }
+  },
+  ORGANIZATION:{
+    NAV:{
+      CREATE_ORGANIZATION:'/create-organization',
+
     }
   }
 };
@@ -96,6 +115,7 @@ export const API_ENDPOINTS = {
   },
   WORKSPACE: {
     GET_ALL: "/api/workspace/getallworkspaces",
+    GET_MY: "/api/workspace/my-workspaces",
     CREATE: "/api/workspace/createworkspace",
     UPDATE: (workspaceId: string) => `/api/workspace/updateworkspace/${workspaceId}`,
   },

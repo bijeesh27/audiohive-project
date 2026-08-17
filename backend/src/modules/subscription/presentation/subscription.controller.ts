@@ -25,7 +25,11 @@ export class AuthController{
     }
     async updateSubscription(req:Request,res:Response,next:NextFunction){
         try {
-            const updatedSubscription=await this.updateSubscriptionUseCase.execute(req.body)
+            const payload: updateSubscriptionDTO = {
+                id: req.body.subscriptionId,
+                ...req.body.data
+            };
+            const updatedSubscription=await this.updateSubscriptionUseCase.execute(payload)
             return ApiResposne.success(res,MESSAGES.SUCCESS.SUBSCRIPTION_UPDATED,updatedSubscription)
         } catch (error) {
             next(error)

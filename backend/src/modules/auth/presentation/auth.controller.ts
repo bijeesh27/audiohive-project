@@ -3,7 +3,6 @@ import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
 import jwt from "jsonwebtoken";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
-import { InvitationModel } from "../../workspace/infrastructure/invitationSchema.ts";
 import {
   ChangePasswordDTO,
   ForgetPasswordDTO,
@@ -34,7 +33,9 @@ export class AuthController {
     >,
     private readonly resendOtpUseCase: IuseCase<{ email: string }, void>,
     private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDocument>,
-    private readonly registerWorkspaceAdminUseCase:IuseCase<RegisterDTO,void>
+    private readonly registerWorkspaceAdminUseCase:IuseCase<RegisterDTO,void>,
+    private readonly registerOwnerUseCase:IuseCase<any,void>,
+    private readonly getInvitationDetailsUseCase:IuseCase<string,any>
   ) {}
   async register(req: Request, res: Response, next: NextFunction) {
     try {
@@ -199,15 +200,8 @@ export class AuthController {
 async getInvitationDetails(req: Request, res: Response, next: NextFunction) {
     try {
         const { token } = req.params;
-        const invitation = await InvitationModel.findOne({
-            token,
-            isUsed: false,
-            expiresAt: { $gt: new Date() }
-        });
-        if (!invitation) {
-          throw new InvitationError()
-        }
-        return ApiResposne.success(res,MESSAGES.SUCCESS.INVITATION_VALID , { email: invitation.email,username: invitation.workspaceAdminName  });
+        const invitation = await this.getInvitationDetailsUseCase.execute(token as string);
+        return ApiResposne.success(res,MESSAGES.SUCCESS.INVITATION_VALID ,invitation );
     } catch (error) {
         next(error);
     }
@@ -215,26 +209,15 @@ async getInvitationDetails(req: Request, res: Response, next: NextFunction) {
 
 async registerAdmin(req: Request, res: Response, next: NextFunction) {
     try {
-        const { token, username, password } = req.body;
-        const invitation = await InvitationModel.findOne({
-            token,
-            isUsed: false,
-            expiresAt: { $gt: new Date() }
-        });
-        if (!invitation) {
-            throw new InvalidOtpError()
-        }
-        const bcrypt = await import('bcrypt');
-        const hashedPassword = await bcrypt.hash(password, 12);
-        const newWorkspaceAdmin:RegisterDTO ={
-            username,
-            email: invitation.email,
-            password: hashedPassword,
-            role: UserRoles.WORKSPACE_ADMIN,
-        } ;
-        await this.registerWorkspaceAdminUseCase.execute(newWorkspaceAdmin)
-        invitation.isUsed = true;
-        await invitation.save();
+        await this.registerWorkspaceAdminUseCase.execute(req.body)
+        return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
+    } catch (error) {
+        next(error);
+    }
+}
+async registerOwner(req: Request, res: Response, next: NextFunction) {
+    try {
+        await this.registerOwnerUseCase.execute(req.body)
         return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
     } catch (error) {
         next(error);

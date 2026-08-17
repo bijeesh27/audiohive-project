@@ -38,7 +38,9 @@ const LoginFrom = () => {
           navigate(API_ROUTES.MODERATOR.NAV.DASHBOARD);
         } else if (res.data.userRole === UserRoles.MEMBER) {
           navigate(API_ROUTES.MEMBER.NAV.DASHBOARD);
-        }
+        }else if (res.data.userRole === UserRoles.ORGANIZATION_OWNER) {
+  navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.DASHBOARD);
+}
       }
     } catch (err: unknown) {
       if (isAxiosError(err)) {

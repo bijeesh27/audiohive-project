@@ -11,7 +11,7 @@ const RegisterPage = () => {
  
         <div className="relative max-w-md">
           <h1 className="text-4xl font-bold leading-tight">
-            Start your <span className="text-indigo-400">workspace.</span>
+            Start your <span className="text-indigo-400">Organization.</span>
           </h1>
           <p className="mt-4 text-slate-300 text-sm leading-relaxed">
             Connect with your team, manage your meetings, and experience the

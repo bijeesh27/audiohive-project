@@ -15,6 +15,10 @@ export class SubscriptionRepository
     return subscription
   }
 
+  async findSubscriptionById(subscriptionId: string): Promise<ISubscriptionDocument | null> {
+    return await this.findById(subscriptionId);
+  }
+
   async createSubscription(data: ISubscriptionDocument):Promise< void >{
       await this.create(data)
   }
