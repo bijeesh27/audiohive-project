@@ -20,6 +20,10 @@ export class WorkspaceController {
       { userEmail: string; page: number; limit: number; search?: string },
       { workspaces: IWorkspaceDocument[]; total: number }
     >,
+    private readonly sendWorkspaceInvitationUseCase: IuseCase<
+      { workspaceId: string; email: string; workspaceAdminName: string; organizationOwnerEmail: string },
+      void
+    >,
   ) {}
 
   async createWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
@@ -86,6 +90,29 @@ export class WorkspaceController {
 
       const data = await this.getWorkspacesByOrgUseCase.execute({ userEmail, page, limit, search });
       return ApiResposne.success(res, "Workspaces retrieved", data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async inviteWorkspaceAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userEmail = req.user?.userEmail;
+      if (!userEmail) {
+        return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
+      }
+
+      const workspaceId = req.params.id;
+      const { email, workspaceAdminName } = req.body;
+
+      await this.sendWorkspaceInvitationUseCase.execute({
+        workspaceId,
+        email,
+        workspaceAdminName,
+        organizationOwnerEmail: userEmail,
+      });
+
+      return ApiResposne.success(res, "Invitation sent successfully");
     } catch (error) {
       next(error);
     }

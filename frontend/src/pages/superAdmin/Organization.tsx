@@ -9,7 +9,6 @@ interface IOrganization {
   ownerEmail: string;
   planId: string;
   status: "active" | "suspended" | "pending" | "archived";
-  maxWorkspaces: number;
   createdAt: string;
 }
 
@@ -131,10 +130,6 @@ const Organization = () => {
                 </th>
 
                 <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Max Workspaces
-                </th>
-
-                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Status
                 </th>
 
@@ -189,11 +184,6 @@ const Organization = () => {
                   {/* Plan */}
                   <td className="px-5 py-4 text-sm capitalize text-gray-700">
                     {organization.planId}
-                  </td>
-
-                  {/* Max Workspaces */}
-                  <td className="px-5 py-4 text-sm text-gray-700">
-                    {organization.maxWorkspaces}
                   </td>
 
                   {/* Status */}

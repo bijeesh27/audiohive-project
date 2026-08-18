@@ -6,6 +6,7 @@ export interface IWorkspaceDocument extends Document {
   workspaceName: string;
   slug: string;
   status: "active" | "suspended" | "archived";
+  workspaceAdminEmail?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +42,12 @@ const workspaceSchema = new Schema<IWorkspaceDocument>(
       type: String,
       enum: ["active", "suspended", "archived"],
       default: "active",
+    },
+
+    workspaceAdminEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
     },
   },
   { timestamps: true }

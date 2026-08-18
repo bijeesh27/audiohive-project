@@ -82,6 +82,12 @@ export const registerOwner = (username: string, password: string, token: string)
     .then((res) => res.data);
 };
 
+export const registerWorkspaceUser = (username: string, password: string, token: string) => {
+  return axiosInstance
+    .post('api/auth/register-user', { username, password, token })
+    .then((res) => res.data);
+};
+
 export const updateUser = (userId: string, data: Partial<User>) => {
   return axiosInstance
     .patch(API_ENDPOINTS.AUTH.UPDATE_USER(userId), data)

@@ -12,6 +12,5 @@ export interface updateOrganizationDTO{
       slug?: string;
       ownerId?: Types.ObjectId;
       planId?: Types.ObjectId;
-      maxWorkspaces?: number;
 }
 

@@ -7,6 +7,7 @@ import { IuserRepository } from "../domain/IuserRepository.ts";
 
 export class UserRepository implements IuserRepository {
   async getAllUsers(
+    workspaceId: string,
     page: number,
     limit: number,
     searchQuery?: string,
@@ -15,6 +16,7 @@ export class UserRepository implements IuserRepository {
 
     const query: Record<string, unknown>  = {
       role: { $in: [UserRoles.MODERATOR, UserRoles.MEMBER] },
+      workspaceId: workspaceId,
     };
     if (searchQuery) {
       query.$or = [

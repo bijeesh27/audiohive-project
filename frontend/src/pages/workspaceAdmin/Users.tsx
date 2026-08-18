@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { worspaceAdminGetUsers } from "../../services/authServices";
-
-
+import { worspaceAdminGetUsers, updateUser } from "../../services/authServices";
+import InviteUserModal from "../../components/workspaceAdmin/InviteUserModal";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 interface User {
   _id: string;
@@ -19,6 +19,14 @@ const Users = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search,setSearch]=useState('')
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    userId: string;
+    username: string;
+    newStatus: boolean;
+  }>({ isOpen: false, userId: "", username: "", newStatus: false });
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const limit = 5;
 
   useEffect(() => {
@@ -51,6 +59,22 @@ const Users = () => {
     setPage(1);
   }, [search]);
 
+  const handleConfirmStatusChange = async () => {
+    setUpdatingUserId(confirmModal.userId);
+    try {
+      await updateUser(confirmModal.userId, { status: confirmModal.newStatus });
+      setUsers((prev) =>
+        prev.map((u) => (u._id === confirmModal.userId ? { ...u, status: confirmModal.newStatus } : u))
+      );
+      setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false });
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to update user status");
+      setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false });
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
   return (
     
     <div>
@@ -64,16 +88,32 @@ const Users = () => {
             {loading ? "Loading..." : `Page ${page} of ${totalPages || 1}`}
           </p>
         </div>
-        <div className="w-full sm:w-64">
+        <div className="flex w-full sm:w-auto items-center gap-4">
           <input
             type="text"
             placeholder="Search username or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
+          <button
+            onClick={() => setIsInviteModalOpen(true)}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
+          >
+            Assign User
+          </button>
         </div>
       </div>
+
+      <InviteUserModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        onSuccess={() => {
+          setPage(1);
+          setSearch('');
+          // the effect will re-fetch
+        }}
+      />
 
       {loading && (
         <div className="rounded-lg border border-gray-200 bg-white py-16 text-center text-sm text-gray-500 ">
@@ -156,9 +196,15 @@ const Users = () => {
                         <td className="px-5 py-4">
                           <button
                             type="button"
-                            className="text-xl text-gray-500 hover:text-gray-900"
+                            onClick={() => setConfirmModal({ isOpen: true, userId: user._id, username: user.username, newStatus: !user.status })}
+                            disabled={updatingUserId === user._id}
+                            className={`rounded px-3 py-1 text-xs font-medium ${
+                              user.status
+                                ? "bg-red-50 text-red-600 hover:bg-red-100"
+                                : "bg-green-50 text-green-600 hover:bg-green-100"
+                            } transition-colors disabled:opacity-50`}
                           >
-                            ⋮
+                            {user.status ? "Block" : "Unblock"}
                           </button>
                         </td>
                       </tr>
@@ -190,6 +236,21 @@ const Users = () => {
           </div>
         </>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.newStatus ? "Unblock user?" : "Block user?"}
+        message={
+          confirmModal.newStatus
+            ? `${confirmModal.username} will regain access to the workspace.`
+            : `${confirmModal.username} loses access immediately.`
+        }
+        confirmLabel={confirmModal.newStatus ? "Unblock" : "Block"}
+        onConfirm={handleConfirmStatusChange}
+        onCancel={() => setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false })}
+        isLoading={updatingUserId === confirmModal.userId}
+        isDanger={!confirmModal.newStatus}
+      />
     </div>
   );
 };

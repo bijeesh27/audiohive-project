@@ -35,7 +35,8 @@ export class AuthController {
     private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDocument>,
     private readonly registerWorkspaceAdminUseCase:IuseCase<RegisterDTO,void>,
     private readonly registerOwnerUseCase:IuseCase<any,void>,
-    private readonly getInvitationDetailsUseCase:IuseCase<string,any>
+    private readonly getInvitationDetailsUseCase:IuseCase<string,any>,
+    private readonly registerWorkspaceUserUseCase:IuseCase<any,void>
   ) {}
   async register(req: Request, res: Response, next: NextFunction) {
     try {
@@ -218,6 +219,14 @@ async registerAdmin(req: Request, res: Response, next: NextFunction) {
 async registerOwner(req: Request, res: Response, next: NextFunction) {
     try {
         await this.registerOwnerUseCase.execute(req.body)
+        return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
+    } catch (error) {
+        next(error);
+    }
+}
+async registerWorkspaceUser(req: Request, res: Response, next: NextFunction) {
+    try {
+        await this.registerWorkspaceUserUseCase.execute(req.body)
         return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
     } catch (error) {
         next(error);

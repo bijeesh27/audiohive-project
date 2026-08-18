@@ -21,6 +21,7 @@ export const API_ROUTES = {
   },
   WORKSPACE_ADMIN: {
     GET_USERS: "/get-users",
+    INVITE_USER: "/invite-user",
   },
   MODERATOR: {
     GET_USERS: "/get-users",

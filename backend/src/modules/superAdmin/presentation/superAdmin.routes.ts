@@ -37,7 +37,7 @@ router.post(
 router.patch(
   API_ROUTES.SUPER_ADMIN.GET_USER,
   authMiddleware,
-  roleMiddleware([UserRoles.SUPER_ADMIN]),
+  roleMiddleware([UserRoles.SUPER_ADMIN, UserRoles.WORKSPACE_ADMIN]),
   controller.updateUser.bind(controller)
 );
 export default router;

@@ -28,6 +28,7 @@ const AuthRoutes = () => {
           <Route path={API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE} element={<CreateWorkspace/>}/>
           <Route path={API_ROUTES.WORKSPACE.NAV.PENDING_APPROVAL} element={<PendingApproval/>}/>
           <Route path={API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION} element={<CreateOrganization/>}/>
+          <Route path="/workspace/register-admin" element={<RegisterPage />} />
           <Route path="/invitation-sent" element={<InvitationSent/>}/>
         </Route>
       </Routes>
