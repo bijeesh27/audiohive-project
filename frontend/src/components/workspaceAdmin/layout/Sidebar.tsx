@@ -11,10 +11,8 @@ export default function Sidebar() {
   const { setAccessToken, setUserRole } = useAuth();
 
   const navItems = [
-    { name: "Dashboard", path: API_ROUTES.SUPER_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
-    { name: "Users", path: API_ROUTES.SUPER_ADMIN.NAV.GET_USERS, icon: Users },
-    { name: "Subscriptions", path:API_ROUTES.SUPER_ADMIN.NAV.SUBSCRIPTIONS, icon: CreditCard },
-    { name: "Workspaces", path:API_ROUTES.SUPER_ADMIN.NAV.WORKSPACES , icon: Building2  },
+    { name: "Dashboard", path: API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
+    { name: "Users", path: API_ROUTES.WORKSPACE_ADMIN.NAV.GET_USERS, icon: Users },
   ];
 
   const handleLogout = async () => {

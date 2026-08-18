@@ -13,9 +13,10 @@ export class GetInvitationDetailsUseCase implements IuseCase<string, any> {
         // Check workspace invitations first
         const workspaceInvitation = await this.workspaceRepository.findInvitationByToken(token);
         if (workspaceInvitation) {
+            const isUserInvite = !!workspaceInvitation.role;
             return {
                 ...workspaceInvitation.toObject ? workspaceInvitation.toObject() : workspaceInvitation,
-                type: 'workspace'
+                type: isUserInvite ? 'workspace-user' : 'workspace'
             };
         }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getMyWorkspaces } from "../../services/workspaceServices";
+import { getMyWorkspaces, inviteWorkspaceAdmin } from "../../services/workspaceServices";
 import Button from "../../components/common/Button";
 
 interface IWorkspace {
@@ -7,6 +7,7 @@ interface IWorkspace {
   workspaceName: string;
   slug: string;
   status: "active" | "suspended" | "archived";
+  workspaceAdminEmail?: string;
   createdAt: string;
 }
 
@@ -23,6 +24,25 @@ const Workspaces = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const limit = 10;
+
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [assigningWorkspace, setAssigningWorkspace] = useState<IWorkspace | null>(null);
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const fetchWorkspaces = () => {
+    setLoading(true);
+    getMyWorkspaces(page, limit, search)
+      .then((res) => {
+        setWorkspaces(res.data.workspaces);
+        setTotalPages(Math.ceil(res.data.total / limit));
+      })
+      .catch((err) => console.error("Failed to fetch workspaces:", err))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +63,47 @@ const Workspaces = () => {
   }, [page, search]);
 
   useEffect(() => { setPage(1); }, [search]);
+
+  const openInviteModal = (workspace: IWorkspace) => {
+    setAssigningWorkspace(workspace);
+    setAdminName("");
+    setAdminEmail(workspace.workspaceAdminEmail || "");
+    setInviteError(null);
+    setShowModal(true);
+  };
+
+  const closeInviteModal = () => {
+    if (inviting) return;
+    setShowModal(false);
+    setAssigningWorkspace(null);
+  };
+
+  const handleInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assigningWorkspace) return;
+
+    if (!adminName.trim() || !adminEmail.trim()) {
+      setInviteError("Name and Email are required");
+      return;
+    }
+
+    setInviting(true);
+    setInviteError(null);
+    try {
+      await inviteWorkspaceAdmin(assigningWorkspace._id, {
+        email: adminEmail,
+        workspaceAdminName: adminName,
+      });
+      setShowModal(false);
+      setAssigningWorkspace(null);
+      // Optional: show a success toast here
+      fetchWorkspaces();
+    } catch (err: any) {
+      setInviteError(err?.response?.data?.message || "Failed to send invitation");
+    } finally {
+      setInviting(false);
+    }
+  };
 
   return (
     <div>
@@ -83,7 +144,13 @@ const Workspaces = () => {
                   Status
                 </th>
                 <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Admin
+                </th>
+                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Created
+                </th>
+                <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -122,6 +189,15 @@ const Workspaces = () => {
                     </span>
                   </td>
 
+                  {/* Admin Email */}
+                  <td className="px-5 py-4 text-sm text-gray-500">
+                    {workspace.workspaceAdminEmail ? (
+                      <span className="text-gray-900">{workspace.workspaceAdminEmail}</span>
+                    ) : (
+                      <span className="text-gray-400 italic">Unassigned</span>
+                    )}
+                  </td>
+
                   {/* Created At */}
                   <td className="px-5 py-4 text-sm text-gray-500">
                     {new Date(workspace.createdAt).toLocaleDateString("en-IN", {
@@ -129,6 +205,17 @@ const Workspaces = () => {
                       month: "short",
                       year: "numeric",
                     })}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-5 py-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => openInviteModal(workspace)}
+                      className="inline-flex items-center justify-center rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                    >
+                      {workspace.workspaceAdminEmail ? "Reassign" : "Assign"}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -176,6 +263,74 @@ const Workspaces = () => {
           </div>
         )}
       </div>
+
+      {/* Invite Modal */}
+      {showModal && assigningWorkspace && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 overflow-y-auto">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Assign Workspace Admin
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Send an invitation to manage <strong>{assigningWorkspace.workspaceName}</strong>.
+            </p>
+
+            <form onSubmit={handleInviteSubmit} className="mt-5 space-y-4">
+              {inviteError && (
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200">
+                  {inviteError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Admin Name
+                </label>
+                <input
+                  type="text"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Admin Email
+                </label>
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={closeInviteModal}
+                  disabled={inviting}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={inviting}
+                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {inviting ? "Sending..." : "Send Invite"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

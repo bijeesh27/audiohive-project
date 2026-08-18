@@ -60,4 +60,8 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
    async updateInvitation(token: string, data: Partial<IInvitationDocument>): Promise<void> {
      await InvitationModel.updateOne({ token }, data);
    }
+
+   async getWorkspaceById(workspaceId: string): Promise<IWorkspaceDocument | null> {
+     return await this.findById(workspaceId);
+   }
 }

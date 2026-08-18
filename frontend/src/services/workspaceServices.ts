@@ -37,3 +37,11 @@ export const approveWorkspaceApi = (data: {
     .post(API_ENDPOINTS.SUPER_ADMIN.APPROVE_WORKSPACE, data)
     .then((res) => res.data);
 };
+
+export const inviteWorkspaceAdmin = (workspaceId: string, data: { email: string; workspaceAdminName: string }) => {
+  return axiosInstance.post(`/api/workspace/${workspaceId}/invite`, data).then((res) => res.data);
+};
+
+export const inviteWorkspaceUser = (data: { email: string; invitedName: string; role: string }) => {
+  return axiosInstance.post('/api/workspaceadmin/invite-user', data).then((res) => res.data);
+};

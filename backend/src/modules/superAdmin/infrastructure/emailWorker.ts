@@ -34,6 +34,21 @@ export const emailWorker = new Worker('email-queue', async (job) => {
       `,
     });
     logger.info(`[Email Worker] Invitation sent to ${to}`);
+  } else if (job.name === 'send-user-invitation') {
+    const { to, workspaceName, invitedName, role, invitationLink } = job.data;
+
+    await transporter.sendMail({
+      from: '"AudioHive Admin" <admin@audiohive.com>',
+      to,
+      subject: `You are invited to join ${workspaceName} as a ${role}`,
+      html: `
+        <h1>Welcome, ${invitedName}!</h1>
+        <p>You have been invited to join the <strong>${workspaceName}</strong> workspace as a <strong>${role}</strong>.</p>
+        <p>Click the link below to accept the invitation and create your account:</p>
+        <a href="${invitationLink}">Accept Invitation</a>
+      `,
+    });
+    logger.info(`[Email Worker] User Invitation sent to ${to} for ${workspaceName}`);
   }
 }, { connection: redisConnection });
 

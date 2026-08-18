@@ -8,7 +8,6 @@ export interface IorganizationDocument extends Document {
   ownerEmail:string
   planId: string;
   status: "active" | "suspended" | "pending" | "archived";
-  maxWorkspaces: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,17 +51,9 @@ const organizationSchema = new Schema<IorganizationDocument>(
       enum: ["active", "suspended", "pending", "archived"],
       default: "pending",
     },
-    maxWorkspaces: {
-      type: Number,
-      default: 1, 
-    },
   },
   { timestamps: true }
 );
-
-// organizationSchema.index({ slug: 1 }, { unique: true });
-// organizationSchema.index({ ownerId: 1 });
-// organizationSchema.index({ status: 1 });
 
 export const OrganizationModel = mongoose.model<IorganizationDocument>(
   "Organization",

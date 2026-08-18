@@ -11,4 +11,5 @@ export interface IworkspaceRepository{
     createInvitation(data:IInvitationDocument):Promise<void>
     findInvitationByToken(token: string): Promise<IInvitationDocument | null>
     updateInvitation(token: string, data: Partial<IInvitationDocument>): Promise<void>
+    getWorkspaceById(workspaceId: string): Promise<IWorkspaceDocument | null>
 }
