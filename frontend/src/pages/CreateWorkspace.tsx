@@ -5,6 +5,7 @@ import { createWorkspace } from "../services/workspaceServices";
 import { isAxiosError } from "axios";
 import { API_ROUTES } from "../constants/Api_Routes";
 
+
 interface IFormData {
   companyName: string;
   workspaceAdminName: string;
@@ -18,6 +19,7 @@ const CreateWorkspace = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<IFormData>({
     companyName: "",
@@ -32,20 +34,17 @@ const CreateWorkspace = () => {
       ...prev,
       [name]: value,
     }));
+    if (formErrors[name]) {
+      setFormErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
+    }
   };
 
   const handleContinue = async () => {
-    if (
-      !formData.companyName.trim() ||
-      !formData.workspaceAdminName.trim() ||
-      !formData.workspaceAdminEmail.trim() ||
-      !formData.workspaceSlug.trim()
-    ) {
-      return;
-    }
-
     setFieldErrors([]);
     setError(null);
+    setFormErrors({});
+
+
     setIsLoading(true);
 
     const workspaceData = {
@@ -120,12 +119,12 @@ const CreateWorkspace = () => {
           </div>
 
           {error && (
-            <div className="mt-4 mx-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            <div className="mt-4 mx-6 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
           {fieldErrors.length > 0 && (
-            <div className="mt-4 mx-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            <div className="mt-4 mx-6 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
               <ul className="list-disc list-inside space-y-1">
                 {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
               </ul>
@@ -143,8 +142,11 @@ const CreateWorkspace = () => {
                 value={formData.companyName}
                 onChange={handleChange}
                 placeholder="e.g. Acme Corporation"
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.companyName ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
+              {formErrors.companyName && (
+                <p className="mt-1 text-xs text-red-500">{formErrors.companyName}</p>
+              )}
             </div>
 
             <div>
@@ -157,8 +159,11 @@ const CreateWorkspace = () => {
                 value={formData.workspaceAdminName}
                 onChange={handleChange}
                 placeholder="e.g. John Doe"
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.workspaceAdminName ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
+              {formErrors.workspaceAdminName && (
+                <p className="mt-1 text-xs text-red-500">{formErrors.workspaceAdminName}</p>
+              )}
             </div>
 
             <div>
@@ -171,8 +176,11 @@ const CreateWorkspace = () => {
                 value={formData.workspaceAdminEmail}
                 onChange={handleChange}
                 placeholder="admin@acmecorp.com"
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.workspaceAdminEmail ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
+              {formErrors.workspaceAdminEmail && (
+                <p className="mt-1 text-xs text-red-500">{formErrors.workspaceAdminEmail}</p>
+              )}
             </div>
 
             <div>
@@ -185,11 +193,15 @@ const CreateWorkspace = () => {
                 value={formData.workspaceSlug}
                 onChange={handleChange}
                 placeholder="e.g. acme-corp"
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.workspaceSlug ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
-              <p className="mt-1 text-xs text-gray-400">
-                This will be used as your workspace identifier.
-              </p>
+              {formErrors.workspaceSlug ? (
+                <p className="mt-1 text-xs text-red-500">{formErrors.workspaceSlug}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">
+                  This will be used as your workspace identifier.
+                </p>
+              )}
             </div>
           </div>
 
@@ -197,13 +209,7 @@ const CreateWorkspace = () => {
             <button
               type="button"
               onClick={handleContinue}
-              disabled={
-                isLoading ||
-                !formData.companyName.trim() ||
-                !formData.workspaceAdminName.trim() ||
-                !formData.workspaceAdminEmail.trim() ||
-                !formData.workspaceSlug.trim()
-              }
+              disabled={isLoading}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Submit Request

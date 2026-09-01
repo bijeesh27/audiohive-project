@@ -46,19 +46,12 @@ export const API_ROUTES = {
     DASHBOARD: "dashboard",
     WORKSPACES:"workspace",
     SUBSCRIPTION:"subscription",
+    USERS:"users",
     NAV: {
        DASHBOARD: "/organization-owner/dashboard",
        WORKSPACES:"/organization-owner/workspace",
-       SUBSCRIPTION:"/organization-owner/subscription"
-    },
-  },
-  MODERATOR: {
-    ROOT: "/moderator/*",
-    DASHBOARD: "dashboard",
-    GET_USERS: "get-users",
-    NAV: {
-      DASHBOARD: "/moderator/dashboard",
-      GET_USERS: "/moderator/get-users"
+       SUBSCRIPTION:"/organization-owner/subscription",
+       USERS:"/organization-owner/users"
     },
   },
   MEMBER: {
@@ -95,6 +88,8 @@ export const API_ENDPOINTS = {
     LOGOUT: "/api/auth/logout",
     INVITATION_DETAILS: (token: string) => `/api/auth/invitation/${token}`,
     REGISTER_ADMIN: "/api/auth/register-admin",
+    REGISTER_OWNER: "/api/auth/create-owner",
+    REGISTER_USER: "/api/auth/register-user",
     UPDATE_USER:(userId:string)=>`/api/super-admin/users/${userId}`
   },
   SUPER_ADMIN: {
@@ -104,8 +99,8 @@ export const API_ENDPOINTS = {
   WORKSPACE_ADMIN: {
     GET_USERS: "/api/workspaceadmin/get-users",
   },
-  MODERATOR: {
-    GET_USERS: "/api/moderator/get-users",
+  ORGANIZATION_ADMIN: {
+    GET_USERS: "/api/organization/get-users",
   },
   SUBSCRIPTION: {
     GET_ALL: "/api/subscription/getallsubscriptions",

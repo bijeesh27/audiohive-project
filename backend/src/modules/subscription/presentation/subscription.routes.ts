@@ -7,6 +7,9 @@ import { DeleteSubcriptionUseCase } from '../application/usecases/deleteSubcript
 import { GetAllSubscriptionsUseCase } from '../application/usecases/getAllSubscriptionsUseCase'
 import { API_ROUTES } from '../../../common/constant/ApiRoutes'
 
+import { validateRequest } from "../../../middleware/validateRequest";
+import { createSubscriptionSchema, updateSubscriptionSchema } from "../../../common/validation/formValidation";
+
 const router=express.Router()
 
 const subscriptionRepository=new SubscriptionRepository()
@@ -24,8 +27,8 @@ const controller=new AuthController(
     getAllSubscriptionsUseCase
 )
 
-router.post(API_ROUTES.SUBSCRIPTION.CREATE_SUBSCRIPTION,controller.createSubscription.bind(controller))
-router.post(API_ROUTES.SUBSCRIPTION.UPDATE_SUBSCRIPTION,controller.updateSubscription.bind(controller))
+router.post(API_ROUTES.SUBSCRIPTION.CREATE_SUBSCRIPTION, validateRequest(createSubscriptionSchema), controller.createSubscription.bind(controller))
+router.post(API_ROUTES.SUBSCRIPTION.UPDATE_SUBSCRIPTION, validateRequest(updateSubscriptionSchema), controller.updateSubscription.bind(controller))
 router.post(API_ROUTES.SUBSCRIPTION.DELETE_SUBSCRIPTION,controller.deleteSubscription.bind(controller))
 router.get(API_ROUTES.SUBSCRIPTION.GET_ALL_SUBSCRIPTIONS,controller.getAllSubscriptions.bind(controller))
 

@@ -97,12 +97,12 @@ const RegisterFrom = () => {
       </p>
 
      {error && (
-    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
       {error}
     </div>
   )}
   {fieldErrors.length > 0 && (
-    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
       <ul className="list-disc list-inside space-y-1">
         {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
       </ul>
@@ -166,3 +166,4 @@ const RegisterFrom = () => {
 };
 
 export default RegisterFrom;
+

@@ -13,18 +13,15 @@ export class RegisterWorkspaceUserUseCase implements IuseCase<any, void> {
 
     async execute(data: any) {
         const { token, username, password } = data;
-        
-        // Find workspace invitation
+
         const invitation = await this.workspaceRepository.findInvitationByToken(token);
         
         if (!invitation || invitation.isUsed || invitation.expiresAt < new Date() || !invitation.role) {
             throw new InvalidOtpError();
         }
-        
-        // Hash password
+
         const hashedPassword = await bcrypt.hash(password, 12);
-        
-        // Create user
+
         const newUser: RegisterDTO = {
             username,
             email: invitation.email,
@@ -35,8 +32,7 @@ export class RegisterWorkspaceUserUseCase implements IuseCase<any, void> {
         const userData = { ...newUser, workspaceId: invitation.workspaceId };
         
         await this.userRepository.createUser(userData as any);
-        
-        // Mark invitation as used
+
         await this.workspaceRepository.updateInvitation(token, { isUsed: true });
     }
 }

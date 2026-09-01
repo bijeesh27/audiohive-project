@@ -34,4 +34,4 @@ const InvitationSchema = new Schema<ICreateOrganizationInvitation>(
   }
 );
 
-export const InvitationModel =mongoose.model<ICreateOrganizationInvitation>('Invitations',InvitationSchema)
+export const InvitationModel = mongoose.model<ICreateOrganizationInvitation>('OrganizationInvitation', InvitationSchema)

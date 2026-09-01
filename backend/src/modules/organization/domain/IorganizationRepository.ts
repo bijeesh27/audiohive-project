@@ -1,3 +1,4 @@
+import { IuserDocument } from "../../../shared/User.utils/userSchema";
 import { createOrganizationDTO } from "../application/dto/organizationDTO";
 import { ICreateOrganizationInvitation } from "../infrastructure/organizationInvitationSchema";
 import { IorganizationDocument } from "../infrastructure/organizationSchema";
@@ -11,4 +12,10 @@ export interface IorganizaionRepository{
     findInvitationByToken(token: string): Promise<ICreateOrganizationInvitation | null>
     deleteInvitation(token: string): Promise<void>
     findByOwnerEmail(ownerEmail:string):Promise<IorganizationDocument | null>
+    getUsersByOrganization(
+        organizationId: string,
+        page: number,
+        limit: number,
+        searchQuery?: string
+    ): Promise<{ users: IuserDocument[], total: number }>;
 }

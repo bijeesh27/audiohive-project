@@ -1,5 +1,5 @@
 
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface IorganizationDocument extends Document {
   companyName: string;
@@ -49,7 +49,7 @@ const organizationSchema = new Schema<IorganizationDocument>(
     status: {
       type: String,
       enum: ["active", "suspended", "pending", "archived"],
-      default: "pending",
+      default: "active",
     },
   },
   { timestamps: true }

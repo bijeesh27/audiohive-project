@@ -4,7 +4,7 @@ import Users from "../pages/superAdmin/Users"
 import { API_ROUTES } from "../constants/Api_Routes"
 import SuperAdminLayout  from '../components/superAdmin/layout/SuperAdminLayout'
 import SubscriptionPlan from "../pages/superAdmin/SubscriptionPlan"
-import Workspaces from "../pages/organization/Workspaces"
+import Workspaces from "../pages/organizationAdmin/Workspaces"
 import Organization from "../pages/superAdmin/Organization"
 
 const SuperAdminRoutes = () => {

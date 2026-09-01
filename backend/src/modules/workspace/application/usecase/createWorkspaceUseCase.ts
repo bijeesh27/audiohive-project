@@ -10,6 +10,7 @@ import { IWorkspaceDocument } from "../../infrastructure/workspaceSchema";
 import { createWorkspaceDTO } from "../dto/workspaceDTOs";
 
 import { IsubscriptionRepository } from "../../../subscription/domain/IsubscriptionRepository";
+import { OrganizationNotFound } from "../../../../common/Errors/OrganizationError";
 
 export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void> {
     constructor(
@@ -25,14 +26,14 @@ export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void
 
         const organization = await this.organizationRepository.findByOwnerEmail(data.userEmail);
         if (!organization) {
-            throw new AppError("No organization found for this user", HttpStatus.NOT_FOUND);
+            throw new OrganizationNotFound()
         }
 
         let subscription = await this.subscriptionRepository.findSubscription(organization.planId);
         if (!subscription && Types.ObjectId.isValid(organization.planId)) {
             subscription = await this.subscriptionRepository.findSubscriptionById(organization.planId);
         }
-        let maxWorkspaces = 2; // Default for free plan
+        let maxWorkspaces = 2;
         if (subscription) {
             maxWorkspaces = subscription.maxWorkspaces;
         } else if (!organization.planId || organization.planId.toString().trim().toLowerCase() !== 'free') {
@@ -44,10 +45,17 @@ export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void
             throw new AppError("Maximum workspace limit reached for your subscription plan", HttpStatus.BAD_REQUEST);
         }
 
-        await this.workspaceRepository.createWorkspace({
-            organizationId: organization._id,
-            workspaceName: data.workspaceName,
-            slug: data.slug,
-        } as unknown as IWorkspaceDocument);
+        try {
+            await this.workspaceRepository.createWorkspace({
+                organizationId: organization._id,
+                workspaceName: data.workspaceName,
+                slug: data.slug,
+            } as unknown as IWorkspaceDocument);
+        } catch (error: any) {
+            if (error.code === 11000 && error.keyPattern && error.keyPattern.slug) {
+                throw new CreateWorkspaceError("Workspace slug is already in use");
+            }
+            throw error;
+        }
     }
 }

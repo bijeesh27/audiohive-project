@@ -5,8 +5,8 @@ const LoginPage = () => {
    return (
     <div className="min-h-screen w-full flex bg-slate-50">
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-between bg-slate-950 text-white px-12 py-10 overflow-hidden">
-        <div className="pointer-events-none absolute -top-20 right-0 h-96 w-96 rounded-full bg-indigo-600/30 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-0 h-72 w-72 rounded-full bg-purple-700/20 blur-3xl" />
+        <div className="pointer-events-none absolute -top-20 right-0 h-96 w-96 rounded-full bg-blue-600/30 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-72 w-72 rounded-full bg-cyan-700/20 blur-3xl" />
  
         <a href={API_ROUTES.PUBLIC.NAV.LANDING} className="relative font-semibold text-lg">AudioHive</a>
  
@@ -34,3 +34,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+

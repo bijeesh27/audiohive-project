@@ -8,8 +8,12 @@ import { UpdateOrganizationUseCase } from '../application/usecases/updateOrganiz
 import { DeleteOrganizationUseCase } from '../application/usecases/deleteOrganizationUseCase'
 import { GetAllOrganizationUseCase } from '../application/usecases/getAllOrganizationUseCase'
 import { GetMyOrganizationUseCase } from '../application/usecases/getMyOrganizationUseCase'
+import { GetAllOrganizationUsersUseCase } from '../application/usecases/getAllOrganizationUsersUseCase'
 import { API_ROUTES } from '../../../common/constant/ApiRoutes'
+import { validateRequest } from "../../../middleware/validateRequest";
+import { createOrganizationSchema, updateOrganizationSchema } from "../../../common/validation/formValidation";
 import { authMiddleware, roleMiddleware } from '../../../middleware/authMiddleware'
+import { UserRoles } from '../../../common/constant/userRoles'
 
 const router=express.Router()
 
@@ -20,6 +24,7 @@ const updateOrganizationUseCase=new UpdateOrganizationUseCase(organizationReposi
 const deleteOrganizationUseCase=new DeleteOrganizationUseCase(organizationRepository)
 const getAllOrganizationUseCase=new GetAllOrganizationUseCase(organizationRepository)
 const getMyOrganizationUseCase=new GetMyOrganizationUseCase(organizationRepository)
+const getAllOrganizationUsersUseCase=new GetAllOrganizationUsersUseCase(organizationRepository)
 
 
 
@@ -28,22 +33,29 @@ createOrganizationUseCase,
 updateOrganizationUseCase,
 deleteOrganizationUseCase,
 getAllOrganizationUseCase,
-getMyOrganizationUseCase
+getMyOrganizationUseCase,
+getAllOrganizationUsersUseCase
 )
 
 
 
 
 
-router.post(API_ROUTES.ORGANIZATION.CREATE_ORGANIZATION,controller.createOrganization.bind(controller))
-router.post(API_ROUTES.ORGANIZATION.UPDATE_ORGANIZATION,controller.updateOrganization.bind(controller))
-router.post(API_ROUTES.ORGANIZATION.DELETE_ORGANIZATION,controller.deleteOrganization.bind(controller))
+router.post(API_ROUTES.ORGANIZATION.CREATE_ORGANIZATION, validateRequest(createOrganizationSchema), controller.createOrganization.bind(controller))
+router.post(API_ROUTES.ORGANIZATION.UPDATE_ORGANIZATION, validateRequest(updateOrganizationSchema), controller.updateOrganization.bind(controller))
+router.post(API_ROUTES.ORGANIZATION.DELETE_ORGANIZATION, controller.deleteOrganization.bind(controller))
 router.get(API_ROUTES.ORGANIZATION.GET_ALL_ORGANIZATIONS,controller.getAllOrganizations.bind(controller))
 router.get(
-    '/my-organization',
-    authMiddleware as any,
-    roleMiddleware(['organization-owner']) as any,
+    API_ROUTES.ORGANIZATION.GET_MY_ORGANIZATION,
+    authMiddleware ,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]) ,
     controller.getMyOrganization.bind(controller)
+)
+router.get(
+    API_ROUTES.ORGANIZATION.GET_USERS,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]) ,
+    controller.getOrganizationUsers.bind(controller)
 )
 
 export default router

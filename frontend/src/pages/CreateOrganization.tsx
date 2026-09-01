@@ -5,6 +5,7 @@ import { createOrganization } from "../services/organizationServices";
 import { isAxiosError } from "axios";
 import { API_ROUTES } from "../constants/Api_Routes";
 
+
 interface IFormData {
   companyName: string;
   slug: string;
@@ -18,6 +19,7 @@ const CreateOrganization = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<IFormData>({
     companyName: "",
@@ -32,20 +34,17 @@ const CreateOrganization = () => {
       ...prev,
       [name]: value,
     }));
+    if (formErrors[name]) {
+      setFormErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
+    }
   };
 
   const handleContinue = async () => {
-    if (
-      !formData.companyName.trim() ||
-      !formData.slug.trim() ||
-      !formData.ownerName.trim() ||
-      !formData.ownerEmail.trim()
-    ) {
-      return;
-    }
-
     setFieldErrors([]);
     setError(null);
+    setFormErrors({});
+
+
     setIsLoading(true);
 
     const organizationData = {
@@ -119,12 +118,12 @@ const CreateOrganization = () => {
           </div>
 
           {error && (
-            <div className="mt-4 mx-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            <div className="mt-4 mx-6 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
           {fieldErrors.length > 0 && (
-            <div className="mt-4 mx-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            <div className="mt-4 mx-6 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
               <ul className="list-disc list-inside space-y-1">
                 {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
               </ul>
@@ -142,10 +141,11 @@ const CreateOrganization = () => {
                 value={formData.companyName}
                 onChange={handleChange}
                 placeholder="e.g. Acme Corporation"
-                minLength={2}
-                maxLength={100}
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.companyName ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
+              {formErrors.companyName && (
+                <p className="mt-1 text-xs text-red-500">{formErrors.companyName}</p>
+              )}
             </div>
 
             <div>
@@ -158,14 +158,15 @@ const CreateOrganization = () => {
                 value={formData.slug}
                 onChange={handleChange}
                 placeholder="e.g. acme-corp"
-                minLength={3}
-                maxLength={63}
-                pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.slug ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
-              <p className="mt-1 text-xs text-gray-400">
-                Lowercase letters, numbers, hyphens only.
-              </p>
+              {formErrors.slug ? (
+                <p className="mt-1 text-xs text-red-500">{formErrors.slug}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">
+                  Lowercase letters, numbers, hyphens only.
+                </p>
+              )}
             </div>
 
             <div>
@@ -178,10 +179,11 @@ const CreateOrganization = () => {
                 value={formData.ownerName}
                 onChange={handleChange}
                 placeholder="e.g. Jane Doe"
-                minLength={2}
-                maxLength={100}
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.ownerName ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
+              {formErrors.ownerName && (
+                <p className="mt-1 text-xs text-red-500">{formErrors.ownerName}</p>
+              )}
             </div>
 
             <div>
@@ -194,8 +196,11 @@ const CreateOrganization = () => {
                 value={formData.ownerEmail}
                 onChange={handleChange}
                 placeholder="admin@acmecorp.com"
-                className="h-10 w-full rounded-md border border-gray-200 px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={`h-10 w-full rounded-md border px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-1 ${formErrors.ownerEmail ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'}`}
               />
+              {formErrors.ownerEmail && (
+                <p className="mt-1 text-xs text-red-500">{formErrors.ownerEmail}</p>
+              )}
             </div>
           </div>
 
@@ -203,13 +208,7 @@ const CreateOrganization = () => {
             <button
               type="button"
               onClick={handleContinue}
-              disabled={
-                isLoading ||
-                !formData.companyName.trim() ||
-                !formData.slug.trim() ||
-                !formData.ownerName.trim() ||
-                !formData.ownerEmail.trim()
-              }
+              disabled={isLoading}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Submit Request

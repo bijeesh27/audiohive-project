@@ -6,12 +6,14 @@ import { IuseCase } from "../../../shared/interface/IuseCase";
 import { createWorkspaceDTO, deleteWorkspaceDTO, updateWorkspaceDTO } from "../application/dto/workspaceDTOs";
 import { IWorkspaceDocument } from "../infrastructure/workspaceSchema";
 import { AuthRequest } from "../../../middleware/authMiddleware";
+import { IuserDocument } from "../../../shared/User.utils/userSchema";
 
 export class WorkspaceController {
   constructor(
     private readonly createWorkspaceUseCase: IuseCase<createWorkspaceDTO, void>,
     private readonly updateWorkspaceUseCase: IuseCase<updateWorkspaceDTO, void>,
     private readonly deleteWorkspaceUseCase: IuseCase<deleteWorkspaceDTO, void>,
+    private readonly getWorkspaceUseCase:IuseCase<string,IWorkspaceDocument>,
     private readonly getAllWorkspacesUseCase: IuseCase<
       { page: number; limit: number; search?: string },
       { workspaces: IWorkspaceDocument[]; total: number }
@@ -24,6 +26,10 @@ export class WorkspaceController {
       { workspaceId: string; email: string; workspaceAdminName: string; organizationOwnerEmail: string },
       void
     >,
+    private readonly getWorkspaceUsersUseCase: IuseCase<
+      { workspaceId: string; page: number; limit: number; search?: string },
+      { users: IuserDocument[]; total: number } | null
+    >
   ) {}
 
   async createWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
@@ -71,7 +77,7 @@ export class WorkspaceController {
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search as string | undefined;
       const data = await this.getAllWorkspacesUseCase.execute({ page, limit, search });
-      return ApiResposne.success(res, "Workspaces retrieved", data);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_GET_ALL, data);
     } catch (error) {
       next(error);
     }
@@ -89,7 +95,7 @@ export class WorkspaceController {
       const search = req.query.search as string | undefined;
 
       const data = await this.getWorkspacesByOrgUseCase.execute({ userEmail, page, limit, search });
-      return ApiResposne.success(res, "Workspaces retrieved", data);
+      return ApiResposne.success(res,MESSAGES.SUCCESS.WORKSPACE_GET_ALL, data);
     } catch (error) {
       next(error);
     }
@@ -112,7 +118,26 @@ export class WorkspaceController {
         organizationOwnerEmail: userEmail,
       });
 
-      return ApiResposne.success(res, "Invitation sent successfully");
+      return ApiResposne.success(res,MESSAGES.SUCCESS.INVITATION_SEND);
+    } catch (error) {
+      next(error);
+    }
+  }
+  async getWorkspace(req:Request,res:Response,next:NextFunction){
+    const workspaceId=req.params.id as string
+    const workspace= await this.getWorkspaceUseCase.execute(workspaceId)
+    return ApiResposne.success(res,"fetched",workspace)
+  }
+
+  async getWorkspaceUsers(req: Request, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.params.id as string;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string | undefined;
+
+      const data = await this.getWorkspaceUsersUseCase.execute({ workspaceId, page, limit, search });
+      return ApiResposne.success(res, "Users fetched successfully", data);
     } catch (error) {
       next(error);
     }

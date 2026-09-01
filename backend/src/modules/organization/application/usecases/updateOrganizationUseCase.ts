@@ -1,4 +1,3 @@
-import { partial } from "zod/mini";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../domain/IorganizationRepository";
 import { IorganizationDocument } from "../../infrastructure/organizationSchema";

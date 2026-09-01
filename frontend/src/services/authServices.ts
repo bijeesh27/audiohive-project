@@ -47,13 +47,14 @@ export const worspaceAdminGetUsers = (page: number = 1, limit: number = 10, sear
   return axiosInstance.get(url).then((res) => res.data);
 };
 
-export const moderatorGetUsers = (page: number = 1, limit: number = 10, search: string = "") => {
-  let url = `${API_ENDPOINTS.MODERATOR.GET_USERS}?page=${page}&limit=${limit}`;
+export const organizationOwnerGetUsers = (page: number = 1, limit: number = 10, search: string = "") => {
+  let url = `${API_ENDPOINTS.ORGANIZATION_ADMIN.GET_USERS}?page=${page}&limit=${limit}`;
   if (search) {
     url += `&search=${encodeURIComponent(search)}`;
   }
   return axiosInstance.get(url).then((res) => res.data);
 };
+
 
 export const resendOtp = (email: string) => {
   return axiosInstance
@@ -78,17 +79,17 @@ export const registerWorkspaceAdmin = (username: string, password: string, token
 };
 export const registerOwner = (username: string, password: string, token: string) => {
   return axiosInstance
-    .post('api/auth/create-owner', { username, password, token })
+    .post(API_ENDPOINTS.AUTH.REGISTER_OWNER, { username, password, token })
     .then((res) => res.data);
 };
 
 export const registerWorkspaceUser = (username: string, password: string, token: string) => {
   return axiosInstance
-    .post('api/auth/register-user', { username, password, token })
+    .post(API_ENDPOINTS.AUTH.REGISTER_USER, { username, password, token })
     .then((res) => res.data);
 };
 
-export const updateUser = (userId: string, data: Partial<User>) => {
+export const updateUser = (userId: string, data: Partial<any>) => {
   return axiosInstance
     .patch(API_ENDPOINTS.AUTH.UPDATE_USER(userId), data)
     .then((res) => res.data);

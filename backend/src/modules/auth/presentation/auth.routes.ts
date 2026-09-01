@@ -67,7 +67,7 @@ router.post(API_ROUTES.AUTH.CHANGE_PASSWORD,validateRequest(changePasswordSchema
 router.post(API_ROUTES.AUTH.RESET_PASSWORD, validateRequest(resetPasswordSchema),controller.resetPassword.bind(controller),);
 router.get(API_ROUTES.AUTH.INVITATION, controller.getInvitationDetails.bind(controller));
 router.post(API_ROUTES.AUTH.REGISTER_WORKSPACE_ADMIN,validateRequest(registerAdminSchema) ,controller.registerAdmin.bind(controller));
-router.post('/create-owner',controller.registerOwner.bind(controller));
-router.post('/register-user',validateRequest(registerAdminSchema),controller.registerWorkspaceUser.bind(controller));
+router.post(API_ROUTES.AUTH.REGISTER_ORANIZATION_OWNER, validateRequest(registerAdminSchema), controller.registerOwner.bind(controller));
+router.post(API_ROUTES.AUTH.REGISTER_USER,validateRequest(registerAdminSchema),controller.registerWorkspaceUser.bind(controller));
 
 export default router;
