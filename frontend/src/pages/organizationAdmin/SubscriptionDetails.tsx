@@ -63,7 +63,7 @@ const SubscriptionDetails = () => {
           Loading subscription details...
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-lg  bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       ) : subscription ? (
@@ -128,6 +128,15 @@ const SubscriptionDetails = () => {
               </div>
             </div>
           )}
+
+          <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+            <button
+              disabled
+              className="rounded-md bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm opacity-50 cursor-not-allowed hover:bg-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              Upgrade Plan
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
@@ -135,3 +144,4 @@ const SubscriptionDetails = () => {
 };
 
 export default SubscriptionDetails;
+

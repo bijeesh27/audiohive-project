@@ -15,7 +15,7 @@ export class UserRepository implements IuserRepository {
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown>  = {
-      role: { $in: [UserRoles.MODERATOR, UserRoles.MEMBER] },
+      role: { $in: [UserRoles.MEMBER] },
       workspaceId: workspaceId,
     };
     if (searchQuery) {

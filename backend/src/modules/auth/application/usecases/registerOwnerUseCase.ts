@@ -11,29 +11,25 @@ export class RegisterOwnerUseCase implements IuseCase<any, void> {
     ) {}
 
     async execute(data: any) {
-        const { token, username, password } = data;
-        
-        // Find organization invitation
+        const { token, password } = data;
+
         const invitation = await this.organizationRepository.findInvitationByToken(token);
         
         if (!invitation) {
             throw new InvalidOtpError();
         }
-        
-        // Hash password
+   
         const hashedPassword = await bcrypt.hash(password, 12);
-        
-        // Create organization owner user
+
         const newOwner = {
-            username: invitation.ownerName, // Alternatively use `username` from data if desired, but retaining existing logic
+            username: invitation.ownerName,
             email: invitation.ownerEmail,
             password: hashedPassword,
             role: "organization-owner",
         };
         
         await this.userRepository.createUser(newOwner as any);
-        
-        // Mark invitation as used (delete it)
+
         await this.organizationRepository.deleteInvitation(token);
     }
 }

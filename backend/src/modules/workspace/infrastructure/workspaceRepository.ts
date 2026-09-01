@@ -64,4 +64,7 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
    async getWorkspaceById(workspaceId: string): Promise<IWorkspaceDocument | null> {
      return await this.findById(workspaceId);
    }
+
+
+   
 }

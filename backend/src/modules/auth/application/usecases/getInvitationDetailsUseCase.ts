@@ -10,7 +10,6 @@ export class GetInvitationDetailsUseCase implements IuseCase<string, any> {
     ) {}
 
     async execute(token: string): Promise<any> {
-        // Check workspace invitations first
         const workspaceInvitation = await this.workspaceRepository.findInvitationByToken(token);
         if (workspaceInvitation) {
             const isUserInvite = !!workspaceInvitation.role;
@@ -19,8 +18,6 @@ export class GetInvitationDetailsUseCase implements IuseCase<string, any> {
                 type: isUserInvite ? 'workspace-user' : 'workspace'
             };
         }
-
-        // Then check organization invitations
         const orgInvitation = await this.organizationRepository.findInvitationByToken(token);
         if (orgInvitation) {
             return {
@@ -28,8 +25,6 @@ export class GetInvitationDetailsUseCase implements IuseCase<string, any> {
                 type: 'organization'
             };
         }
-
-        // If neither found, throw error
         throw new InvitationError();
     }
 }

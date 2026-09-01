@@ -13,14 +13,11 @@ import {
 } from "../application/dtos/AuthDTO.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 import {
-  InvalidOtpError,
   InvalidRefreshToken,
   InvalidToken,
   RefreshTokenNotFound,
 } from "../../../common/Errors/AuthError.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
-import { UserRoles } from "../../../common/constant/userRoles.ts";
-import { InvitationError } from "../../../common/Errors/WorkspaceError.ts";
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,

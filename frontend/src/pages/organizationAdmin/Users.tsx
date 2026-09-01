@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { worspaceAdminGetUsers, updateUser } from "../../services/authServices";
-import InviteUserModal from "../../components/workspaceAdmin/InviteUserModal";
+import { organizationOwnerGetUsers, updateUser } from "../../services/authServices";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
@@ -11,6 +10,10 @@ interface User {
   email: string;
   role: string;
   status: boolean;
+  workspaceId?: {
+    _id: string;
+    workspaceName: string;
+  };
 }
 
 const Users = () => {
@@ -21,7 +24,6 @@ const Users = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     userId: string;
@@ -29,15 +31,14 @@ const Users = () => {
     newStatus: boolean;
   }>({ isOpen: false, userId: "", username: "", newStatus: false });
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const limit = 5;
+  const limit = 10;
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
     const timer = setTimeout(() => {
-      worspaceAdminGetUsers(page, limit, search)
+      organizationOwnerGetUsers(page, limit, search)
         .then((res) => {
           if (!cancelled) {
             setUsers(res.data.users);
@@ -58,7 +59,6 @@ const Users = () => {
   }, [page, search]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search]);
 
@@ -97,7 +97,15 @@ const Users = () => {
       ),
     },
     {
-      header: "User Role",
+      header: "Workspace",
+      render: (user) => (
+        <span className="text-sm font-medium text-indigo-600">
+          {user.workspaceId?.workspaceName || "Unknown"}
+        </span>
+      ),
+    },
+    {
+      header: "Role",
       render: (user) => (
         <span className="text-sm font-medium text-gray-900">{user.role}</span>
       ),
@@ -142,9 +150,9 @@ const Users = () => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Users</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Organization Users</h1>
           <p className="mt-1 text-sm text-gray-500">
             {loading ? "Loading..." : `Page ${page} of ${totalPages || 1}`}
           </p>
@@ -157,23 +165,8 @@ const Users = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
-          <button
-            onClick={() => setIsInviteModalOpen(true)}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
-          >
-            Assign User
-          </button>
         </div>
       </div>
-
-      <InviteUserModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        onSuccess={() => {
-          setPage(1);
-          setSearch('');
-        }}
-      />
 
       <Table
         columns={columns}
@@ -192,7 +185,7 @@ const Users = () => {
         title={confirmModal.newStatus ? "Unblock user?" : "Block user?"}
         message={
           confirmModal.newStatus
-            ? `${confirmModal.username} will regain access to the workspace.`
+            ? `${confirmModal.username} will regain access to their workspace.`
             : `${confirmModal.username} loses access immediately.`
         }
         confirmLabel={confirmModal.newStatus ? "Unblock" : "Block"}

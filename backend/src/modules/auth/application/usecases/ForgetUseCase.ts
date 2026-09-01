@@ -1,4 +1,5 @@
 import { UserNotFound } from "../../../../common/Errors/AuthError.ts";
+import { emailQueue } from "../../../../config/queue.config.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import { generateOtp } from "../../../../shared/utils/otp.utils.ts";
@@ -25,6 +26,10 @@ export class ForgetUseCase implements IuseCase<
     const newOtp = generateOtp();
 
     await this.otpRepository.createOtp(email, newOtp, user);
+    await emailQueue.add("send-otp",{
+      to:email,
+      otp:newOtp
+    })
     return user;
   }
 }

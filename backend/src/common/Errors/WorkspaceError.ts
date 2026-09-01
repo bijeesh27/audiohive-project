@@ -12,3 +12,8 @@ export class InvitationError extends AppError{
         super(message,HttpStatus.BAD_REQUEST)
     }
 }
+export class WorkspaceNotFound extends AppError{
+    constructor(message=MESSAGES.ERRORS.WORKSPACE_NOT_FOUND){
+        super(message,HttpStatus.NOT_FOUND)
+    }
+}

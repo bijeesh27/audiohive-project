@@ -12,6 +12,13 @@ export class updateWorkspaceUsecase implements IuseCase<updateWorkspaceDTO,void>
     async execute(data?: updateWorkspaceDTO & { id: string }): Promise<void> {
         if (!data || !data.id) throw new CreateWorkspaceError(MESSAGES.ERRORS.WORKSPACE_INVALID_ID)
         const { id, ...updateData } = data;
-        await this.workspaceRepository.updateWorkspace(id, updateData as Partial<IWorkspaceDocument>);
+        try {
+            await this.workspaceRepository.updateWorkspace(id, updateData as Partial<IWorkspaceDocument>);
+        } catch (error: any) {
+            if (error.code === 11000 && error.keyPattern && error.keyPattern.slug) {
+                throw new CreateWorkspaceError("Workspace slug is already in use");
+            }
+            throw error;
+        }
     }
 }

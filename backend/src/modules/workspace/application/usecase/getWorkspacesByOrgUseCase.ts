@@ -1,5 +1,4 @@
-import { HttpStatus } from "../../../../common/constant/httpStatus";
-import { AppError } from "../../../../common/Errors/AppError";
+import { OrganizationNotFound } from "../../../../common/Errors/OrganizationError";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../../organization/domain/IorganizationRepository";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
@@ -26,7 +25,7 @@ export class GetWorkspacesByOrgUseCase implements IuseCase<Input, Output> {
     async execute(data: Input): Promise<Output> {
         const organization = await this.organizationRepository.findByOwnerEmail(data.userEmail);
         if (!organization) {
-            throw new AppError("No organization found for this user", HttpStatus.NOT_FOUND);
+            throw new OrganizationNotFound()
         }
 
         return await this.workspaceRepository.getWorkspacesByOrg(

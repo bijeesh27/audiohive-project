@@ -10,7 +10,7 @@ export class DeleteSubcriptionUseCase implements IuseCase<deleteSubscriptionDTO,
   ){}
   async execute(data:deleteSubscriptionDTO): Promise<void> {
     if(!data.id){
-      throw new DeleteSubcriptionError("Subscription ID is required.")
+      throw new DeleteSubcriptionError(MESSAGES.ERRORS.SUBSCRIPTION_ID_NOT_FOUND)
     }
     const deletedSubcription=await this.subscriptionRepository.findSubscriptionById(data.id)
     if(!deletedSubcription){

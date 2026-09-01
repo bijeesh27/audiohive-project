@@ -53,9 +53,7 @@ const workspaceSchema = new Schema<IWorkspaceDocument>(
   { timestamps: true }
 );
 
-// workspaceSchema.index({ slug: 1 }, { unique: true });
-// workspaceSchema.index({ organizationId: 1 });
-// workspaceSchema.index({ status: 1 });
+
 
 export const WorkspaceModel = mongoose.model<IWorkspaceDocument>(
   "Workspace",

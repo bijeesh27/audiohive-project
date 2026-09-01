@@ -4,6 +4,7 @@ import { IuseCase } from "../../../shared/interface/IuseCase";
 import { IorganizationDocument } from "../infrastructure/organizationSchema";
 import { createOrganizationDTO, updateOrganizationDTO } from "../application/dto/organizationDTO";
 import { MESSAGES } from "../../../common/constant/messages";
+import { IuserDocument } from "../../../shared/User.utils/userSchema";
 
 export class OrganizationController {
     constructor(
@@ -11,7 +12,8 @@ export class OrganizationController {
         private readonly updateOrganizationUseCase: IuseCase<updateOrganizationDTO, void>,
         private readonly deleteOrganizationUseCase: IuseCase<string, void>,
         private readonly getAllOrganizationUseCase: IuseCase<void, IorganizationDocument[]>,
-        private readonly getMyOrganizationUseCase: IuseCase<string, IorganizationDocument>
+        private readonly getMyOrganizationUseCase: IuseCase<string, IorganizationDocument>,
+        private readonly getAllOrganizationUsersUseCase: IuseCase<void,IuserDocument>
     ) {}
 
     async createOrganization(req: Request, res: Response, next: NextFunction) {
@@ -57,7 +59,7 @@ export class OrganizationController {
         }
     }
 
-    async getMyOrganization(req: any, res: Response, next: NextFunction) {
+    async getMyOrganization(req: Request, res: Response, next: NextFunction) {
         try {
             const userEmail = req.user?.userEmail;
             if (!userEmail) {
@@ -65,6 +67,23 @@ export class OrganizationController {
             }
             const data = await this.getMyOrganizationUseCase.execute(userEmail);
             return ApiResposne.success(res, "Organization fetched successfully", data, 200);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getOrganizationUsers(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userEmail = req.user?.userEmail;
+            if (!userEmail) {
+                return res.status(401).json({ success: false, message: "Unauthorized" });
+            }
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 10;
+            const search = req.query.search as string | undefined;
+
+            const data = await this.getAllOrganizationUsersUseCase.execute(userEmail, page, limit, search);
+            return ApiResposne.success(res, "Users fetched successfully", data, 200);
         } catch (error) {
             next(error);
         }

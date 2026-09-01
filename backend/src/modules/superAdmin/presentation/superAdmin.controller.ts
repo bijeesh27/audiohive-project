@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
-import logger from "../../../shared/utils/logger.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 
 export class SuperAdminController {
@@ -41,7 +40,7 @@ export class SuperAdminController {
     const updateData = req.body;
     const updatedUser = await this.updateUserUseCase.execute({ userId: id, updateData });
     
-    return ApiResposne.success(res, "User updated successfully", updatedUser);
+    return ApiResposne.success(res,MESSAGES.SUCCESS.USER_UPDATED , updatedUser);
   } catch (error) {
     next(error);
   }

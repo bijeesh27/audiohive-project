@@ -5,7 +5,6 @@ dotenv.config();
 import authRouter from "./modules/auth/presentation/auth.routes.ts";
 import superAdminRouter from "./modules/superAdmin/presentation/superAdmin.routes.ts";
 import workspaceAdminRouter from "./modules/workspaceAdmin/presentation/workspaceAdmin.route.ts";
-import moderatorRouter from './modules/moderator/presentation/moderator.route.ts'
 import subscriptionRouter from './modules/subscription/presentation/subscription.routes.ts'
 import workspaceRouter from './modules/workspace/presentation/workspace.route.ts'
 import organizationRouter from './modules/organization/presentation/organization.route.ts'
@@ -29,7 +28,6 @@ export function connectApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/super-admin", superAdminRouter);
   app.use("/api/workspaceadmin", workspaceAdminRouter);
-  app.use("/api/moderator", moderatorRouter);
   app.use("/api/subscription",subscriptionRouter)
   app.use('/api/workspace',workspaceRouter)
   app.use('/api/organization',organizationRouter)

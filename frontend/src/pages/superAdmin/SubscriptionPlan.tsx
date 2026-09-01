@@ -35,6 +35,9 @@ const SubscriptionPlan = () => {
   const [confirmTogglePlan, setConfirmTogglePlan] = useState<ISubscription | null>(null);
   const [toggling, setToggling] = useState(false);
 
+  const [confirmDeletePlan, setConfirmDeletePlan] = useState<ISubscription | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const fetchPlans = () => {
     setLoading(true);
     subscriptionService.getAllSubscriptions()
@@ -102,8 +105,12 @@ const SubscriptionPlan = () => {
       setShowModal(false);
       fetchPlans();
     } catch (err: any) {
-      setFormError(err?.response?.data?.message || "Save failed");
-    } finally {
+  const apiErrors = err?.response?.data?.errors;
+  const message = Array.isArray(apiErrors)
+    ? apiErrors.map((e: { field: string; message: string }) => e.message).join(", ")
+    : err?.response?.data?.message || "Save failed";
+  setFormError(message);
+} finally {
       setSaving(false);
     }
   };
@@ -127,6 +134,20 @@ const SubscriptionPlan = () => {
       alert(err?.response?.data?.message || "Failed to update status");
     } finally {
       setToggling(false);
+    }
+  };
+
+  const handleDeleteSubscription = async () => {
+    if (!confirmDeletePlan) return;
+    setDeleting(true);
+    try {
+      await subscriptionService.deleteSubscription(confirmDeletePlan._id);
+      setConfirmDeletePlan(null);
+      fetchPlans();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Failed to delete plan");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -179,6 +200,13 @@ const SubscriptionPlan = () => {
                     }`}
                   >
                     {plan.isActive ? "Block" : "Unblock"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeletePlan(plan)}
+                    className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Delete
                   </button>
                 </div>
               </div>
@@ -238,7 +266,7 @@ const SubscriptionPlan = () => {
 
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
               {formError && (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div className="rounded-md  bg-red-50 px-3 py-2 text-sm text-red-700">
                   {formError}
                 </div>
               )}
@@ -389,6 +417,35 @@ const SubscriptionPlan = () => {
                 }`}
               >
                 {toggling ? "Saving..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeletePlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 overflow-y-auto">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-gray-900">Delete Plan</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Are you sure you want to delete the plan "{confirmDeletePlan.subscriptionName}"? This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDeletePlan(null)}
+                disabled={deleting}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSubscription}
+                disabled={deleting}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

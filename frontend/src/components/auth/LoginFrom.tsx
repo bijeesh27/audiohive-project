@@ -34,8 +34,6 @@ const LoginFrom = () => {
           navigate(API_ROUTES.SUPER_ADMIN.NAV.DASHBOARD);
         } else if (res.data.userRole === UserRoles.WORKSPACE_ADMIN) {
           navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD);
-        } else if (res.data.userRole === UserRoles.MODERATOR) {
-          navigate(API_ROUTES.MODERATOR.NAV.DASHBOARD);
         } else if (res.data.userRole === UserRoles.MEMBER) {
           navigate(API_ROUTES.MEMBER.NAV.DASHBOARD);
         }else if (res.data.userRole === UserRoles.ORGANIZATION_OWNER) {
@@ -68,12 +66,12 @@ const LoginFrom = () => {
       </p>
 
       {error && (
-    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
       {error}
     </div>
   )}
   {fieldErrors.length > 0 && (
-    <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
       <ul className="list-disc list-inside space-y-1">
         {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
       </ul>
@@ -130,3 +128,4 @@ const LoginFrom = () => {
 };
 
 export default LoginFrom;
+

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import { subscriptionService } from '../services/subscriptionServices';
 import type { SubscriptionDTO } from '../services/subscriptionServices';
-import { CheckCircle2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 const PricingPage = () => {
   const [plans, setPlans] = useState<SubscriptionDTO[]>([]);
@@ -22,55 +22,77 @@ const PricingPage = () => {
   }, []);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen text-xl font-semibold text-gray-600">Loading plans...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen bg-[#F7F8FC]">
+        <div className="flex items-center gap-3 text-[#1A1B25]">
+          <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 animate-pulse" />
+          <span className="text-sm font-medium">Loading plans...</span>
+        </div>
+      </div>
+    );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto text-center">
-        <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
-          Choose the right plan for your workspace
-        </h2>
-        <p className="mt-4 text-xl text-gray-600">
-          Simple, transparent pricing that grows with you.
-        </p>
-      </div>
+  const activePlans = plans.filter((plan) => plan.isActive !== false);
 
-      <div className="mt-20 max-w-7xl mx-auto grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {plans.filter(plan => plan.isActive !== false).map((plan) => (
-          <div key={plan._id} className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-shadow duration-300 flex flex-col">
-            <div className="p-8 sm:p-10 flex-grow">
-              <h3 className="text-2xl font-bold text-gray-900" id={`tier-${plan.subscriptionName}`}>
+  return (
+    <div className="min-h-screen bg-[#F7F8FC] py-24 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+
+        {/* Header */}
+        <div className="max-w-2xl mx-auto text-center mb-16">
+         
+          <h2 className="mt-6 text-4xl sm:text-5xl font-extrabold text-[#1A1B25] leading-tight tracking-tight">
+            A plan for every
+            <br />
+            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              size of workspace
+            </span>
+          </h2>
+          <p className="mt-5 text-lg text-gray-500">
+            Scale users and rooms as your team grows. Cancel anytime.
+          </p>
+        </div>
+
+        {/* Plans */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activePlans.map((plan) => (
+            <div
+              key={plan._id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-8 flex flex-col"
+            >
+              <h3 className="text-xl font-bold text-[#1A1B25]">
                 {plan.subscriptionName}
               </h3>
-              <p className="mt-4 text-gray-500 line-clamp-2">{plan.description}</p>
-              
-              <div className="mt-8 flex items-baseline text-5xl font-extrabold text-gray-900">
-                ${plan.price}
-                <span className="ml-1 text-xl font-medium text-gray-500">/mo</span>
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed line-clamp-2 min-h-[2.5rem]">
+                {plan.description}
+              </p>
+
+              <div className="mt-6 flex items-baseline gap-1">
+                <span className="text-4xl font-extrabold text-[#1A1B25] tracking-tight">
+                  ₹{plan.price}
+                </span>
+                <span className="text-sm font-medium text-gray-400">/mo</span>
               </div>
-              
-              <ul role="list" className="mt-8 space-y-4">
-                <li className="flex items-center">
-                  <CheckCircle2 className="h-6 w-6 text-green-500 mr-3" />
-                  <span className="text-gray-600">Up to <strong>{plan.maxUsers}</strong> users</span>
+
+              <ul className="mt-8 space-y-3.5 pt-6 border-t border-gray-100">
+                <li className="flex items-start gap-3 text-sm text-gray-700">
+                  <Check className="h-5 w-5 mt-0.5 text-indigo-600 shrink-0" strokeWidth={2.5} />
+                  <span>Up to <strong>{plan.maxUsers}</strong> users</span>
                 </li>
-                <li className="flex items-center">
-                  <CheckCircle2 className="h-6 w-6 text-green-500 mr-3" />
-                  <span className="text-gray-600">Up to <strong>{plan.maxRooms}</strong> rooms</span>
+                <li className="flex items-start gap-3 text-sm text-gray-700">
+                  <Check className="h-5 w-5 mt-0.5 text-indigo-600 shrink-0" strokeWidth={2.5} />
+                  <span>Up to <strong>{plan.maxRooms}</strong> rooms</span>
                 </li>
                 {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center">
-                    <CheckCircle2 className="h-6 w-6 text-green-500 mr-3" />
-                    <span className="text-gray-600">{feature}</span>
+                  <li key={index} className="flex items-start gap-3 text-sm text-gray-700">
+                    <Check className="h-5 w-5 mt-0.5 text-indigo-600 shrink-0" strokeWidth={2.5} />
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
             </div>
-            
-        
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

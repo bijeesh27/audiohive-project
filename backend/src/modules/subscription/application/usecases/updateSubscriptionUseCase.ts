@@ -10,12 +10,19 @@ export class UpdateSubscriptionUseCase implements IuseCase<updateSubscriptionDTO
     ){}
     async execute(data:updateSubscriptionDTO):Promise<void>{
         if(!data.id){
-            throw new UpdateSubscriptionError("Subscription ID is required.")
+            throw new UpdateSubscriptionError(MESSAGES.ERRORS.SUBSCRIPTION_ID_NOT_FOUND)
         }
         const subscription=await this.subscrptionRepository.findSubscriptionById(data.id)
         if(!subscription){
             throw new UpdateSubscriptionError(MESSAGES.ERRORS.SUBSCRIPTION_NOT_FOUND)
         }
-        await this.subscrptionRepository.updateSubscription(subscription._id.toString(),data)
+        try {
+            await this.subscrptionRepository.updateSubscription(subscription._id.toString(),data)
+        } catch (error: any) {
+            if (error.code === 11000 && error.keyPattern && error.keyPattern.subscriptionName) {
+                throw new UpdateSubscriptionError(MESSAGES.ERRORS.SUBSCRIPTION_PLAN_EXIST);
+            }
+            throw error;
+        }
     }
 }

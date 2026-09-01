@@ -1,13 +1,12 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import SuperAdminRoutes from "./routes/SuperAdminRoutes";
 import WorkspaceAdminRoutes from "./routes/WorkspaceAdminRoutes";
-import ModeratorRoutes from "./routes/ModeratorRoutes";
 import MemberRoutes from "./routes/MemberRoutes";
 import AuthRoutes from "./routes/AuthRoutes";
 import RoleGuard from "./routes/RoleGuard";
 import { API_ROUTES } from "./constants/Api_Routes";
 import { UserRoles } from "./constants/userRole";
-import OrganizationRoutes from "./routes/OrganizationRoutes";
+import OrganizationRoutes from "./routes/OrganizationAdminRoutes";
 
 function App() {
   return (
@@ -25,10 +24,6 @@ function App() {
         </Route>
         <Route element={<RoleGuard allowedRoles={[UserRoles.WORKSPACE_ADMIN]} />}>
           <Route path={API_ROUTES.WORKSPACE_ADMIN.ROOT} element={<WorkspaceAdminRoutes />} />
-        </Route>
-
-        <Route element={<RoleGuard allowedRoles={[UserRoles.MODERATOR]} />}>
-          <Route path={API_ROUTES.MODERATOR.ROOT} element={<ModeratorRoutes />} />
         </Route>
 
         <Route element={<RoleGuard allowedRoles={[UserRoles.MEMBER]} />}>
