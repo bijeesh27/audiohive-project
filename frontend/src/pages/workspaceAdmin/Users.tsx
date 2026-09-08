@@ -4,6 +4,7 @@ import InviteUserModal from "../../components/workspaceAdmin/InviteUserModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
+import { getActiveuserCount } from "../../services/workspaceAdminServices";
 
 interface User {
   _id: string;
@@ -29,6 +30,7 @@ const Users = () => {
     newStatus: boolean;
   }>({ isOpen: false, userId: "", username: "", newStatus: false });
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [count,setCount]=useState(0)
   const limit = 5;
 
   useEffect(() => {
@@ -57,7 +59,11 @@ const Users = () => {
     };
   }, [page, search]);
 
+  
+
   useEffect(() => {
+    getActiveuserCount()
+  console.log(count)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search]);
@@ -150,6 +156,7 @@ const Users = () => {
           </p>
         </div>
         <div className="flex w-full sm:w-auto items-center gap-4">
+          <div>{count}</div>
           <input
             type="text"
             placeholder="Search username or email..."

@@ -5,9 +5,9 @@ export interface IuserRepository {
   findByEmail(email: string): Promise<IuserDocument | null>;
   createUser(data: RegisterDTO): Promise<void>;
   deteleUser(id: string): Promise<void>;
+  findById(id: string): Promise<IuserDocument | null>;
   updateUser(
     userId: string,
     data: Partial<IuserDocument>,
   ): Promise<IuserDocument>;
-
 }

@@ -6,7 +6,7 @@ import {
 import { BaseRepository } from "../../../shared/common/baseRepository.ts";
 import { RegisterDTO } from "../application/dtos/AuthDTO.ts";
 
-export class UserRpository
+export class UserRepository
   extends BaseRepository<IuserDocument>
   implements IuserRepository
 {
@@ -18,6 +18,7 @@ export class UserRpository
     return user;
   }
 
+
   async createUser(data: RegisterDTO): Promise<void> {
     await this.create(data);
   }
@@ -26,9 +27,9 @@ export class UserRpository
   }
   async updateUser(
     userId: string,
-    data: IuserDocument,
+    data: Partial<IuserDocument>,
   ): Promise<IuserDocument> {
-    await this.update(userId, data);
-    return data;
+    const updated = await this.model.findByIdAndUpdate(userId, data, { new: true });
+    return updated as IuserDocument;
   }
 }

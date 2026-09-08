@@ -1,4 +1,5 @@
 import express, { json, urlencoded } from "express";
+import { createServer } from "http";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -8,13 +9,17 @@ import workspaceAdminRouter from "./modules/workspaceAdmin/presentation/workspac
 import subscriptionRouter from './modules/subscription/presentation/subscription.routes.ts'
 import workspaceRouter from './modules/workspace/presentation/workspace.route.ts'
 import organizationRouter from './modules/organization/presentation/organization.route.ts'
+import roomRouter from './modules/room/presentation/room.route.ts'
+import announcementRouter from './modules/announcement/presentation/announcement.route.ts'
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from 'cors'
 import cookieParser from "cookie-parser";
 import { morganMiddleware } from "./middleware/morganMiddleware.ts";
 import logger from "./shared/utils/logger.ts";
+import { socketService } from "./socket/socketService.ts";
 export function connectApp() {
   const app = express();
+  const httpServer = createServer(app);
   app.use(morganMiddleware)
 
   app.use(cors({origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials:true}))
@@ -31,10 +36,15 @@ export function connectApp() {
   app.use("/api/subscription",subscriptionRouter)
   app.use('/api/workspace',workspaceRouter)
   app.use('/api/organization',organizationRouter)
+  app.use('/api/room', roomRouter)
+  app.use('/api/announcement', announcementRouter)
 
   app.use(globelErrorHandler);
 
-  app.listen(PORT, () => {
+  // Initialize Socket.io on the same HTTP server
+  socketService.init(httpServer);
+
+  httpServer.listen(PORT, () => {
     logger.info(`the server running on -> ${PORT}`)
   });
 }

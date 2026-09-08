@@ -91,7 +91,23 @@ const SubscriptionPlan = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.subscriptionName.trim()) {
-      setFormError("Plan name required");
+      setFormError("Plan name is required");
+      return;
+    }
+    if (!form.description.trim() || form.description.trim().length < 10) {
+      setFormError("Description must be at least 10 characters");
+      return;
+    }
+    if (form.price < 0) {
+      setFormError("Price cannot be negative");
+      return;
+    }
+    if (form.maxWorkspaces < 1) {
+      setFormError("Max workspaces must be at least 1");
+      return;
+    }
+    if (!form.features || form.features.length === 0) {
+      setFormError("Add at least one feature");
       return;
     }
     setSaving(true);
@@ -264,7 +280,7 @@ const SubscriptionPlan = () => {
               {editingId ? "Edit Plan" : "Add Plan"}
             </h2>
 
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            <form noValidate onSubmit={handleSubmit} className="mt-4 space-y-4">
               {formError && (
                 <div className="rounded-md  bg-red-50 px-3 py-2 text-sm text-red-700">
                   {formError}

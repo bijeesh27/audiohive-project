@@ -18,3 +18,7 @@ export const updateOrganization = async (id: string, data: any) => {
 export const getMyOrganization = async () => {
     return await axiosInstance.get('/api/organization/my-organization').then(res => res.data);
 }
+
+export const getOrgDashboardStats = async () => {
+    return await axiosInstance.get('/api/organization/dashboard-stats').then(res => res.data);
+}

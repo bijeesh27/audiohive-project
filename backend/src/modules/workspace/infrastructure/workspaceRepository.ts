@@ -65,6 +65,10 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
      return await this.findById(workspaceId);
    }
 
+   async findByAdminEmail(email: string): Promise<IWorkspaceDocument | null> {
+     return await this.model.findOne({ workspaceAdminEmail: email });
+   }
+
 
    
 }

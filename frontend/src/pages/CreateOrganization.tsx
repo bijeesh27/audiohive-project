@@ -44,6 +44,26 @@ const CreateOrganization = () => {
     setError(null);
     setFormErrors({});
 
+    const errors: Record<string, string> = {};
+    if (!formData.companyName.trim()) {
+      errors.companyName = "Company name is required";
+    }
+    if (!formData.slug.trim()) {
+      errors.slug = "Organization slug is required";
+    }
+    if (!formData.ownerName.trim()) {
+      errors.ownerName = "Owner name is required";
+    }
+    if (!formData.ownerEmail.trim()) {
+      errors.ownerEmail = "Owner email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.ownerEmail.trim())) {
+      errors.ownerEmail = "Please enter a valid email address";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
 
     setIsLoading(true);
 

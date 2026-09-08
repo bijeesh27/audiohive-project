@@ -28,7 +28,14 @@ const CreateWorkspace = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.workspaceName.trim() || !formData.slug.trim()) return;
+    if (!formData.workspaceName.trim()) {
+      setError("Workspace name is required.");
+      return;
+    }
+    if (!formData.slug.trim()) {
+      setError("Slug is required.");
+      return;
+    }
     setError(null);
     setIsLoading(true);
     try {
@@ -63,7 +70,7 @@ const CreateWorkspace = () => {
         </div>
       )}
 
-      <form className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm" onSubmit={handleSubmit}>
+      <form noValidate className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm" onSubmit={handleSubmit}>
         <div className="mb-4">
           <label
             htmlFor="workspaceName"
@@ -111,7 +118,7 @@ const CreateWorkspace = () => {
           <Button
             label={isLoading ? "Creating..." : "Create Workspace"}
             buttonType="submit"
-            disabled={isLoading || !formData.workspaceName.trim() || !formData.slug.trim()}
+            disabled={isLoading}
           />
         </div>
       </form>

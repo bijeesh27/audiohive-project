@@ -16,9 +16,9 @@ export class ResetPasswordUseCase implements IuseCase<ResetPasswordDTO, IuserDoc
       throw new UserNotFound();
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password!, 12);
     
-    const updatedUser = await this.userRepository.updateUser(user._id, {
+    const updatedUser = await this.userRepository.updateUser(user._id!, {
       password: hashedPassword,
     });
 

@@ -24,11 +24,13 @@ export const API_ROUTES = {
     GET_USERS: "/get-users",
     GET_USER: "/users/:id",
     APPROVE_WORKSPACE: "/approve-workspace",
+    DASHBOARD_STATS: "/dashboard-stats",
   },
 
   WORKSPACE_ADMIN: {
     GET_USERS: "/get-users",
     INVITE_USER: "/invite-user",
+    DASHBOARD_STATS: "/dashboard-stats",
   },
 
   MEMBER: {},
@@ -47,6 +49,7 @@ export const API_ROUTES = {
     GET_ALL_ORGANIZATIONS: "/getall-organizations",
     GET_USERS: "/get-users",
     GET_MY_ORGANIZATION: "/my-organization",
+    DASHBOARD_STATS: "/dashboard-stats",
   },
 
   WORKSSPACE: {
@@ -56,5 +59,24 @@ export const API_ROUTES = {
     GET_ALL_WORKSPACES: "/getallworkspaces",
     GET_MY_WORKSPACES: "/my-workspaces",
     INVITE: "/:id/invite",
+  },
+  WORKSPACE: {
+    CREATE_WORKSPACE: "/createworkspace",
+    UPDATE_WORKSPACE: "/updateworkspace/:id",
+    DELETE_WORKSPACE: "/deleteworkspace/:id",
+    GET_ALL_WORKSPACES: "/getallworkspaces",
+    GET_MY_WORKSPACES: "/my-workspaces",
+    INVITE: "/:id/invite",
+  },
+
+  ROOM: {
+    CREATE_ROOM: "/",
+    UPDATE_ROOM: "/:id",
+    DELETE_ROOM: "/:id",
+    GET_ALL_ROOMS: "/",
+    GET_ROOM: "/:id",
+    ALLOCATE_USERS: "/:id/members",
+    GET_PARTICIPANTS: "/:id/participants",
+    REMOVE_USER: "/:id/members/:userId",
   },
 };

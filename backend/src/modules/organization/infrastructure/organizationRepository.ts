@@ -99,4 +99,17 @@ export class OrganizationRepository extends BaseRepository<IorganizationDocument
 
        return { users, total };
    }
+
+   async getTotalWorkspacesByOrg(organizationId: string): Promise<number> {
+       return await WorkspaceModel.countDocuments({ organizationId });
+   }
+
+   async getTotalUsersByOrg(organizationId: string): Promise<number> {
+       const workspaces = await WorkspaceModel.find({ organizationId }).select('_id');
+       const workspaceIds = workspaces.map((w) => w._id);
+       return await UserModel.countDocuments({
+           workspaceId: { $in: workspaceIds },
+           role: { $in: ['workspace-admin', 'member'] }
+       });
+   }
 }

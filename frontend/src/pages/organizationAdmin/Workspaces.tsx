@@ -99,8 +99,16 @@ const Workspaces = () => {
     e.preventDefault();
     if (!assigningWorkspace) return;
 
-    if (!adminName.trim() || !adminEmail.trim()) {
-      setInviteError("Name and Email are required");
+    if (!adminName.trim()) {
+      setInviteError("Admin name is required");
+      return;
+    }
+    if (!adminEmail.trim()) {
+      setInviteError("Admin email is required");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(adminEmail.trim())) {
+      setInviteError("Please enter a valid email address");
       return;
     }
 
@@ -289,7 +297,7 @@ const Workspaces = () => {
               Send an invitation to manage <strong>{assigningWorkspace.workspaceName}</strong>.
             </p>
 
-            <form onSubmit={handleInviteSubmit} className="mt-5 space-y-4">
+            <form noValidate onSubmit={handleInviteSubmit} className="mt-5 space-y-4">
               {inviteError && (
                 <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{inviteError}</div>
               )}
@@ -302,19 +310,17 @@ const Workspaces = () => {
                   onChange={(e) => setAdminName(e.target.value)}
                   placeholder="John Doe"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Admin Email</label>
                 <input
-                  type="email"
+                  type="text"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="admin@example.com"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
 
@@ -349,7 +355,7 @@ const Workspaces = () => {
               Update details for <strong>{editingWorkspace.workspaceName}</strong>.
             </p>
 
-            <form onSubmit={handleEditSubmit} className="mt-5 space-y-4">
+            <form noValidate onSubmit={handleEditSubmit} className="mt-5 space-y-4">
               {editError && (
                 <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{editError}</div>
               )}
@@ -362,7 +368,6 @@ const Workspaces = () => {
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="My Workspace"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
 
@@ -374,7 +379,6 @@ const Workspaces = () => {
                   onChange={(e) => setEditSlug(e.target.value)}
                   placeholder="my-workspace"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
 

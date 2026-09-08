@@ -46,13 +46,37 @@ const RegisterFrom = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
+    setError(null);
+    setFieldErrors([]);
+
+    const validationErrors: string[] = [];
+    if (!username.trim()) {
+      validationErrors.push("Username is required");
+    }
+    if (!token) {
+      if (!email.trim()) {
+        validationErrors.push("Email address is required");
+      } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+        validationErrors.push("Please enter a valid email address");
+      }
+    }
+    if (!password) {
+      validationErrors.push("Password is required");
+    } else if (password.length < 6) {
+      validationErrors.push("Password must be at least 6 characters");
+    }
+    if (!confirmPassword) {
+      validationErrors.push("Please confirm your password");
+    } else if (password !== confirmPassword) {
+      validationErrors.push("Passwords don't match");
+    }
+
+    if (validationErrors.length > 0) {
+      setFieldErrors(validationErrors);
       return;
     }
+
     setIsLoading(true);
-    setError(null);
-    setFieldErrors([])
     try {
       if (token) {
         if (invitationType === "workspace") {
@@ -78,7 +102,7 @@ const RegisterFrom = () => {
       setFieldErrors(fields.map(e => e.message));
       setError(null);
     } else {
-      setError(data?.message || "Login failed");
+      setError(data?.message || "Registration failed");
       setFieldErrors([]);
     }
   }
@@ -109,7 +133,7 @@ const RegisterFrom = () => {
     </div>
   )}
  
-      <form onSubmit={handleSubmit}>
+      <form noValidate onSubmit={handleSubmit}>
         <label className="text-sm font-medium text-slate-900 block mb-1.5">
           Username
         </label>

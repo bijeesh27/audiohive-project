@@ -14,8 +14,18 @@ const ForgotPasswordPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
+
+    if (!email.trim()) {
+      setError("Email address is required");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const res = await forgotPassword(email);
@@ -75,7 +85,7 @@ const ForgotPasswordPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form noValidate onSubmit={handleSubmit}>
             <label className="text-sm font-medium text-slate-900 block mb-1.5">
               Email Address
             </label>
