@@ -20,9 +20,24 @@ const LoginFrom = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
-    setFieldErrors([])
+    setFieldErrors([]);
+
+    const validationErrors: string[] = [];
+    if (!email.trim()) {
+      validationErrors.push("Email address is required");
+    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      validationErrors.push("Please enter a valid email address");
+    }
+    if (!password) {
+      validationErrors.push("Password is required");
+    }
+    if (validationErrors.length > 0) {
+      setFieldErrors(validationErrors);
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const res = await login(email, password);
       if (res.success) {
@@ -78,7 +93,7 @@ const LoginFrom = () => {
     </div>
   )}
 
-      <form onSubmit={handleSubmit}>
+      <form noValidate onSubmit={handleSubmit}>
         <label className="text-sm font-medium text-slate-900 block mb-1.5">
           Email Address
         </label>

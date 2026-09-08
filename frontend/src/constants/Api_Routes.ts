@@ -36,9 +36,15 @@ export const API_ROUTES = {
     ROOT: "/workspaceadmin/*",
     DASHBOARD: "dashboard",
     GET_USERS: "get-users",
+    ROOMS: "rooms",
+    ROOM_DETAIL: "rooms/:id",
+    ANNOUNCEMENTS: "announcements",
     NAV: {
       DASHBOARD: "/workspaceadmin/dashboard",
-      GET_USERS: "/workspaceadmin/get-users"
+      GET_USERS: "/workspaceadmin/get-users",
+      ROOMS: "/workspaceadmin/rooms",
+      ROOM_DETAIL: (id: string) => `/workspaceadmin/rooms/${id}`,
+      ANNOUNCEMENTS: "/workspaceadmin/announcements",
     },
   },
   ORGANIZATION_ADMIN: {
@@ -58,8 +64,14 @@ export const API_ROUTES = {
     ROOT: "/member/*",
     DASHBOARD: "dashboard",
     GET_USERS: "get-users",
+    ROOMS: "rooms",
+    ROOM_DETAIL: "rooms/:id",
+    ANNOUNCEMENTS: "announcements",
     NAV: {
       DASHBOARD: "/member/dashboard",
+      ROOMS: "/member/rooms",
+      ROOM_DETAIL: (id: string) => `/member/rooms/${id}`,
+      ANNOUNCEMENTS: "/member/announcements",
     },
   },
   WORKSPACE:{
@@ -95,12 +107,15 @@ export const API_ENDPOINTS = {
   SUPER_ADMIN: {
     GET_USERS: "/api/super-admin/get-users",
     APPROVE_WORKSPACE: "/api/super-admin/approve-workspace",
+    DASHBOARD_STATS: "/api/super-admin/dashboard-stats",
   },
   WORKSPACE_ADMIN: {
     GET_USERS: "/api/workspaceadmin/get-users",
+    DASHBOARD_STATS: "/api/workspaceadmin/dashboard-stats",
   },
   ORGANIZATION_ADMIN: {
     GET_USERS: "/api/organization/get-users",
+    DASHBOARD_STATS: "/api/organization/dashboard-stats",
   },
   SUBSCRIPTION: {
     GET_ALL: "/api/subscription/getallsubscriptions",
@@ -113,5 +128,26 @@ export const API_ENDPOINTS = {
     GET_MY: "/api/workspace/my-workspaces",
     CREATE: "/api/workspace/createworkspace",
     UPDATE: (workspaceId: string) => `/api/workspace/updateworkspace/${workspaceId}`,
+  },
+  ROOM: {
+    GET_ALL: "/api/room",
+    GET_ONE: (roomId: string) => `/api/room/${roomId}`,
+    CREATE: "/api/room",
+    UPDATE: (roomId: string) => `/api/room/${roomId}`,
+    DELETE: (roomId: string) => `/api/room/${roomId}`,
+    ALLOCATE: (roomId: string) => `/api/room/${roomId}/members`,
+    GET_PARTICIPANTS: (roomId: string) => `/api/room/${roomId}/participants`,
+    REMOVE_USER: (roomId: string, userId: string) => `/api/room/${roomId}/members/${userId}`,
+  },
+  ANNOUNCEMENT: {
+    GET_ALL: "/api/announcement",
+    GET_ONE: (id: string) => `/api/announcement/${id}`,
+    CREATE: "/api/announcement",
+    UPDATE: (id: string) => `/api/announcement/${id}`,
+    DELETE: (id: string) => `/api/announcement/${id}`,
+    PIN: (id: string) => `/api/announcement/${id}/pin`,
+    MARK_READ: (id: string) => `/api/announcement/${id}/read`,
+    UNREAD_COUNT: "/api/announcement/unread-count",
+    BY_ROOM: (roomId: string) => `/api/announcement/room/${roomId}`,
   },
 };

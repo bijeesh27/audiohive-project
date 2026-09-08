@@ -4,6 +4,7 @@ import {
   UserModel,
 } from "../../../shared/User.utils/userSchema.ts";
 import { IuserRepository } from "../domain/IuserRepository.ts";
+import { RoomModel } from "../../room/infrastructure/roomSchema.ts";
 
 export class UserRepository implements IuserRepository {
   async getAllUsers(
@@ -31,5 +32,16 @@ export class UserRepository implements IuserRepository {
     ]);
 
     return { users, total };
+  }
+
+  async getDashboardStats(workspaceId: string): Promise<{ totalRooms: number; totalUsers: number }> {
+    const [totalRooms, totalUsers] = await Promise.all([
+      RoomModel.countDocuments({ workspaceId }),
+      UserModel.countDocuments({ workspaceId, role: UserRoles.MEMBER }),
+    ]);
+    return { totalRooms, totalUsers };
+  }
+  async getActiveUsers(workspaceId: string) {
+    await UserModel.countDocuments({status:true})
   }
 }

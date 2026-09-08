@@ -103,7 +103,7 @@ const OtpFrom = () => {
     </div>
   )}
  
-      <form onSubmit={handleSubmit}>
+      <form noValidate onSubmit={handleSubmit}>
         <OtpInput
           placeHolder="enter otp.."
           value={otp}

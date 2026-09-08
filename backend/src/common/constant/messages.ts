@@ -29,6 +29,12 @@ export const MESSAGES = {
     WORKSPACE_NOT_FOUND: "Workspace not found",
 
     ORANIZATION_NOT_FOUND: "Organization not found",
+    ROOM_NOT_FOUND: "Room not found",
+    PRIVATE_ROOM_ACCESS_DENIED: "You do not have access to this private room. Please ask your Workspace Admin to grant you access.",
+    WORKSPACE_ADMIN_NOT_FOUND: "Workspace not found for this admin",
+    USER_NOT_IN_WORKSPACE: "User does not belong to a workspace",
+    UNAUTHORIZED: "Unauthorized",
+    ANNOUNCEMENT_NOT_FOUND: "Announcement not found",
   },
 
   SUCCESS: {
@@ -65,5 +71,23 @@ export const MESSAGES = {
     ORGANIZATION_UPDATED: "Organization updated successfully",
     ORGANIZATION_DELETED: "Organization deleted successfully",
     GET_ALL_ORGANIZATIONS: "All organizations retrieved successfully",
+    ORGANIZATION_FETCHED: "Organization fetched successfully",
+    USERS_FETCHED: "Users fetched successfully",
+    DASHBOARD_STATS_FETCHED: "Dashboard stats fetched",
+
+    ROOM_CREATED: "Room created successfully",
+    ROOM_UPDATED: "Room updated successfully",
+    ROOM_DELETED: "Room deleted successfully",
+    ROOM_FETCHED: "Room fetched successfully",
+    ROOMS_FETCHED: "Rooms fetched successfully",
+    ROOM_ACCESS_UPDATED: "Room access updated successfully",
+
+    ANNOUNCEMENT_CREATED: "Announcement created successfully",
+    ANNOUNCEMENT_UPDATED: "Announcement updated successfully",
+    ANNOUNCEMENT_DELETED: "Announcement deleted successfully",
+    ANNOUNCEMENT_FETCHED: "Announcement fetched successfully",
+    ANNOUNCEMENTS_FETCHED: "Announcements fetched successfully",
+    ANNOUNCEMENT_PINNED: "Announcement pin status updated",
+    ANNOUNCEMENT_READ: "Announcement marked as read",
   },
 };

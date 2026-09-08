@@ -161,8 +161,16 @@ const WorkspaceDetailsPage = () => {
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!workspace) return;
-    if (!adminName.trim() || !adminEmail.trim()) {
-      setInviteError("Name and Email are required");
+    if (!adminName.trim()) {
+      setInviteError("Admin name is required");
+      return;
+    }
+    if (!adminEmail.trim()) {
+      setInviteError("Admin email is required");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(adminEmail.trim())) {
+      setInviteError("Please enter a valid email address");
       return;
     }
 
@@ -170,8 +178,8 @@ const WorkspaceDetailsPage = () => {
     setInviteError(null);
     try {
       await inviteWorkspaceAdmin(workspace._id, {
-        email: adminEmail,
-        workspaceAdminName: adminName,
+        email: adminEmail.trim(),
+        workspaceAdminName: adminName.trim(),
       });
       setShowInviteModal(false);
       fetchWorkspace();
@@ -380,7 +388,7 @@ const WorkspaceDetailsPage = () => {
               Update details for <strong>{workspace.workspaceName}</strong>.
             </p>
 
-            <form onSubmit={handleEditSubmit} className="mt-5 space-y-4">
+            <form noValidate onSubmit={handleEditSubmit} className="mt-5 space-y-4">
               {editError && (
                 <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{editError}</div>
               )}
@@ -391,7 +399,6 @@ const WorkspaceDetailsPage = () => {
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
               <div>
@@ -401,7 +408,6 @@ const WorkspaceDetailsPage = () => {
                   value={editSlug}
                   onChange={(e) => setEditSlug(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
               <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
@@ -437,7 +443,7 @@ const WorkspaceDetailsPage = () => {
               Send an invitation to manage <strong>{workspace.workspaceName}</strong>.
             </p>
 
-            <form onSubmit={handleInviteSubmit} className="mt-5 space-y-4">
+            <form noValidate onSubmit={handleInviteSubmit} className="mt-5 space-y-4">
               {inviteError && (
                 <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{inviteError}</div>
               )}
@@ -449,18 +455,16 @@ const WorkspaceDetailsPage = () => {
                   onChange={(e) => setAdminName(e.target.value)}
                   placeholder="John Doe"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Admin Email</label>
                 <input
-                  type="email"
+                  type="text"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="admin@example.com"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  required
                 />
               </div>
               <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">

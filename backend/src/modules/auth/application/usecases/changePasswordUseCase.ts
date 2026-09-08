@@ -24,12 +24,12 @@ export class ChangePasswordUseCase implements IuseCase<
       throw new PasswordMatchError();
     }
 
-    const hashedPassword = await bcrypt.hash(data.password, 12);
+    const hashedPassword = await bcrypt.hash(data.password!, 12);
 
     const password = {
       password: hashedPassword,
     };
-    const updateUser = await this.userRepository.updateUser(user._id , password);
+    const updateUser = await this.userRepository.updateUser(user._id!, password);
 
     return updateUser as IuserDocument;
   }

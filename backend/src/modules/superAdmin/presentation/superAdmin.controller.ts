@@ -8,7 +8,8 @@ export class SuperAdminController {
   constructor(
     private readonly getAllUserUseCase: IuseCase<{ page: number; limit: number,search?: string }, { users: IuserDocument[]; total: number } | null>,
     private readonly approveWorkspaceUseCase:IuseCase<{ workspaceId: string, adminEmail: string, workspaceName: string, workspaceAdminName: string }, void>,
-    private readonly updateUserUseCase:IuseCase<{ userId: string, updateData: Partial<IuserDocument> }, IuserDocument>
+    private readonly updateUserUseCase:IuseCase<{ userId: string, updateData: Partial<IuserDocument> }, IuserDocument>,
+    private readonly getSuperAdminDashboardStatsUseCase:IuseCase<void, { totalOrganizations: number }>
   ) {}
   getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -45,4 +46,13 @@ export class SuperAdminController {
     next(error);
   }
 };
+
+  getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await this.getSuperAdminDashboardStatsUseCase.execute();
+      return ApiResposne.success(res, MESSAGES.SUCCESS.DASHBOARD_STATS_FETCHED, data);
+    } catch (error) {
+      next(error);
+    }
+  };
 }

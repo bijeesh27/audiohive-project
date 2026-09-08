@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, CreditCard, LogOut,Building2  } from "lucide-react";
+import { LayoutDashboard, Users, DoorOpen, LogOut, Megaphone } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
@@ -13,7 +13,10 @@ export default function Sidebar() {
   const navItems = [
     { name: "Dashboard", path: API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
     { name: "Users", path: API_ROUTES.WORKSPACE_ADMIN.NAV.GET_USERS, icon: Users },
+    { name: "Rooms", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS, icon: DoorOpen },
+    { name: "Announcements", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ANNOUNCEMENTS, icon: Megaphone },
   ];
+
 
   const handleLogout = async () => {
     try {

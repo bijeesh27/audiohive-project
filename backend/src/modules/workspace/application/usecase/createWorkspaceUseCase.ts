@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import { HttpStatus } from "../../../../common/constant/httpStatus";
 import { MESSAGES } from "../../../../common/constant/messages";
 import { AppError } from "../../../../common/Errors/AppError";
@@ -30,7 +29,8 @@ export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void
         }
 
         let subscription = await this.subscriptionRepository.findSubscription(organization.planId);
-        if (!subscription && Types.ObjectId.isValid(organization.planId)) {
+        const isHexId = typeof organization.planId === 'string' && /^[0-9a-fA-F]{24}$/.test(organization.planId);
+        if (!subscription && isHexId) {
             subscription = await this.subscriptionRepository.findSubscriptionById(organization.planId);
         }
         let maxWorkspaces = 2;
@@ -40,7 +40,7 @@ export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void
             throw new AppError(`Subscription plan not found for planId: '${organization.planId}'`, HttpStatus.NOT_FOUND);
         }
 
-        const { total: currentWorkspacesCount } = await this.workspaceRepository.getWorkspacesByOrg(organization._id as string, 1, 1);
+        const { total: currentWorkspacesCount } = await this.workspaceRepository.getWorkspacesByOrg(organization._id.toString(), 1, 1);
         if (currentWorkspacesCount >= maxWorkspaces) {
             throw new AppError("Maximum workspace limit reached for your subscription plan", HttpStatus.BAD_REQUEST);
         }

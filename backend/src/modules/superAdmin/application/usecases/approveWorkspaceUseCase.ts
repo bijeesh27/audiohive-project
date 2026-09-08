@@ -3,6 +3,7 @@ import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IworkspaceRepository } from "../../../workspace/domain/IworkspaceRepository";
 import { emailQueue } from "../../../../config/queue.config";
 import { API_ROUTES } from '../../../../common/constant/ApiRoutes';
+import { IInvitationDocument } from '../../../workspace/infrastructure/invitationSchema';
 
 export class ApproveWorkspaceUseCase implements IuseCase<{ workspaceId: string, adminEmail: string, workspaceName: string ,workspaceAdminName: string}, void> {
     
@@ -20,7 +21,7 @@ export class ApproveWorkspaceUseCase implements IuseCase<{ workspaceId: string, 
             expiresAt,
             isUsed: false
         }
-        await this.workspaceRepository.createInvitation(workspaceInvitation)
+        await this.workspaceRepository.createInvitation(workspaceInvitation as unknown as IInvitationDocument)
         const invitationLink = `${process.env.CLIENT_URL}${API_ROUTES.AUTH.REGISTER}?token=${token}`;
         
         await emailQueue.add('send-workspace-invitation', {

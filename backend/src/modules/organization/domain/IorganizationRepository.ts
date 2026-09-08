@@ -18,4 +18,6 @@ export interface IorganizaionRepository{
         limit: number,
         searchQuery?: string
     ): Promise<{ users: IuserDocument[], total: number }>;
+    getTotalWorkspacesByOrg(organizationId: string): Promise<number>;
+    getTotalUsersByOrg(organizationId: string): Promise<number>;
 }

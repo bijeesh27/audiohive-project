@@ -108,7 +108,7 @@ export class WorkspaceController {
         return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
       }
 
-      const workspaceId = req.params.id;
+      const workspaceId = req.params.id as string;
       const { email, workspaceAdminName } = req.body;
 
       await this.sendWorkspaceInvitationUseCase.execute({

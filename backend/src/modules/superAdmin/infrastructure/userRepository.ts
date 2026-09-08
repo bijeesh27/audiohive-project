@@ -1,6 +1,7 @@
 import { UserRoles } from "../../../common/constant/userRoles.ts";
 import { IuserDocument, UserModel } from "../../../shared/User.utils/userSchema.ts";
 import { IuserRepository } from "../domain/IuserRepository.ts";
+import { OrganizationModel } from "../../organization/infrastructure/organizationSchema.ts";
 
 export class UserRepository implements IuserRepository {
   async getAllUsers(page: number, limit: number,searchQuery?:string): Promise<{ users: Array<IuserDocument>; total: number } | null> {
@@ -21,5 +22,15 @@ export class UserRepository implements IuserRepository {
     ]);
 
     return { users, total };
+  }
+
+  async getTotalOrganizations(): Promise<number> {
+    return await OrganizationModel.countDocuments();
+  }
+
+  async getTotalUsers(): Promise<number> {
+    return await UserModel.countDocuments({
+      role: { $in: [UserRoles.ORGANIZATION_OWNER, UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER] }
+    });
   }
 }

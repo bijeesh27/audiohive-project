@@ -9,6 +9,7 @@ import { DeleteOrganizationUseCase } from '../application/usecases/deleteOrganiz
 import { GetAllOrganizationUseCase } from '../application/usecases/getAllOrganizationUseCase'
 import { GetMyOrganizationUseCase } from '../application/usecases/getMyOrganizationUseCase'
 import { GetAllOrganizationUsersUseCase } from '../application/usecases/getAllOrganizationUsersUseCase'
+import { GetOrgDashboardStatsUseCase } from '../application/usecases/getOrgDashboardStatsUseCase'
 import { API_ROUTES } from '../../../common/constant/ApiRoutes'
 import { validateRequest } from "../../../middleware/validateRequest";
 import { createOrganizationSchema, updateOrganizationSchema } from "../../../common/validation/formValidation";
@@ -25,6 +26,7 @@ const deleteOrganizationUseCase=new DeleteOrganizationUseCase(organizationReposi
 const getAllOrganizationUseCase=new GetAllOrganizationUseCase(organizationRepository)
 const getMyOrganizationUseCase=new GetMyOrganizationUseCase(organizationRepository)
 const getAllOrganizationUsersUseCase=new GetAllOrganizationUsersUseCase(organizationRepository)
+const getOrgDashboardStatsUseCase=new GetOrgDashboardStatsUseCase(organizationRepository)
 
 
 
@@ -34,7 +36,8 @@ updateOrganizationUseCase,
 deleteOrganizationUseCase,
 getAllOrganizationUseCase,
 getMyOrganizationUseCase,
-getAllOrganizationUsersUseCase
+getAllOrganizationUsersUseCase,
+getOrgDashboardStatsUseCase
 )
 
 
@@ -56,6 +59,12 @@ router.get(
     authMiddleware,
     roleMiddleware([UserRoles.ORGANIZATION_OWNER]) ,
     controller.getOrganizationUsers.bind(controller)
+)
+router.get(
+    API_ROUTES.ORGANIZATION.DASHBOARD_STATS,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    controller.getOrgDashboardStats.bind(controller)
 )
 
 export default router

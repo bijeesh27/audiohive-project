@@ -25,14 +25,26 @@ const ResetPasswordPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setIsLoading(false);
+    if (!password) {
+      setError("New password is required");
       return;
     }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    if (!confirmPassword) {
+      setError("Please confirm your password");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const res = await resetPassword(resetToken, password);
@@ -93,7 +105,7 @@ const ResetPasswordPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form noValidate onSubmit={handleSubmit}>
             <label className="text-sm font-medium text-slate-900 block mb-1.5">
               New Password
             </label>

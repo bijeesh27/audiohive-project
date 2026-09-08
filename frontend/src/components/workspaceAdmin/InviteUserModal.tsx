@@ -20,11 +20,25 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
 
+    if (!invitedName.trim()) {
+      setError("Name is required");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Email address is required");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      await inviteWorkspaceUser({ email, invitedName, role });
+      await inviteWorkspaceUser({ email: email.trim(), invitedName: invitedName.trim(), role });
       onSuccess();
       onClose();
       setEmail("");
@@ -51,24 +65,22 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Name</label>
             <Input
               placeHolder="User's name"
               value={invitedName}
               onChange={(e) => setInvitedName(e.target.value)}
-              required={true}
             />
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
             <Input
-              type="email"
+              type="text"
               placeHolder="User's email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required={true}
             />
           </div>
 
@@ -85,7 +97,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
               label="Send Invitation"
               buttonType="submit"
               loading={isLoading}
-              disabled={isLoading || !email || !invitedName}
+              disabled={isLoading}
             />
           </div>
         </form>

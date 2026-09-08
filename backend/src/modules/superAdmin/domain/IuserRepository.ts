@@ -2,4 +2,6 @@ import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
 
 export interface IuserRepository {
   getAllUsers(page: number, limit: number,searchQuery?:string): Promise<{ users: Array<IuserDocument>; total: number } | null>;
+  getTotalOrganizations(): Promise<number>;
+  getTotalUsers(): Promise<number>;
 }

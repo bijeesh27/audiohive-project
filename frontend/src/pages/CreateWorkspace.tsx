@@ -44,6 +44,26 @@ const CreateWorkspace = () => {
     setError(null);
     setFormErrors({});
 
+    const errors: Record<string, string> = {};
+    if (!formData.companyName.trim()) {
+      errors.companyName = "Company name is required";
+    }
+    if (!formData.workspaceAdminName.trim()) {
+      errors.workspaceAdminName = "Workspace admin name is required";
+    }
+    if (!formData.workspaceAdminEmail.trim()) {
+      errors.workspaceAdminEmail = "Workspace admin email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.workspaceAdminEmail.trim())) {
+      errors.workspaceAdminEmail = "Please enter a valid email address";
+    }
+    if (!formData.workspaceSlug.trim()) {
+      errors.workspaceSlug = "Workspace slug is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
 
     setIsLoading(true);
 

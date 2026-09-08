@@ -13,7 +13,7 @@ export interface SendWorkspaceInvitationDTO {
     workspaceId: string;
     email: string;
     workspaceAdminName: string;
-    organizationOwnerEmail: string; // Used to fetch organization and verify ownership
+    organizationOwnerEmail: string;
 }
 
 export class SendWorkspaceInvitationUseCase implements IuseCase<SendWorkspaceInvitationDTO, void> {

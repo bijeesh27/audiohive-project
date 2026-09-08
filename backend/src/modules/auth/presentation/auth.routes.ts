@@ -1,7 +1,7 @@
 import express from "express";
 import { AuthController } from "./auth.controller.ts";
 import { RegiterUserUseCase } from "../application/usecases/registerUserUseCase.ts";
-import { UserRpository } from "../infrastructure/userRepository.ts";
+import { UserRepository } from "../infrastructure/userRepository.ts";
 import { OtpRepository } from "../infrastructure/otpRepository.ts";
 import { OtpUseCase } from "../application/usecases/otpUseCase.ts";
 import { LoginUserUseCase } from "../application/usecases/LoginUserUseCase.ts";
@@ -23,7 +23,7 @@ import { OrganizationRepository } from "../../organization/infrastructure/organi
 const router = express.Router();
 
 
-const userReopsitory = new UserRpository();
+const userReopsitory = new UserRepository();
 const otpRepository = new OtpRepository();
 const registerUserUseCase = new RegiterUserUseCase(
   userReopsitory,
