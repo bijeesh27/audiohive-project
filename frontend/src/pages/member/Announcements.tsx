@@ -27,7 +27,6 @@ export default function MemberAnnouncements() {
   const { announcements, unreadCount, loading, markAsRead: markRead } = useAnnouncements();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Extract user ID from JWT payload (base64 decode middle part)
   const userId = (() => {
     try {
       const payload = accessToken?.split(".")[1];

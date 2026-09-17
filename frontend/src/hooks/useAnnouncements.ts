@@ -38,7 +38,7 @@ export const useAnnouncements = () => {
       setAnnouncements(items);
       setUnreadCount(countRes.data.data?.unreadCount ?? 0);
     } catch {
-      // silently fail — socket will update when connection is restored
+      
     } finally {
       setLoading(false);
     }
@@ -48,14 +48,12 @@ export const useAnnouncements = () => {
     fetchAll();
   }, [fetchAll]);
 
-  // Real-time: new announcement broadcast
   useEffect(() => {
     const onNew = (newItem: Announcement) => {
       setAnnouncements((prev) => [newItem, ...prev]);
       setUnreadCount((c) => c + 1);
     };
 
-    // Real-time: pin update
     const onPin = ({
       announcementId,
       isPinned,
@@ -70,12 +68,10 @@ export const useAnnouncements = () => {
       );
     };
 
-    // Real-time: delete
     const onDelete = ({ announcementId }: { announcementId: string }) => {
       setAnnouncements((prev) => prev.filter((a) => a._id !== announcementId));
     };
 
-    // On reconnect, re-fetch in case we missed anything
     const onReconnect = () => {
       fetchAll();
     };
@@ -103,7 +99,6 @@ export const useAnnouncements = () => {
       );
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch {
-      // ignore
     }
   };
 

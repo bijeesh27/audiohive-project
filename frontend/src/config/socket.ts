@@ -1,18 +1,13 @@
 import { io, Socket } from "socket.io-client";
 
-// Singleton — one socket connection for the entire app lifetime
 const socket: Socket = io(
-  import.meta.env.VITE_API_URL || "http://localhost:5000",
+  import.meta.env.VITE_API_URL || "http://localhost:3000",
   {
-    autoConnect: false, // manually connect after login
+    autoConnect: false,
     withCredentials: true,
   }
 );
 
-/**
- * Connect the socket with a JWT token.
- * Call this after the user successfully logs in.
- */
 export const connectSocket = (token: string, workspaceId?: string) => {
   socket.auth = { token };
   if (workspaceId) {
@@ -23,10 +18,6 @@ export const connectSocket = (token: string, workspaceId?: string) => {
   }
 };
 
-/**
- * Disconnect the socket.
- * Call this on logout.
- */
 export const disconnectSocket = () => {
   if (socket.connected) {
     socket.disconnect();

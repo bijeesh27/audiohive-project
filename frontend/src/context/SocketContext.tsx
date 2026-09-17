@@ -34,7 +34,6 @@ const SocketContextProvider = ({ children }: { children: React.ReactNode }) => {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
 
-    // If already connected (e.g. hot reload), set state immediately
     if (socket.connected) setIsConnected(true);
 
     return () => {

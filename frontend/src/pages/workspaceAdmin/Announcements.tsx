@@ -84,7 +84,6 @@ export default function AdminAnnouncements() {
       setShowModal(false);
       refetch();
     } catch {
-      // handle silently
     } finally {
       setSaving(false);
     }

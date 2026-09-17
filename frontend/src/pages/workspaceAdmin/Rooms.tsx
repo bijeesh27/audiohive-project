@@ -8,6 +8,8 @@ import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import { API_ROUTES } from "../../constants/Api_Routes";
+import ActionButton from "../../components/common/ActionButton";
+import {Eye} from "lucide-react";
 
 interface Room {
   _id: string;
@@ -163,13 +165,14 @@ const Rooms = () => {
     {
       header: "Actions",
       render: (room) => (
-        <button
-          type="button"
-          onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOM_DETAIL(room._id))}
-          className="rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
-        >
-          View
-        </button>
+        <div>
+          <ActionButton
+         icon={Eye}
+              label="View Room Details"
+              onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOM_DETAIL(room._id))}
+              colorClasses="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 focus:ring-indigo-300"/>
+        
+        </div>
       ),
     },
   ];

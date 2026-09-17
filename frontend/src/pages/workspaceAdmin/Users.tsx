@@ -5,6 +5,8 @@ import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import { getActiveuserCount } from "../../services/workspaceAdminServices";
+import {ShieldBan , ShieldCheck} from "lucide-react"
+import ActionButton from "../../components/common/ActionButton";
 
 interface User {
   _id: string;
@@ -30,7 +32,7 @@ const Users = () => {
     newStatus: boolean;
   }>({ isOpen: false, userId: "", username: "", newStatus: false });
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const [count,setCount]=useState(0)
+  
   const limit = 5;
 
   useEffect(() => {
@@ -62,8 +64,7 @@ const Users = () => {
   
 
   useEffect(() => {
-    getActiveuserCount()
-  console.log(count)
+  
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search]);
@@ -123,9 +124,12 @@ const Users = () => {
     {
       header: "Actions",
       render: (user) => (
-        <button
-          type="button"
-          onClick={() =>
+
+        <div>
+          <ActionButton
+              icon={user.status === true ? ShieldBan : ShieldCheck}
+              label={user.status === true ? "Block Room" : "Unblock Room"}
+              onClick={() =>
             setConfirmModal({
               isOpen: true,
               userId: user._id,
@@ -133,15 +137,15 @@ const Users = () => {
               newStatus: !user.status,
             })
           }
-          disabled={updatingUserId === user._id}
-          className={`rounded px-3 py-1 text-xs font-medium ${
-            user.status
-              ? "bg-red-50 text-red-600 hover:bg-red-100"
-              : "bg-green-50 text-green-600 hover:bg-green-100"
-          } transition-colors disabled:opacity-50`}
-        >
-          {user.status ? "Block" : "Unblock"}
-        </button>
+              colorClasses={
+                user.status === true
+                  ? "bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-300"
+                  : "bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-300"
+              }
+              
+            />
+        
+        </div>
       ),
     },
   ];
@@ -156,7 +160,7 @@ const Users = () => {
           </p>
         </div>
         <div className="flex w-full sm:w-auto items-center gap-4">
-          <div>{count}</div>
+          
           <input
             type="text"
             placeholder="Search username or email..."

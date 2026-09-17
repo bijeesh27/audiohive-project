@@ -41,7 +41,6 @@ const Organization = () => {
     let cancelled = false;
     setLoading(true);
     const timer = setTimeout(() => {
-      let cancelled = false;
       getAllOrganizations(page, limit, search)
         .then((res) => {
           if (!cancelled) {
