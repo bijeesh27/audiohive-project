@@ -16,7 +16,6 @@ export class CreateAnnouncementUseCase
       data as unknown as Partial<IAnnouncementDocument>
     );
 
-    // If published immediately, enqueue the socket broadcast job
     if (data.status === "published") {
       await announcementQueue.add("publish-announcement", {
         announcement: saved,

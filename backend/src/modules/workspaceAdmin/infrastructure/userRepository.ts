@@ -41,7 +41,7 @@ export class UserRepository implements IuserRepository {
     ]);
     return { totalRooms, totalUsers };
   }
-  async getActiveUsers(workspaceId: string) {
-    await UserModel.countDocuments({status:true})
+  async getActiveUsers(workspaceId: string): Promise<number> {
+    return await UserModel.countDocuments({ status: true, workspaceId });
   }
 }

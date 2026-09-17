@@ -2,10 +2,6 @@ import { useEffect, useState } from "react";
 import { useSocket } from "../context/SocketContext";
 import { getUnreadCount } from "../services/announcementServices";
 
-/**
- * Lightweight hook for the sidebar badge.
- * Only tracks the unread count — does not fetch full list.
- */
 export const useUnreadCount = () => {
   const { socket } = useSocket();
   const [unreadCount, setUnreadCount] = useState(0);

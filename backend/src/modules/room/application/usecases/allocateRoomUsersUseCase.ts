@@ -6,6 +6,8 @@ export class AllocateRoomUsersUseCase implements IuseCase<AllocateRoomUsersDTO, 
   constructor(private readonly roomRepository: IroomRepository) {}
 
   async execute(data: AllocateRoomUsersDTO): Promise<void> {
+    let totalUser=await this.roomRepository.getRoomParticipants(data.roomId)
+    console.log(totalUser)
     await this.roomRepository.updateAllowedUsers(data.roomId, data.userIds);
   }
 }

@@ -1,7 +1,11 @@
 import { Server as HttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { socketAuthMiddleware } from "./socketMiddleware.js";
+import { SOCKET_EVENTS } from "./socketEvents.js";
 import logger from "../shared/utils/logger.js";
+
+// roomId -> Set of { userId, username }
+const roomPresence = new Map<string, Map<string, { userId: string; username: string }>>();
 
 let io: SocketIOServer;
 
@@ -44,7 +48,61 @@ export const socketService = {
         logger.info(`[Socket] ${user.id} explicitly joined workspace:${wId}`);
       });
 
+      // ── Room presence ──────────────────────────────────────────
+      socket.on(SOCKET_EVENTS.ROOM_JOIN, (roomId: string) => {
+        socket.join(`room:${roomId}`);
+
+        if (!roomPresence.has(roomId)) {
+          roomPresence.set(roomId, new Map());
+        }
+        roomPresence.get(roomId)!.set(socket.id, {
+          userId: user.id,
+          username: user.username ?? user.userEmail ?? user.id,
+        });
+
+        const online = Array.from(roomPresence.get(roomId)!.values());
+
+        // Broadcast updated list to ALL sockets in the room (including sender)
+        io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+
+        // Also send directly to the joining socket so they always get it
+        // even if StrictMode caused a timing delay on the listener
+        socket.emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+
+        logger.info(`[Socket] User ${user.id} joined room:${roomId} — ${online.length} online`);
+      });
+
+      // Allow a client to fetch current presence without rejoining
+      socket.on(SOCKET_EVENTS.ROOM_GET_PRESENCE, (roomId: string) => {
+        const online = Array.from(roomPresence.get(roomId)?.values() ?? []);
+        socket.emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+      });
+
+      socket.on(SOCKET_EVENTS.ROOM_LEAVE, (roomId: string) => {
+        socket.leave(`room:${roomId}`);
+        roomPresence.get(roomId)?.delete(socket.id);
+
+        const online = Array.from(roomPresence.get(roomId)?.values() ?? []);
+        io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+
+        // Clean up empty room maps
+        if (roomPresence.get(roomId)?.size === 0) {
+          roomPresence.delete(roomId);
+        }
+
+        logger.info(`[Socket] User ${user.id} left room:${roomId} — ${online.length} online`);
+      });
+
       socket.on("disconnect", () => {
+        // Remove this socket from every room it was present in
+        roomPresence.forEach((members, roomId) => {
+          if (members.has(socket.id)) {
+            members.delete(socket.id);
+            const online = Array.from(members.values());
+            io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+            if (members.size === 0) roomPresence.delete(roomId);
+          }
+        });
         logger.info(`[Socket] User ${user?.id} disconnected`);
       });
     });

@@ -17,7 +17,6 @@ export class PinAnnouncementUseCase
   }): Promise<void> {
     await this.announcementRepository.pinAnnouncement(input.id, input.isPinned);
 
-    // Broadcast pin change to all workspace clients
     await announcementQueue.add("pin-announcement", {
       event: SOCKET_EVENTS.PIN_ANNOUNCEMENT,
       announcementId: input.id,

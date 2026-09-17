@@ -89,7 +89,7 @@ router.post(
 router.get(
   API_ROUTES.ROOM.GET_PARTICIPANTS,
   authMiddleware,
-  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]),
   controller.getRoomParticipants.bind(controller)
 );
 

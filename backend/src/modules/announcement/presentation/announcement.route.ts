@@ -41,19 +41,18 @@ const controller = new AnnouncementController(
   userRepository
 );
 
-// Admin-only routes
+
 router.post("/", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.createAnnouncement.bind(controller));
 router.put("/:id", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.updateAnnouncement.bind(controller));
 router.delete("/:id", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.deleteAnnouncement.bind(controller));
 router.patch("/:id/pin", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.pinAnnouncement.bind(controller));
 
-// Both admin and member
 router.get("/unread-count", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getUnreadCount.bind(controller));
 router.get("/room/:roomId", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getByRoom.bind(controller));
 router.get("/", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAllAnnouncements.bind(controller));
 router.get("/:id", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAnnouncement.bind(controller));
 
-// Member only
+
 router.patch("/:id/read", authMiddleware, roleMiddleware([UserRoles.MEMBER]), controller.markAsRead.bind(controller));
 
 export default router;

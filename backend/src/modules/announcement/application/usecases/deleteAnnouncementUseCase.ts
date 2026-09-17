@@ -13,7 +13,6 @@ export class DeleteAnnouncementUseCase
   async execute(input: { id: string; workspaceId: string }): Promise<void> {
     await this.announcementRepository.deleteAnnouncement(input.id);
 
-    // Notify all clients to remove the deleted announcement from their UI
     await announcementQueue.add("delete-announcement", {
       event: SOCKET_EVENTS.DELETE_ANNOUNCEMENT,
       announcementId: input.id,
