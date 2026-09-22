@@ -11,21 +11,24 @@ interface SocketContextType {
 const SocketContext = createContext<SocketContextType | null>(null);
 
 const SocketContextProvider = ({ children }: { children: React.ReactNode }) => {
-  const { accessToken, isAuthenticated } = useAuth();
+  const { accessToken, isAuthenticated, workspaceId } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && accessToken) {
-      connectSocket(accessToken);
+      connectSocket(accessToken, workspaceId ?? undefined);
     } else {
       disconnectSocket();
       setIsConnected(false);
     }
-  }, [isAuthenticated, accessToken]);
+  }, [isAuthenticated, accessToken, workspaceId]);
 
   useEffect(() => {
     const onConnect = () => {
       setIsConnected(true);
+      if (workspaceId) {
+        socket.emit("join-workspace", workspaceId);
+      }
     };
     const onDisconnect = () => {
       setIsConnected(false);
@@ -34,13 +37,18 @@ const SocketContextProvider = ({ children }: { children: React.ReactNode }) => {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
 
-    if (socket.connected) setIsConnected(true);
+    if (socket.connected) {
+      setIsConnected(true);
+      if (workspaceId) {
+        socket.emit("join-workspace", workspaceId);
+      }
+    }
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
     };
-  }, []);
+  }, [workspaceId]);
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

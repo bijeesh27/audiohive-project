@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSocket } from "../context/SocketContext";
+import { useAnnouncementContext } from "../context/AnnouncementContext";
 import {
   getAnnouncements,
   markAsRead as markAsReadAPI,
@@ -22,8 +23,8 @@ export interface Announcement {
 
 export const useAnnouncements = () => {
   const { socket } = useSocket();
+  const { unreadCount, setUnreadCount, decrementUnread } = useAnnouncementContext();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
@@ -36,22 +37,26 @@ export const useAnnouncements = () => {
       const items: Announcement[] =
         listRes.data.data?.announcements ?? listRes.data.data ?? [];
       setAnnouncements(items);
+      // Sync the global unread count from server on fetch
       setUnreadCount(countRes.data.data?.unreadCount ?? 0);
     } catch {
-      
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setUnreadCount]);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
   useEffect(() => {
+    // onNew only updates the list — count is handled by AnnouncementContext
     const onNew = (newItem: Announcement) => {
-      setAnnouncements((prev) => [newItem, ...prev]);
-      setUnreadCount((c) => c + 1);
+      setAnnouncements((prev) => {
+        // Guard against duplicates (e.g. reconnect race)
+        if (prev.some((a) => a._id === newItem._id)) return prev;
+        return [newItem, ...prev];
+      });
     };
 
     const onPin = ({
@@ -94,10 +99,13 @@ export const useAnnouncements = () => {
       await markAsReadAPI(id);
       setAnnouncements((prev) =>
         prev.map((a) =>
-          a._id === id ? { ...a, readBy: [...a.readBy, "me"] } : a
+          // Use the actual current user id from readBy — optimistic update
+          // We mark with a sentinel then let the next fetch correct it
+          a._id === id ? { ...a, readBy: [...a.readBy, "__read__"] } : a
         )
       );
-      setUnreadCount((c) => Math.max(0, c - 1));
+      // Decrement the global badge count via context
+      decrementUnread();
     } catch {
     }
   };

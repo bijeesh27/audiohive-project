@@ -1,6 +1,6 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase.js";
 import { IAnnouncementRepository } from "../../domain/IAnnouncementRepository.js";
-import { announcementQueue } from "../../../../config/announcementQueue.js";
+import { socketService } from "../../../../socket/socketService.js";
 import { SOCKET_EVENTS } from "../../../../socket/socketEvents.js";
 
 export class PinAnnouncementUseCase
@@ -17,11 +17,11 @@ export class PinAnnouncementUseCase
   }): Promise<void> {
     await this.announcementRepository.pinAnnouncement(input.id, input.isPinned);
 
-    await announcementQueue.add("pin-announcement", {
-      event: SOCKET_EVENTS.PIN_ANNOUNCEMENT,
+    // Emit directly — guaranteed to fire as long as DB update succeeds
+    socketService.emitToWorkspace(input.workspaceId, SOCKET_EVENTS.PIN_ANNOUNCEMENT, {
       announcementId: input.id,
       isPinned: input.isPinned,
-      workspaceId: input.workspaceId,
     });
   }
 }
+

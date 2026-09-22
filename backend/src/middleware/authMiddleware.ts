@@ -7,6 +7,7 @@ export interface TokenPayload {
   username: string;
   userEmail: string;
   role: string;
+  workspaceId?: string;
 }
 
 export interface AuthRequest extends Request {

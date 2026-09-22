@@ -23,24 +23,19 @@ export const socketService = {
 
     io.on("connection", (socket) => {
       const user = socket.data.user;
-      const workspaceId: string | undefined = user?.workspaceId;
+      let workspaceId: string | undefined = user?.workspaceId
+        ? String(user.workspaceId)
+        : (socket.handshake.query?.workspaceId as string | undefined);
 
       if (workspaceId) {
         socket.join(`workspace:${workspaceId}`);
         logger.info(
-          `[Socket] User ${user.id} (${user.role}) joined workspace:${workspaceId}`
+          `[Socket] User ${user?.id} (${user?.role}) joined workspace:${workspaceId}`
         );
       } else {
-        // Workspace admin: workspaceId comes from DB; we rely on the client sending it via handshake query
-        const queryWorkspaceId = socket.handshake.query?.workspaceId as
-          | string
-          | undefined;
-        if (queryWorkspaceId) {
-          socket.join(`workspace:${queryWorkspaceId}`);
-          logger.info(
-            `[Socket] Admin ${user.id} joined workspace:${queryWorkspaceId}`
-          );
-        }
+        logger.warn(
+          `[Socket] User ${user?.id} (${user?.role}) connected without workspaceId`
+        );
       }
 
       socket.on("join-workspace", (wId: string) => {

@@ -63,12 +63,32 @@ export class RoomRepository
     );
   }
 
-  async getRoomParticipants(roomId: string): Promise<{ _id: string; username: string; email: string }[]> {
-    const room = await this.model.findById(roomId).populate<{ allowedUsers: { _id: string; username: string; email: string }[] }>(
-      "allowedUsers",
-      "username email"
-    );
-    return room?.allowedUsers ?? [];
+  async getRoomParticipants(
+    roomId: string,
+    page: number = 1,
+    limit: number = 10,
+    search?: string
+  ): Promise<{ participants: { _id: string; username: string; email: string; role: string; status: boolean }[]; total: number }> {
+    const room = await this.model.findById(roomId).populate<{
+      allowedUsers: { _id: string; username: string; email: string; role: string; status: boolean }[];
+    }>("allowedUsers", "username email role status");
+
+    let users = room?.allowedUsers ?? [];
+
+    if (search) {
+      const lower = search.toLowerCase();
+      users = users.filter(
+        (u) =>
+          u.username.toLowerCase().includes(lower) ||
+          u.email.toLowerCase().includes(lower)
+      );
+    }
+
+    const total = users.length;
+    const skip = (page - 1) * limit;
+    const participants = users.slice(skip, skip + limit);
+
+    return { participants, total };
   }
 
   async removeRoomUser(roomId: string, userId: string): Promise<void> {

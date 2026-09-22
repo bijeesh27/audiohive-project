@@ -40,8 +40,13 @@ export const allocateRoomUsers = (roomId: string, userIds: string[]) => {
   return axiosInstance.post(API_ENDPOINTS.ROOM.ALLOCATE(roomId), { userIds });
 };
 
-export const getRoomParticipants = (roomId: string) => {
-  return axiosInstance.get(API_ENDPOINTS.ROOM.GET_PARTICIPANTS(roomId));
+export const getRoomParticipants = (
+  roomId: string,
+  params?: { page?: number; limit?: number; search?: string }
+) => {
+  return axiosInstance.get(API_ENDPOINTS.ROOM.GET_PARTICIPANTS(roomId), {
+    params,
+  });
 };
 
 export const removeRoomUser = (roomId: string, userId: string) => {

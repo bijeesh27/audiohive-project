@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getRooms, deleteRoom, updateRoom } from "../../services/roomServices";
 import RoomModal from "../../components/workspaceAdmin/RoomModal";
 import RoomAccessModal from "../../components/workspaceAdmin/RoomAccessModal";
-import RoomParticipantsModal from "../../components/workspaceAdmin/RoomParticipantsModal";
+
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
@@ -38,8 +38,6 @@ const Rooms = () => {
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [accessRoom, setAccessRoom] = useState<Room | undefined>(undefined);
 
-  const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
-  const [participantsRoom, setParticipantsRoom] = useState<Room | undefined>(undefined);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -98,25 +96,25 @@ const Rooms = () => {
     }
   };
 
-  const handleEditClick = (room: Room) => {
-    setEditingRoom(room);
-    setIsRoomModalOpen(true);
-  };
+  // const handleEditClick = (room: Room) => {
+  //   setEditingRoom(room);
+  //   setIsRoomModalOpen(true);
+  // };
 
   const handleCreateClick = () => {
     setEditingRoom(undefined);
     setIsRoomModalOpen(true);
   };
 
-  const handleAccessClick = (room: Room) => {
-    setAccessRoom(room);
-    setIsAccessModalOpen(true);
-  };
+  // const handleAccessClick = (room: Room) => {
+  //   setAccessRoom(room);
+  //   setIsAccessModalOpen(true);
+  // };
 
-  const handleParticipantsClick = (room: Room) => {
-    setParticipantsRoom(room);
-    setIsParticipantsModalOpen(true);
-  };
+  // const handleParticipantsClick = (room: Room) => {
+  //   setParticipantsRoom(room);
+  //   setIsParticipantsModalOpen(true);
+  // };
 
   const columns: Column<Room>[] = [
     {
@@ -221,12 +219,6 @@ const Rooms = () => {
         initialAllowedUsers={accessRoom?.allowedUsers || []}
       />
 
-      <RoomParticipantsModal
-        isOpen={isParticipantsModalOpen}
-        onClose={() => setIsParticipantsModalOpen(false)}
-        roomId={participantsRoom?._id || ""}
-        roomName={participantsRoom?.name || ""}
-      />
 
       <Table
         columns={columns}

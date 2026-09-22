@@ -1,6 +1,6 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase.js";
 import { IAnnouncementRepository } from "../../domain/IAnnouncementRepository.js";
-import { announcementQueue } from "../../../../config/announcementQueue.js";
+import { socketService } from "../../../../socket/socketService.js";
 import { SOCKET_EVENTS } from "../../../../socket/socketEvents.js";
 
 export class DeleteAnnouncementUseCase
@@ -13,10 +13,12 @@ export class DeleteAnnouncementUseCase
   async execute(input: { id: string; workspaceId: string }): Promise<void> {
     await this.announcementRepository.deleteAnnouncement(input.id);
 
-    await announcementQueue.add("delete-announcement", {
-      event: SOCKET_EVENTS.DELETE_ANNOUNCEMENT,
-      announcementId: input.id,
-      workspaceId: input.workspaceId,
-    });
+    // Emit directly — guaranteed to fire as long as DB delete succeeds
+    socketService.emitToWorkspace(
+      input.workspaceId,
+      SOCKET_EVENTS.DELETE_ANNOUNCEMENT,
+      { announcementId: input.id }
+    );
   }
 }
+

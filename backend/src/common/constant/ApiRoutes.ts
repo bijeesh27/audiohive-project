@@ -31,6 +31,7 @@ export const API_ROUTES = {
     GET_USERS: "/get-users",
     INVITE_USER: "/invite-user",
     DASHBOARD_STATS: "/dashboard-stats",
+    PROFILE: "/profile",
   },
 
   MEMBER: {},

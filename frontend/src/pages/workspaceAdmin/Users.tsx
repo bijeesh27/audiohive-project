@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { worspaceAdminGetUsers, updateUser } from "../../services/authServices";
+import { worspaceAdminGetUsers, updateWorkspaceUser } from "../../services/authServices";
 import InviteUserModal from "../../components/workspaceAdmin/InviteUserModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
-import { getActiveuserCount } from "../../services/workspaceAdminServices";
 import {ShieldBan , ShieldCheck} from "lucide-react"
 import ActionButton from "../../components/common/ActionButton";
 
@@ -72,7 +71,7 @@ const Users = () => {
   const handleConfirmStatusChange = async () => {
     setUpdatingUserId(confirmModal.userId);
     try {
-      await updateUser(confirmModal.userId, { status: confirmModal.newStatus });
+      await updateWorkspaceUser(confirmModal.userId, { status: confirmModal.newStatus });
       setUsers((prev) =>
         prev.map((u) => (u._id === confirmModal.userId ? { ...u, status: confirmModal.newStatus } : u))
       );

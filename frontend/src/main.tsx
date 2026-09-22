@@ -4,6 +4,7 @@ import "./index.css";
 import App from "./App.tsx";
 import AuthContextProvider from "./context/AuthContext.tsx";
 import SocketContextProvider from "./context/SocketContext.tsx";
+import AnnouncementContextProvider from "./context/AnnouncementContext.tsx";
 import ErrorBoundary from "./components/common/ErrorBoundary.tsx";
 
 createRoot(document.getElementById("root")!).render(
@@ -11,7 +12,9 @@ createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <AuthContextProvider>
         <SocketContextProvider>
-          <App />
+          <AnnouncementContextProvider>
+            <App />
+          </AnnouncementContextProvider>
         </SocketContextProvider>
       </AuthContextProvider>
     </ErrorBoundary>

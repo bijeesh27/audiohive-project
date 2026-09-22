@@ -19,7 +19,7 @@ const sendUserInvitationUseCase = new SendUserInvitationUseCase(workspaceReposit
 const getWorkspaceDashboardStatsUseCase = new GetWorkspaceDashboardStatsUseCase(userRepository);
 const getActiveUserUseCase=new GetActiveUserUseCase(userRepository)
 
-const controller = new WorkspaceAdminController(getAllUserUseCase, sendUserInvitationUseCase, getWorkspaceDashboardStatsUseCase, workspaceRepository,getActiveUserUseCase);
+const controller = new WorkspaceAdminController(getAllUserUseCase, sendUserInvitationUseCase, getWorkspaceDashboardStatsUseCase, workspaceRepository, getActiveUserUseCase, userRepository);
 
 router.get(
   API_ROUTES.WORKSPACE_ADMIN.GET_USERS,
@@ -41,6 +41,21 @@ router.get(
   roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
   controller.getDashboardStats.bind(controller),
 );
-router.get('/activeusers/:workspaceId',controller.getActiveUsers.bind(controller))
+
+router.get(
+  API_ROUTES.WORKSPACE_ADMIN.PROFILE,
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  controller.getProfile.bind(controller),
+);
+
+router.patch(
+  '/users/:id',
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  controller.updateUser.bind(controller),
+);
+
+router.get('/activeusers/:workspaceId', controller.getActiveUsers.bind(controller))
 
 export default router;

@@ -19,7 +19,7 @@ export class RoomController {
     private readonly allocateRoomUsersUseCase: IuseCase<AllocateRoomUsersDTO, void>,
     private readonly workspaceRepository: IworkspaceRepository,
     private readonly userRepository: IuserRepository,
-    private readonly getRoomParticipantsUseCase: IuseCase<string, { _id: string; username: string; email: string }[]>,
+    private readonly getRoomParticipantsUseCase: IuseCase<{ roomId: string; page?: number; limit?: number; search?: string }, { participants: { _id: string; username: string; email: string; role: string; status: boolean }[]; total: number }>,
     private readonly removeRoomUserUseCase: IuseCase<RemoveRoomUserDTO, void>
   ) {}
 
@@ -135,8 +135,14 @@ export class RoomController {
   getRoomParticipants = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const roomId = req.params.id as string;
-      const participants = await this.getRoomParticipantsUseCase.execute(roomId);
-      return ApiResposne.success(res, "Participants fetched", participants);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string | undefined;
+
+      const { participants, total } = await this.getRoomParticipantsUseCase.execute({ roomId, page, limit, search });
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+
+      return ApiResposne.success(res, "Participants fetched", { users: participants, totalPages });
     } catch (error) {
       next(error);
     }

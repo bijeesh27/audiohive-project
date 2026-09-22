@@ -4,6 +4,7 @@ import { getRoom, getRoomParticipants } from "../../services/roomServices";
 import { Globe, Lock, ArrowLeft, DoorOpen, ShieldOff, Users, Wifi } from "lucide-react";
 import { API_ROUTES } from "../../constants/Api_Routes";
 import { useSocket } from "../../context/SocketContext";
+import { RoomDocuments } from "../workspaceAdmin/RoomDocuments";
 
 interface Room {
   _id: string;
@@ -58,7 +59,7 @@ const RoomDetail = () => {
     setParticipantsLoading(true);
     getRoomParticipants(id)
       .then((res) => {
-        setParticipants(res.data.data || []);
+        setParticipants(res.data.data?.participants || []);
       })
       .catch(() => {
       })
@@ -232,6 +233,7 @@ const RoomDetail = () => {
             : "This is a private room — only invited members can join."}
         </p>
       </div>
+      <RoomDocuments roomId={room._id} />
 
       {/* Online Now — real-time presence */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
