@@ -16,7 +16,8 @@ export class WorkspaceAdminController {
     private readonly sendUserInvitationUseCase: IuseCase<SendUserInvitationDTO, void>,
     private readonly getWorkspaceDashboardStatsUseCase: IuseCase<string, { totalRooms: number; totalUsers: number }>,
     private readonly workspaceRepository: IworkspaceRepository,
-    private readonly getActiveUserUseCase:IuseCase<any,any>
+    private readonly getActiveUserUseCase:IuseCase<any,any>,
+    private readonly userRepository: { updateUser(userId: string, data: any): Promise<IuserDocument> }
   ) {}
 
   getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -90,4 +91,32 @@ export class WorkspaceAdminController {
       next(error)
     }
   }
+
+  getProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userEmail = req.user?.userEmail;
+      const workspace = userEmail
+        ? await this.workspaceRepository.findByAdminEmail(userEmail)
+        : null;
+      if (!workspace) {
+        return res.status(404).json({ message: MESSAGES.ERRORS.WORKSPACE_ADMIN_NOT_FOUND });
+      }
+      return ApiResposne.success(res, "Profile fetched", {
+        workspaceId: workspace._id.toString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const id = req.params.id as string;
+      const updateData = req.body;
+      const updatedUser = await this.userRepository.updateUser(id, updateData);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.USER_UPDATED, updatedUser);
+    } catch (error) {
+      next(error);
+    }
+  };
 }

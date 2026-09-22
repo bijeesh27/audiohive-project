@@ -7,6 +7,10 @@ export const getWorkspaceDashboardStats = () => {
     .then((res) => res.data);
 };
 
+export const getWorkspaceAdminProfile = () => {
+  return axiosInstance.get(API_ENDPOINTS.WORKSPACE_ADMIN.PROFILE);
+};
+
 export const getActiveuserCount=(workspaceId:string)=>{
   return axiosInstance.get(`/activeusers/${workspaceId}`)
 }

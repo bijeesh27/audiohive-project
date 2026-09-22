@@ -112,6 +112,7 @@ export const API_ENDPOINTS = {
   WORKSPACE_ADMIN: {
     GET_USERS: "/api/workspaceadmin/get-users",
     DASHBOARD_STATS: "/api/workspaceadmin/dashboard-stats",
+    PROFILE: "/api/workspaceadmin/profile",
   },
   ORGANIZATION_ADMIN: {
     GET_USERS: "/api/organization/get-users",

@@ -2,7 +2,8 @@ import { IuseCase } from "../../../../shared/interface/IuseCase.js";
 import { IAnnouncementRepository } from "../../domain/IAnnouncementRepository.js";
 import { CreateAnnouncementDTO } from "../dto/announcementDTO.js";
 import { IAnnouncementDocument } from "../../infrastructure/announcementSchema.js";
-import { announcementQueue } from "../../../../config/announcementQueue.js";
+import { socketService } from "../../../../socket/socketService.js";
+import { SOCKET_EVENTS } from "../../../../socket/socketEvents.js";
 
 export class CreateAnnouncementUseCase
   implements IuseCase<CreateAnnouncementDTO, IAnnouncementDocument>
@@ -16,13 +17,17 @@ export class CreateAnnouncementUseCase
       data as unknown as Partial<IAnnouncementDocument>
     );
 
+    // Emit directly — no queue dependency. If the DB save succeeded,
+    // the live event is guaranteed to fire immediately.
     if (data.status === "published") {
-      await announcementQueue.add("publish-announcement", {
-        announcement: saved,
-        workspaceId: data.workspaceId,
-      });
+      socketService.emitToWorkspace(
+        data.workspaceId,
+        SOCKET_EVENTS.NEW_ANNOUNCEMENT,
+        saved
+      );
     }
 
     return saved;
   }
 }
+

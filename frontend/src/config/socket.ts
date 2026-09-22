@@ -13,9 +13,10 @@ export const connectSocket = (token: string, workspaceId?: string) => {
   if (workspaceId) {
     socket.io.opts.query = { workspaceId };
   }
-  if (!socket.connected) {
-    socket.connect();
+  if (socket.connected) {
+    socket.disconnect();
   }
+  socket.connect();
 };
 
 export const disconnectSocket = () => {

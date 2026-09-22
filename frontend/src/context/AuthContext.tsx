@@ -2,21 +2,37 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axiosInstance, { setToken } from "../config/axios";
 import { ContextError } from "../Errors/error";
+import { getWorkspaceAdminProfile } from "../services/workspaceAdminServices";
 
 interface AuthContextType {
   accessToken: string | null;
   setAccessToken: React.Dispatch<React.SetStateAction<string | null>>;
   userRole: string | null;
   setUserRole: React.Dispatch<React.SetStateAction<string | null>>;
+  workspaceId: string | null;
+  setWorkspaceId: React.Dispatch<React.SetStateAction<string | null>>;
   isAuthenticated: boolean; 
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const extractWorkspaceId = (token: string | null): string | null => {
+  if (!token) return null;
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const decoded = JSON.parse(atob(payload));
+    return decoded?.workspaceId ?? null;
+  } catch {
+    return null;
+  }
+};
+
 const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
    useEffect(() => {
@@ -30,11 +46,24 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
           setToken(token);
           setAccessToken(token); 
           setUserRole(role || null);
+
+          // Fetch workspaceId for workspace admins, or extract from token payload for members
+          if (role === "workspaceadmin") {
+            try {
+              const profileRes = await getWorkspaceAdminProfile();
+              setWorkspaceId(profileRes.data?.data?.workspaceId ?? null);
+            } catch {
+              setWorkspaceId(null);
+            }
+          } else {
+            setWorkspaceId(extractWorkspaceId(token));
+          }
         }
       } catch {
         setToken(null);
         setAccessToken(null);
         setUserRole(null);
+        setWorkspaceId(null);
       } finally {
         setIsLoading(false);
       }
@@ -47,6 +76,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
         setToken(null);
         setAccessToken(null);
         setUserRole(null);
+        setWorkspaceId(null);
       }
     };
     window.addEventListener("storage", handleLogoutEvent);
@@ -61,8 +91,10 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
         accessToken, 
         setAccessToken, 
         userRole, 
-        setUserRole, 
-        isAuthenticated ,
+        setUserRole,
+        workspaceId,
+        setWorkspaceId,
+        isAuthenticated,
         isLoading
       }}
     >

@@ -94,3 +94,10 @@ export const updateUser = (userId: string, data: Partial<any>) => {
     .patch(API_ENDPOINTS.AUTH.UPDATE_USER(userId), data)
     .then((res) => res.data);
 };
+
+// Used by workspace admin to block/unblock users (dedicated workspace-admin route)
+export const updateWorkspaceUser = (userId: string, data: Partial<any>) => {
+  return axiosInstance
+    .patch(`/api/workspaceadmin/users/${userId}`, data)
+    .then((res) => res.data);
+};

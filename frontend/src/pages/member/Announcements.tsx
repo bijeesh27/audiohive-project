@@ -37,7 +37,8 @@ export default function MemberAnnouncements() {
     }
   })();
 
-  const isRead = (a: Announcement) => a.readBy?.includes(userId);
+  const isRead = (a: Announcement) =>
+    a.readBy?.includes(userId) || a.readBy?.includes("__read__");
 
   const pinned = announcements.filter((a) => a.isPinned && a.status === "published");
   const rest = announcements.filter((a) => !a.isPinned && a.status === "published");

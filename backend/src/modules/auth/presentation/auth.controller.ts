@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDocument, UserModel } from "../../../shared/User.utils/userSchema.ts";
 import jwt from "jsonwebtoken";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
@@ -78,12 +78,14 @@ export class AuthController {
     try {
       const user = await this.loginUserUseCase.execute(req.body);
       const userRole = user?.role;
+      const workspaceId = user?.workspaceId?.toString() ?? undefined;
       const accessToken = jwt.sign(
         {
           id: user._id,
           username: user.username,
           userEmail: user.email,
           role: userRole,
+          workspaceId,
         },
         process.env.JWT_SECRET!,
         { expiresIn: "15m" },
@@ -94,6 +96,7 @@ export class AuthController {
           username: user.username,
           userEmail: user.email,
           role: userRole,
+          workspaceId,
         },
         process.env.JWT_REFRESH_SECRET!,
         { expiresIn: "7d" },
@@ -168,8 +171,22 @@ export class AuthController {
         throw new InvalidRefreshToken();
       }
 
+      let workspaceId = decoded.workspaceId;
+      if (!workspaceId && decoded.id) {
+        const user = await UserModel.findById(decoded.id);
+        if (user?.workspaceId) {
+          workspaceId = user.workspaceId.toString();
+        }
+      }
+
       const newAccessToken = jwt.sign(
-        { id: decoded.id, username: decoded.username, userEmail: decoded.userEmail, role: decoded.role },
+        {
+          id: decoded.id,
+          username: decoded.username,
+          userEmail: decoded.userEmail,
+          role: decoded.role,
+          workspaceId,
+        },
         process.env.JWT_SECRET!,
         { expiresIn: "15m" },
       );

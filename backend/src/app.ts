@@ -11,14 +11,17 @@ import workspaceRouter from './modules/workspace/presentation/workspace.route.ts
 import organizationRouter from './modules/organization/presentation/organization.route.ts'
 import roomRouter from './modules/room/presentation/room.route.ts'
 import announcementRouter from './modules/announcement/presentation/announcement.route.ts'
+import documentRouter from './modules/document/presentation/documentRoutes.ts'
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from 'cors'
 import cookieParser from "cookie-parser";
 import { morganMiddleware } from "./middleware/morganMiddleware.ts";
 import logger from "./shared/utils/logger.ts";
 import { socketService } from "./socket/socketService.ts";
+import path from "path";
 export function connectApp() {
   const app = express();
+   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
   const httpServer = createServer(app);
   app.use(morganMiddleware)
 
@@ -38,6 +41,7 @@ export function connectApp() {
   app.use('/api/organization',organizationRouter)
   app.use('/api/room', roomRouter)
   app.use('/api/announcement', announcementRouter)
+  app.use('/api/rooms',documentRouter)
 
   app.use(globelErrorHandler);
 

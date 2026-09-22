@@ -44,4 +44,9 @@ export class UserRepository implements IuserRepository {
   async getActiveUsers(workspaceId: string): Promise<number> {
     return await UserModel.countDocuments({ status: true, workspaceId });
   }
+
+  async updateUser(userId: string, data: Partial<IuserDocument>): Promise<IuserDocument> {
+    const updated = await UserModel.findByIdAndUpdate(userId, { $set: data }, { new: true }).select("-password");
+    return updated as IuserDocument;
+  }
 }
