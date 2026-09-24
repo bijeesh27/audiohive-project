@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getUsers, updateUser } from "../../services/authServices";
-import Table, {  } from "../../components/common/Table";
+import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
+import ActionButton from "../../components/common/ActionButton";
+import { ShieldBan, ShieldCheck } from "lucide-react";
 interface User {
   _id: string;
   username: string;
@@ -18,40 +20,46 @@ const Users = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const limit = 5;
 
   const [confirmUser, setConfirmUser] = useState<User | null>(null);
   const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
+  const fetchUsers = useCallback(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
-    const timer = setTimeout(() => {
-      getUsers(page, limit, search)
-        .then((res) => {
-          if (!cancelled) {
-            setUsers(res.data.users);
-            setTotalPages(Math.ceil(res.data.total / limit));
-          }
-        })
-        .catch((err) => {
-          if (!cancelled) setError(err?.response?.data?.message || "Failed to load users");
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    }, 400);
+    getUsers(page, limit, debouncedSearch)
+      .then((res) => {
+        if (!cancelled) {
+          setUsers(res.data.users);
+          setTotalPages(Math.ceil(res.data.total / limit));
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err?.response?.data?.message || "Failed to load users");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+      
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [page, search]);
+  }, [page, limit, debouncedSearch]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage(1);
+    const cleanup = fetchUsers();
+    return cleanup;
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const handleToggleStatus = async (user: User) => {
@@ -109,17 +117,18 @@ const Users = () => {
     {
       header: "Actions",
       render: (user) => (
-        <button
-          type="button"
-          onClick={() => setConfirmUser(user)}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-            user.status
-              ? "bg-red-50 text-red-600 hover:bg-red-100"
-              : "bg-green-50 text-green-600 hover:bg-green-100"
-          }`}
-        >
-          {user.status ? "Block" : "Unblock"}
-        </button>
+        <div className="flex items-center gap-2">
+          <ActionButton
+            icon={user.status ? ShieldBan : ShieldCheck}
+            label={user.status ? "Block" : "Unblock"}
+            onClick={() => setConfirmUser(user)}
+            colorClasses={
+              user.status
+                ? "bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-300"
+                : "bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-300"
+            }
+          />
+        </div>
       ),
     },
   ];

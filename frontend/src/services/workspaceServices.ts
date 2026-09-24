@@ -74,3 +74,7 @@ export const getWorkspaceUsers = (workspaceId: string, page: number = 1, limit: 
   }
   return axiosInstance.get(url).then((res) => res.data);
 };
+
+export const removeWorkspaceUser = (workspaceId: string, userId: string) => {
+  return axiosInstance.delete(`/api/workspace/${workspaceId}/users/${userId}`).then((res) => res.data);
+};

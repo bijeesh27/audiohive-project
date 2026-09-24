@@ -4,7 +4,7 @@ import InviteUserModal from "../../components/workspaceAdmin/InviteUserModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
-import {ShieldBan , ShieldCheck} from "lucide-react"
+import {ShieldBan , ShieldCheck, UserMinus} from "lucide-react"
 import ActionButton from "../../components/common/ActionButton";
 
 interface User {
@@ -28,8 +28,9 @@ const Users = () => {
     isOpen: boolean;
     userId: string;
     username: string;
-    newStatus: boolean;
-  }>({ isOpen: false, userId: "", username: "", newStatus: false });
+    action: "status" | "remove";
+    newStatus?: boolean;
+  }>({ isOpen: false, userId: "", username: "", action: "status" });
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   
   const limit = 5;
@@ -68,17 +69,26 @@ const Users = () => {
     setPage(1);
   }, [search]);
 
-  const handleConfirmStatusChange = async () => {
+  const handleConfirmAction = async () => {
     setUpdatingUserId(confirmModal.userId);
     try {
-      await updateWorkspaceUser(confirmModal.userId, { status: confirmModal.newStatus });
-      setUsers((prev) =>
-        prev.map((u) => (u._id === confirmModal.userId ? { ...u, status: confirmModal.newStatus } : u))
-      );
-      setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false });
+      if (confirmModal.action === "status") {
+        await updateWorkspaceUser(confirmModal.userId, { status: confirmModal.newStatus });
+        setUsers((prev) =>
+          prev.map((u) => (u._id === confirmModal.userId ? { ...u, status: confirmModal.newStatus! } : u))
+        );
+      } else if (confirmModal.action === "remove") {
+        await updateWorkspaceUser(confirmModal.userId, { workspaceId: null });
+        setUsers((prev) => prev.filter((u) => u._id !== confirmModal.userId));
+        
+        if (users.length === 1 && page > 1) {
+          setPage((p) => Math.max(1, p - 1));
+        }
+      }
+      setConfirmModal({ isOpen: false, userId: "", username: "", action: "status" });
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to update user status");
-      setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false });
+      setError(err?.response?.data?.message || `Failed to ${confirmModal.action === "remove" ? "remove" : "update"} user`);
+      setConfirmModal({ isOpen: false, userId: "", username: "", action: "status" });
     } finally {
       setUpdatingUserId(null);
     }
@@ -124,15 +134,16 @@ const Users = () => {
       header: "Actions",
       render: (user) => (
 
-        <div>
+        <div className="flex items-center gap-2">
           <ActionButton
               icon={user.status === true ? ShieldBan : ShieldCheck}
-              label={user.status === true ? "Block Room" : "Unblock Room"}
+              label={user.status === true ? "Block User" : "Unblock User"}
               onClick={() =>
             setConfirmModal({
               isOpen: true,
               userId: user._id,
               username: user.username,
+              action: "status",
               newStatus: !user.status,
             })
           }
@@ -143,7 +154,19 @@ const Users = () => {
               }
               
             />
-        
+            <ActionButton
+              icon={UserMinus}
+              label="Remove User"
+              onClick={() =>
+                setConfirmModal({
+                  isOpen: true,
+                  userId: user._id,
+                  username: user.username,
+                  action: "remove",
+                })
+              }
+              colorClasses="bg-red-50 text-red-700 hover:bg-red-100 focus:ring-red-300"
+            />
         </div>
       ),
     },
@@ -199,17 +222,31 @@ const Users = () => {
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        title={confirmModal.newStatus ? "Unblock user?" : "Block user?"}
+        title={
+          confirmModal.action === "remove"
+            ? "Remove user?"
+            : confirmModal.newStatus
+            ? "Unblock user?"
+            : "Block user?"
+        }
         message={
-          confirmModal.newStatus
+          confirmModal.action === "remove"
+            ? `${confirmModal.username} will be removed from the workspace completely.`
+            : confirmModal.newStatus
             ? `${confirmModal.username} will regain access to the workspace.`
             : `${confirmModal.username} loses access immediately.`
         }
-        confirmLabel={confirmModal.newStatus ? "Unblock" : "Block"}
-        onConfirm={handleConfirmStatusChange}
-        onCancel={() => setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false })}
+        confirmLabel={
+          confirmModal.action === "remove"
+            ? "Remove"
+            : confirmModal.newStatus
+            ? "Unblock"
+            : "Block"
+        }
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmModal({ isOpen: false, userId: "", username: "", action: "status" })}
         isLoading={updatingUserId === confirmModal.userId}
-        isDanger={!confirmModal.newStatus}
+        isDanger={confirmModal.action === "remove" || !confirmModal.newStatus}
       />
     </div>
   );

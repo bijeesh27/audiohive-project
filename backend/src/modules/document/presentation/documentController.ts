@@ -27,7 +27,7 @@ export const uploadDocument = async (req: Request, res: Response) => {
     await newDocument.populate("uploaderId", "username email");
 
     // Broadcast the new document to everyone in the room
-    socketService.getIO().to(roomId).emit("room:new-document", newDocument);
+    socketService.getIO().to(`room:${roomId}`).emit("room:new-document", newDocument);
 
     res.status(201).json({ success: true, data: newDocument });
   } catch (error) {
@@ -67,7 +67,7 @@ export const deleteDocument = async (req: Request, res: Response) => {
 
     await DocumentModel.deleteOne({ _id: documentId });
 
-    socketService.getIO().to(roomId).emit("room:delete-document", documentId);
+    socketService.getIO().to(`room:${roomId}`).emit("room:delete-document", documentId);
 
     res.status(200).json({ success: true, message: "Document deleted" });
   } catch (error) {

@@ -77,7 +77,7 @@ const CreateOrganization = () => {
     try {
       await createOrganization(organizationData);
 
-      navigate("/invitation-sent", {
+      navigate("/choose-plan", {
         state: organizationData,
       });
     } catch (err: unknown) {

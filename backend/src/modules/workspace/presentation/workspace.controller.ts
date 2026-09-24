@@ -29,6 +29,10 @@ export class WorkspaceController {
     private readonly getWorkspaceUsersUseCase: IuseCase<
       { workspaceId: string; page: number; limit: number; search?: string },
       { users: IuserDocument[]; total: number } | null
+    >,
+    private readonly removeWorkspaceUserUseCase: IuseCase<
+      { workspaceId: string; userId: string },
+      IuserDocument
     >
   ) {}
 
@@ -138,6 +142,18 @@ export class WorkspaceController {
 
       const data = await this.getWorkspaceUsersUseCase.execute({ workspaceId, page, limit, search });
       return ApiResposne.success(res, "Users fetched successfully", data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async removeWorkspaceUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.params.id as string;
+      const userId = req.params.userId as string;
+
+      const data = await this.removeWorkspaceUserUseCase.execute({ workspaceId, userId });
+      return ApiResposne.success(res, "User removed from workspace successfully", data);
     } catch (error) {
       next(error);
     }

@@ -1,16 +1,19 @@
-import  { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { subscriptionService } from '../services/subscriptionServices';
 import type { SubscriptionDTO } from '../services/subscriptionServices';
 import { Check } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../config/axios';
 
-const PricingPage = () => {
+const ChoosePlanPage = () => {
   const [plans, setPlans] = useState<SubscriptionDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const organizationData = location.state;
+  const ownerEmail = organizationData?.ownerEmail || "";
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -29,14 +32,21 @@ const PricingPage = () => {
   const handleChoosePlan = async (plan: SubscriptionDTO) => {
     if (plan.price === 0) {
       // Free plan selected
-      navigate('/invitation-sent', { state: location.state });
+      try {
+        setSubscribingId(plan._id);
+        await axiosInstance.post("/api/organization/send-invitation", { ownerEmail });
+        navigate('/invitation-sent', { state: location.state });
+      } catch (error) {
+        console.error("Failed to send free plan invitation", error);
+        setSubscribingId(null);
+      }
     } else {
       // Priced plan selected
       try {
         setSubscribingId(plan._id);
         const response = await axiosInstance.post(
           "/api/subscription/create-checkout-session",
-          { planId: plan._id }
+          { planId: plan._id, ownerEmail }
         );
         window.location.href = response.data.url;
       } catch (error) {
@@ -62,19 +72,13 @@ const PricingPage = () => {
   return (
     <div className="min-h-screen bg-[#F7F8FC] py-24 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-
         {/* Header */}
         <div className="max-w-2xl mx-auto text-center mb-16">
-         
-          <h2 className="mt-6 text-4xl sm:text-5xl font-extrabold text-[#1A1B25] leading-tight tracking-tight">
-            A plan for every
-            <br />
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              size of workspace
-            </span>
+          <h2 className="mt-6 text-3xl sm:text-4xl font-extrabold text-[#1A1B25] leading-tight tracking-tight">
+            Choose Your <span className="text-indigo-600">Plan</span>
           </h2>
-          <p className="mt-5 text-lg text-gray-500">
-            Scale users and rooms as your team grows. Cancel anytime.
+          <p className="mt-4 text-lg text-gray-500">
+            Select the subscription plan that best fits your organization's needs.
           </p>
         </div>
 
@@ -122,7 +126,7 @@ const PricingPage = () => {
                   onClick={() => handleChoosePlan(plan)}
                   className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors disabled:opacity-50"
                 >
-                  {subscribingId === plan._id ? "Processing..." : plan.price === 0 ? "Get Started" : "Choose Plan"}
+                  {subscribingId === plan._id ? "Processing..." : "Select Plan"}
                 </button>
               </div>
             </div>
@@ -133,4 +137,4 @@ const PricingPage = () => {
   );
 };
 
-export default PricingPage;
+export default ChoosePlanPage;

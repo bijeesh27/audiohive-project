@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAnnouncements } from "../../hooks/useAnnouncements";
 import type { Announcement } from "../../hooks/useAnnouncements";
+import ActionButton from "../../components/common/ActionButton";
 import {
   createAnnouncement,
   updateAnnouncement,
@@ -199,27 +200,24 @@ export default function AdminAnnouncements() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
+                    <ActionButton
+                      icon={Pencil}
+                      label="Edit"
                       onClick={() => openEdit(a)}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Edit"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
+                      colorClasses="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                    />
+                    <ActionButton
+                      icon={a.isPinned ? PinOff : Pin}
+                      label={a.isPinned ? "Unpin" : "Pin"}
                       onClick={() => handlePin(a._id, a.isPinned)}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title={a.isPinned ? "Unpin" : "Pin"}
-                    >
-                      {a.isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                    </button>
-                    <button
+                      colorClasses="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                    />
+                    <ActionButton
+                      icon={Trash2}
+                      label="Delete"
                       onClick={() => setDeleteConfirm(a._id)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      colorClasses="text-gray-400 hover:text-red-600 hover:bg-red-50"
+                    />
                   </div>
                 </div>
               </div>

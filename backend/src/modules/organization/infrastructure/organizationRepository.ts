@@ -56,6 +56,10 @@ export class OrganizationRepository extends BaseRepository<IorganizationDocument
        return await InvitationModel.findOne({ token })
    }
 
+   async findInvitationByEmail(ownerEmail: string): Promise<ICreateOrganizationInvitation | null> {
+       return await InvitationModel.findOne({ ownerEmail })
+   }
+
    async deleteInvitation(token: string): Promise<void> {
        await InvitationModel.deleteOne({ token })
    }

@@ -12,6 +12,9 @@ import CreateWorkspace from "../pages/CreateWorkspace";
 import PendingApproval from "../pages/PendingApproval";
 import CreateOrganization from "../pages/CreateOrganization";
 import InvitationSent from "../pages/InvitationSent";
+import ChoosePlanPage from "../pages/ChoosePlanPage";
+import SubscriptionSuccess from "../pages/SubscriptionSuccess";
+import SubscriptionCancel from "../pages/SubscriptionCancel";
 
 const AuthRoutes = () => {
   return (
@@ -30,6 +33,9 @@ const AuthRoutes = () => {
           <Route path={API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION} element={<CreateOrganization/>}/>
           <Route path="/workspace/register-admin" element={<RegisterPage />} />
           <Route path="/invitation-sent" element={<InvitationSent/>}/>
+          <Route path="/choose-plan" element={<ChoosePlanPage />} />
+          <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+          <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
         </Route>
       </Routes>
     </div>

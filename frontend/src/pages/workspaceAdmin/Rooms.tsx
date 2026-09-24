@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRooms, deleteRoom, updateRoom } from "../../services/roomServices";
 import RoomModal from "../../components/workspaceAdmin/RoomModal";
@@ -30,6 +30,7 @@ const Rooms = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   
   // Modal states
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -49,32 +50,45 @@ const Rooms = () => {
   const [updatingRoomId, setUpdatingRoomId] = useState<string | null>(null);
   const limit = 5;
 
-  const fetchRooms = () => {
+  const fetchRooms = useCallback(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    getRooms(page, limit, search)
+    getRooms(page, limit, debouncedSearch)
       .then((res) => {
-        const responseData = res.data.data || res.data;
-        setRooms(responseData.rooms || []);
-        setTotalPages(Math.ceil((responseData.total || 0) / limit));
+        if (!cancelled) {
+          const responseData = res.data.data || res.data;
+          setRooms(responseData.rooms || []);
+          setTotalPages(Math.ceil((responseData.total || 0) / limit));
+        }
       })
       .catch((err) => {
-        setError(err?.response?.data?.message || "Failed to load rooms");
+        if (!cancelled) {
+          setError(err?.response?.data?.message || "Failed to load rooms");
+        }
       })
       .finally(() => {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       });
-  };
+      
+    return () => {
+      cancelled = true;
+    };
+  }, [page, limit, debouncedSearch]);
+
+  useEffect(() => {
+    const cleanup = fetchRooms();
+    return cleanup;
+  }, [fetchRooms]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchRooms();
+      setDebouncedSearch(search.trim());
+      setPage(1);
     }, 400);
     return () => clearTimeout(timer);
-  }, [page, search]);
-
-  useEffect(() => {
-    setPage(1);
   }, [search]);
 
   const handleActionConfirm = async () => {

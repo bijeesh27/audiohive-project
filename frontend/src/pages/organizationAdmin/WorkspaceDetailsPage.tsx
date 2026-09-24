@@ -6,10 +6,12 @@ import {
   inviteWorkspaceAdmin,
   blockWorkspace,
   deleteWorkspace,
-  getWorkspaceUsers
+  getWorkspaceUsers,
+  removeWorkspaceUser
 } from "../../services/workspaceServices";
 import Table from "../../components/common/Table";
-import type { Column } from "../../components/common/Table";
+import ActionButton from "../../components/common/ActionButton";
+import { Pencil, UserCheck, UserPlus, ShieldBan, ShieldCheck, Trash2, ArrowLeft, UserMinus } from "lucide-react";
 
 interface IWorkspace {
   _id: string;
@@ -212,6 +214,28 @@ const WorkspaceDetailsPage = () => {
     }
   };
 
+  // ---- Remove User ----
+  const [showRemoveUserConfirm, setShowRemoveUserConfirm] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<any>(null);
+  const [removingUser, setRemovingUser] = useState(false);
+  const [removeUserError, setRemoveUserError] = useState<string | null>(null);
+
+  const handleRemoveUser = async () => {
+    if (!workspace || !userToRemove) return;
+    setRemovingUser(true);
+    setRemoveUserError(null);
+    try {
+      await removeWorkspaceUser(workspace._id, userToRemove._id);
+      setShowRemoveUserConfirm(false);
+      setUserToRemove(null);
+      fetchUsers();
+    } catch (err: any) {
+      setRemoveUserError(err?.response?.data?.message || "Failed to remove user");
+    } finally {
+      setRemovingUser(false);
+    }
+  };
+
   // ---- Delete ----
   const handleDelete = async () => {
     if (!workspace) return;
@@ -260,9 +284,9 @@ const WorkspaceDetailsPage = () => {
         <div>
           <button
             onClick={() => navigate("/organization-owner/workspaces")}
-            className="mb-2 text-xs text-gray-400 hover:text-gray-600"
+            className="mb-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
-            ← Back to Workspaces
+            <ArrowLeft className="w-3 h-3" /> Back to Workspaces
           </button>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-base font-semibold text-gray-700">
@@ -280,34 +304,30 @@ const WorkspaceDetailsPage = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <ActionButton
+            icon={Pencil}
+            label="Edit"
             onClick={openEditModal}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
+            colorClasses="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          />
+          <ActionButton
+            icon={workspace.workspaceAdminEmail ? UserCheck : UserPlus}
+            label={workspace.workspaceAdminEmail ? "Reassign Admin" : "Assign Admin"}
             onClick={openInviteModal}
-            className="inline-flex items-center justify-center rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
-          >
-            {workspace.workspaceAdminEmail ? "Reassign Admin" : "Assign Admin"}
-          </button>
-          <button
-            type="button"
+            colorClasses="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
+          />
+          <ActionButton
+            icon={isSuspended ? ShieldCheck : ShieldBan}
+            label={isSuspended ? "Unblock" : "Block"}
             onClick={() => { setBlockError(null); setShowBlockConfirm(true); }}
-            className="inline-flex items-center justify-center rounded-md border border-yellow-300 bg-white px-3 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-50"
-          >
-            {isSuspended ? "Unblock" : "Block"}
-          </button>
-          <button
-            type="button"
+            colorClasses="border border-yellow-300 bg-white text-yellow-700 hover:bg-yellow-50"
+          />
+          <ActionButton
+            icon={Trash2}
+            label="Delete"
             onClick={() => { setDeleteError(null); setDeleteConfirmText(""); setShowDeleteConfirm(true); }}
-            className="inline-flex items-center justify-center rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-          >
-            Delete
-          </button>
+            colorClasses="border border-red-300 bg-white text-red-700 hover:bg-red-50"
+          />
         </div>
       </div>
 
@@ -367,6 +387,15 @@ const WorkspaceDetailsPage = () => {
                 <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${u.isBlocked ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
                   {u.isBlocked ? "Blocked" : "Active"}
                 </span>
+            )},
+            { header: "Action", render: (u) => (
+                <button
+                  onClick={() => { setUserToRemove(u); setShowRemoveUserConfirm(true); setRemoveUserError(null); }}
+                  className="rounded-md p-1.5 text-red-500 hover:bg-red-50 focus:outline-none"
+                  title="Remove from Workspace"
+                >
+                  <UserMinus className="w-4 h-4" />
+                </button>
             )},
           ]}
           data={users}
@@ -566,6 +595,41 @@ const WorkspaceDetailsPage = () => {
                 className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Delete Workspace"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove User Confirm */}
+      {showRemoveUserConfirm && userToRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 overflow-y-auto">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="text-lg font-semibold text-red-700">Remove User</h2>
+            <p className="mt-2 text-sm text-gray-500">
+              Are you sure you want to remove <strong>{userToRemove.username}</strong> from this workspace?
+            </p>
+
+            {removeUserError && (
+              <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{removeUserError}</div>
+            )}
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
+              <button
+                type="button"
+                onClick={() => { setShowRemoveUserConfirm(false); setUserToRemove(null); }}
+                disabled={removingUser}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveUser}
+                disabled={removingUser}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {removingUser ? "Removing..." : "Remove User"}
               </button>
             </div>
           </div>

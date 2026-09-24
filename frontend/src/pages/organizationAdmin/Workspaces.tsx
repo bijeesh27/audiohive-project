@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyWorkspaces, inviteWorkspaceAdmin, updateWorkspace } from "../../services/workspaceServices";
 import Button from "../../components/common/Button";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
+import ActionButton from "../../components/common/ActionButton";
+import { Eye } from "lucide-react";
 
 interface IWorkspace {
   _id: string;
@@ -28,6 +30,7 @@ const Workspaces = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const limit = 10;
 
   // Invite Modal State
@@ -46,36 +49,38 @@ const Workspaces = () => {
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  const fetchWorkspaces = () => {
-    setLoading(true);
-    getMyWorkspaces(page, limit, search)
-      .then((res) => {
-        setWorkspaces(res.data.workspaces);
-        setTotalPages(Math.ceil(res.data.total / limit));
-      })
-      .catch((err) => console.error("Failed to fetch workspaces:", err))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
+  const fetchWorkspaces = useCallback(() => {
     let cancelled = false;
     setLoading(true);
+    getMyWorkspaces(page, limit, debouncedSearch)
+      .then((res) => {
+        if (!cancelled) {
+          setWorkspaces(res.data.workspaces);
+          setTotalPages(Math.ceil(res.data.total / limit));
+        }
+      })
+      .catch((err) => console.error("Failed to fetch workspaces:", err))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+      
+    return () => {
+      cancelled = true;
+    };
+  }, [page, limit, debouncedSearch]);
+
+  useEffect(() => {
+    const cleanup = fetchWorkspaces();
+    return cleanup;
+  }, [fetchWorkspaces]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
-      getMyWorkspaces(page, limit, search)
-        .then((res) => {
-          if (!cancelled) {
-            setWorkspaces(res.data.workspaces);
-            setTotalPages(Math.ceil(res.data.total / limit));
-          }
-        })
-        .catch((err) => console.error("Failed to fetch workspaces:", err))
-        .finally(() => { if (!cancelled) setLoading(false); });
+      setDebouncedSearch(search.trim());
+      setPage(1);
     }, 400);
-
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [page, search]);
-
-  useEffect(() => { setPage(1); }, [search]);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const goToDetails = (workspaceId: string) => {
     navigate(`/organization-owner/getworkspace/${workspaceId}`);
@@ -228,27 +233,12 @@ const Workspaces = () => {
       header: "Actions",
       render: (ws) => (
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
+          <ActionButton
+            icon={Eye}
+            label="View"
             onClick={() => goToDetails(ws._id)}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            View
-          </button>
-          <button
-            type="button"
-            onClick={() => openEditModal(ws)}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => openInviteModal(ws)}
-            className="inline-flex items-center justify-center rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
-          >
-            {ws.workspaceAdminEmail ? "Reassign" : "Assign"}
-          </button>
+            colorClasses="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 focus:ring-indigo-300"
+          />
         </div>
       ),
     },

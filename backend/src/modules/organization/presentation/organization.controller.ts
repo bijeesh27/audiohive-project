@@ -14,7 +14,8 @@ export class OrganizationController {
         private readonly getAllOrganizationUseCase: IuseCase<{ page: number; limit: number; search?: string; sort?: string }, { organizations: IorganizationDocument[]; total: number }>,
         private readonly getMyOrganizationUseCase: IuseCase<string, IorganizationDocument>,
         private readonly getAllOrganizationUsersUseCase: IuseCase<{ ownerEmail: string; page: number; limit: number; search?: string }, { users: IuserDocument[]; total: number }>,
-        private readonly getOrgDashboardStatsUseCase: IuseCase<string, { totalWorkspaces: number; totalUsers: number }>
+        private readonly getOrgDashboardStatsUseCase: IuseCase<string, { totalWorkspaces: number; totalUsers: number }>,
+        private readonly sendOrganizationInvitationUseCase: IuseCase<string, void>
     ) {}
 
     async createOrganization(req: Request, res: Response, next: NextFunction) {
@@ -23,6 +24,19 @@ export class OrganizationController {
             return ApiResposne.success(res,MESSAGES.SUCCESS.ORGANIZATION_CREATED , organization, 201)
         } catch (error) {
             next(error)
+        }
+    }
+
+    async sendInvitation(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { ownerEmail } = req.body;
+            if (!ownerEmail) {
+                return res.status(400).json({ message: "Owner email is required" });
+            }
+            await this.sendOrganizationInvitationUseCase.execute(ownerEmail);
+            return ApiResposne.success(res, "Invitation sent successfully", null, 200);
+        } catch (error) {
+            next(error);
         }
     }
 

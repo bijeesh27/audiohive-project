@@ -1,0 +1,271 @@
+
+<style>
+#erd { padding: 8px 0; }
+#erd svg { max-width: 100%; }
+</style>
+<div id="erd"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '12px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#26215C' : '#EEEDFE',
+    primaryBorderColor: dark ? '#AFA9EC' : '#534AB7',
+    primaryTextColor: dark ? '#CECBF6' : '#26215C',
+    secondaryColor: dark ? '#04342C' : '#E1F5EE',
+    secondaryBorderColor: dark ? '#5DCAA5' : '#0F6E56',
+    tertiaryColor: dark ? '#042C53' : '#E6F1FB',
+    tertiaryBorderColor: dark ? '#85B7EB' : '#185FA5',
+  },
+});
+
+const diagram = `erDiagram
+  Workspaces {
+    ObjectId _id PK
+    string companyName
+    string slug UK
+    string status
+    ObjectId adminId FK
+    ObjectId planId FK
+    object requestPhase
+    object payment
+    object settings
+    date createdAt
+  }
+
+  Users {
+    ObjectId _id PK
+    ObjectId workspaceId FK
+    string email UK
+    string role
+    string status
+    string name
+    string passwordHash
+    array refreshTokens
+    object notificationPrefs
+    string inviteToken
+    date lastSeenAt
+  }
+
+  Plans {
+    ObjectId _id PK
+    string name
+    number price
+    string billingCycle
+    number maxUsers
+    number maxRooms
+    object features
+    boolean isPublic
+  }
+
+  Rooms {
+    ObjectId _id PK
+    ObjectId workspaceId FK
+    string name
+    string type
+    string status
+    boolean isPrivate
+    object permissions
+    array moderatorIds
+    ObjectId createdBy FK
+    number memberCount
+  }
+
+  RoomMembers {
+    ObjectId _id PK
+    ObjectId roomId FK
+    ObjectId userId FK
+    ObjectId workspaceId FK
+    string role
+    date joinedAt
+  }
+
+  Messages {
+    ObjectId _id PK
+    ObjectId roomId FK
+    ObjectId workspaceId FK
+    ObjectId senderId FK
+    string content
+    string type
+    array attachments
+    array reactions
+    ObjectId replyTo FK
+    boolean isDeleted
+    date createdAt
+  }
+
+  DirectMessages {
+    ObjectId _id PK
+    string type
+    ObjectId workspaceId FK
+    array participants
+    object lastMessage
+    object unreadCounts
+    ObjectId conversationId FK
+    ObjectId senderId FK
+    date createdAt
+  }
+
+  Meetings {
+    ObjectId _id PK
+    ObjectId workspaceId FK
+    ObjectId roomId FK
+    ObjectId hostId FK
+    string title
+    string status
+    date scheduledStart
+    date scheduledEnd
+    object options
+    string notes
+    string recordingUrl
+  }
+
+  MeetingAttendance {
+    ObjectId _id PK
+    ObjectId meetingId FK
+    ObjectId userId FK
+    ObjectId workspaceId FK
+    string status
+    date joinTime
+    date leaveTime
+  }
+
+  Whiteboards {
+    ObjectId _id PK
+    ObjectId workspaceId FK
+    ObjectId roomId FK
+    ObjectId meetingId FK
+    string title
+    ObjectId createdBy FK
+    array collaborators
+    number elementCount
+    date lastModified
+  }
+
+  WhiteboardElements {
+    ObjectId _id PK
+    ObjectId whiteboardId FK
+    string type
+    object position
+    object size
+    object style
+    string content
+    ObjectId createdBy FK
+    date updatedAt
+  }
+
+  Files {
+    ObjectId _id PK
+    ObjectId workspaceId FK
+    ObjectId roomId FK
+    ObjectId meetingId FK
+    ObjectId uploadedBy FK
+    string filename
+    string fileUrl
+    string s3Key
+    string mimeType
+    number size
+    date createdAt
+  }
+
+  Announcements {
+    ObjectId _id PK
+    ObjectId workspaceId FK
+    ObjectId roomId FK
+    ObjectId publishedBy FK
+    string title
+    string body
+    string priority
+    boolean isPinned
+    array attachments
+    array readBy
+    date createdAt
+  }
+
+  ModerationReports {
+    ObjectId _id PK
+    ObjectId workspaceId FK
+    ObjectId reporterId FK
+    ObjectId reportedUserId FK
+    ObjectId roomId FK
+    string category
+    string priority
+    string status
+    array moderationHistory
+    ObjectId assignedTo FK
+    date createdAt
+  }
+
+  Notifications {
+    ObjectId _id PK
+    ObjectId userId FK
+    ObjectId workspaceId FK
+    string type
+    string title
+    string message
+    string referenceType
+    ObjectId referenceId
+    boolean isRead
+    date createdAt
+  }
+
+  Workspaces ||--o{ Users : "has members"
+  Workspaces ||--o{ Rooms : "has rooms"
+  Workspaces ||--o{ Meetings : "has meetings"
+  Workspaces ||--o{ Announcements : "has announcements"
+  Workspaces ||--o{ Notifications : "scoped to"
+  Workspaces ||--o{ ModerationReports : "scoped to"
+  Workspaces ||--o{ Files : "owns files"
+  Workspaces ||--o{ DirectMessages : "scoped to"
+  Workspaces ||--o{ Whiteboards : "has boards"
+  Plans ||--o{ Workspaces : "assigned to"
+  Users ||--o{ Messages : "sends"
+  Users ||--o{ MeetingAttendance : "attends"
+  Users ||--o{ Notifications : "receives"
+  Users ||--o{ ModerationReports : "reports / reported"
+  Rooms ||--o{ RoomMembers : "has"
+  Rooms ||--o{ Messages : "contains"
+  Rooms ||--o{ Meetings : "hosts"
+  Rooms ||--o{ Whiteboards : "has boards"
+  Rooms ||--o{ Announcements : "scoped to"
+  Rooms ||--o{ Files : "stores"
+  Meetings ||--o{ MeetingAttendance : "tracks"
+  Whiteboards ||--o{ WhiteboardElements : "contains"
+`;
+
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+
+document.querySelectorAll('#erd svg.erDiagram .row-rect-odd path, #erd svg.erDiagram .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>

@@ -8,6 +8,7 @@ export interface ISubscriptionDocument extends Document {
   maxWorkspaces: number;
   features: string[];
   isActive: boolean;
+  stripePriceId?: string;
 }
 
 const subscriptionSchema = new Schema<ISubscriptionDocument>(
@@ -41,6 +42,10 @@ const subscriptionSchema = new Schema<ISubscriptionDocument>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    stripePriceId: {
+      type: String,
+      required: false,
     },
   },
   {
