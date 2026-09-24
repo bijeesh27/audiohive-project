@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { subscriptionService } from '../../services/subscriptionServices'
+import ActionButton from "../../components/common/ActionButton";
+import { Plus, Pencil, ShieldBan, ShieldCheck, Trash2 } from "lucide-react";
 
 interface ISubscription {
   _id: string;
@@ -166,6 +168,7 @@ const SubscriptionPlan = () => {
       setDeleting(false);
     }
   };
+  
 
   return (
     <div>
@@ -174,9 +177,9 @@ const SubscriptionPlan = () => {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
         >
-          Add Plan
+          <Plus className="w-4 h-4" /> Add Plan
         </button>
       </div>
 
@@ -201,29 +204,28 @@ const SubscriptionPlan = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <ActionButton
+                    icon={Pencil}
+                    label="Edit"
                     onClick={() => openEdit(plan)}
-                    className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
+                    colorClasses="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  />
+                  <ActionButton
+                    icon={plan.isActive ? ShieldBan : ShieldCheck}
+                    label={plan.isActive ? "Block" : "Unblock"}
                     onClick={() => setConfirmTogglePlan(plan)}
-                    className={`shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-gray-50 ${
-                      plan.isActive ? "border-red-300 text-red-700" : "border-green-300 text-green-700"
-                    }`}
-                  >
-                    {plan.isActive ? "Block" : "Unblock"}
-                  </button>
-                  <button
-                    type="button"
+                    colorClasses={
+                      plan.isActive
+                        ? "border border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                        : "border border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+                    }
+                  />
+                  <ActionButton
+                    icon={Trash2}
+                    label="Delete"
                     onClick={() => setConfirmDeletePlan(plan)}
-                    className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Delete
-                  </button>
+                    colorClasses="border border-gray-300 bg-white text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                  />
                 </div>
               </div>
 

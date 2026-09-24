@@ -21,13 +21,6 @@ export class CreateOrganizationUseCase implements IuseCase<
       token: token,
     };
     await this.oragnizationRepository.createInvitation(organizationInvitation);
-    const invitationLink = `${process.env.CLIENT_URL}${API_ROUTES.AUTH.REGISTER}?token=${token}`;
-
     await this.oragnizationRepository.createOrganization(data);
-    await emailQueue.add("send-workspace-invitation", {
-      to: data.ownerEmail,
-      companyName: data.companyName,
-      invitationLink,
-    });
   }
 }

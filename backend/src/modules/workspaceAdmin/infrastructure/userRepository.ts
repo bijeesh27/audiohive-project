@@ -46,6 +46,12 @@ export class UserRepository implements IuserRepository {
   }
 
   async updateUser(userId: string, data: Partial<IuserDocument>): Promise<IuserDocument> {
+    if (data.workspaceId === null) {
+      await RoomModel.updateMany(
+        { allowedUsers: userId },
+        { $pull: { allowedUsers: userId } }
+      );
+    }
     const updated = await UserModel.findByIdAndUpdate(userId, { $set: data }, { new: true }).select("-password");
     return updated as IuserDocument;
   }

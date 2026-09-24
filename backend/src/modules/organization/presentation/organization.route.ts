@@ -4,6 +4,7 @@ import express from 'express'
 import { OrganizationController } from './organization.controller'
 import { OrganizationRepository } from '../infrastructure/organizationRepository'
 import { CreateOrganizationUseCase } from '../application/usecases/createOrganizationUseCase'
+import { SendOrganizationInvitationUseCase } from '../application/usecases/sendOrganizationInvitationUseCase'
 import { UpdateOrganizationUseCase } from '../application/usecases/updateOrganizationUseCase'
 import { DeleteOrganizationUseCase } from '../application/usecases/deleteOrganizationUseCase'
 import { GetAllOrganizationUseCase } from '../application/usecases/getAllOrganizationUseCase'
@@ -27,6 +28,7 @@ const getAllOrganizationUseCase=new GetAllOrganizationUseCase(organizationReposi
 const getMyOrganizationUseCase=new GetMyOrganizationUseCase(organizationRepository)
 const getAllOrganizationUsersUseCase=new GetAllOrganizationUsersUseCase(organizationRepository)
 const getOrgDashboardStatsUseCase=new GetOrgDashboardStatsUseCase(organizationRepository)
+const sendOrganizationInvitationUseCase = new SendOrganizationInvitationUseCase(organizationRepository)
 
 
 
@@ -37,7 +39,8 @@ deleteOrganizationUseCase,
 getAllOrganizationUseCase,
 getMyOrganizationUseCase,
 getAllOrganizationUsersUseCase,
-getOrgDashboardStatsUseCase
+getOrgDashboardStatsUseCase,
+sendOrganizationInvitationUseCase
 )
 
 
@@ -45,6 +48,7 @@ getOrgDashboardStatsUseCase
 
 
 router.post(API_ROUTES.ORGANIZATION.CREATE_ORGANIZATION, validateRequest(createOrganizationSchema), controller.createOrganization.bind(controller))
+router.post('/send-invitation', controller.sendInvitation.bind(controller))
 router.post(API_ROUTES.ORGANIZATION.UPDATE_ORGANIZATION, validateRequest(updateOrganizationSchema), controller.updateOrganization.bind(controller))
 router.post(API_ROUTES.ORGANIZATION.DELETE_ORGANIZATION, controller.deleteOrganization.bind(controller))
 router.get(API_ROUTES.ORGANIZATION.GET_ALL_ORGANIZATIONS,controller.getAllOrganizations.bind(controller))

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getAllOrganizations, updateOrganization } from "../../services/organizationServices";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
+import ActionButton from "../../components/common/ActionButton";
+import { ShieldBan, ShieldCheck } from "lucide-react";
 
 interface IOrganization {
   _id: string;
@@ -21,49 +23,43 @@ const Organization = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const limit = 5;
 
   const [confirmToggleOrg, setConfirmToggleOrg] = useState<IOrganization | null>(null);
   const [toggling, setToggling] = useState(false);
 
-  const fetchOrganizations = () => {
-    setLoading(true);
-    getAllOrganizations(page, limit, search)
-      .then((res) => {
-        setOrganizations(res.data?.organizations || []);
-        setTotalPages(Math.ceil((res.data?.total || 0) / limit));
-      })
-      .catch((error) => console.error(error))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
+  const fetchOrganizations = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    const timer = setTimeout(() => {
-      getAllOrganizations(page, limit, search)
-        .then((res) => {
-          if (!cancelled) {
-            setOrganizations(res.data?.organizations || []);
-            setTotalPages(Math.ceil((res.data?.total || 0) / limit));
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to fetch organizations:", error);
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    }, 400);
-
+    getAllOrganizations(page, limit, debouncedSearch)
+      .then((res) => {
+        if (!cancelled) {
+          setOrganizations(res.data?.organizations || []);
+          setTotalPages(Math.ceil((res.data?.total || 0) / limit));
+        }
+      })
+      .catch((error) => console.error("Failed to fetch organizations:", error))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+      
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [page, search]);
+  }, [page, limit, debouncedSearch]);
 
   useEffect(() => {
-    setPage(1);
+    const cleanup = fetchOrganizations();
+    return cleanup;
+  }, [fetchOrganizations]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const statusStyles: Record<IOrganization["status"], string> = {
@@ -143,17 +139,18 @@ const Organization = () => {
     {
       header: "Actions",
       render: (org) => (
-        <button
-          type="button"
-          onClick={() => setConfirmToggleOrg(org)}
-          className={`inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-gray-50 ${
-            org.status === "active"
-              ? "border-red-300 text-red-700"
-              : "border-green-300 text-green-700"
-          }`}
-        >
-          {org.status === "active" ? "Block" : "Unblock"}
-        </button>
+        <div className="flex items-center gap-2">
+          <ActionButton
+            icon={org.status === "active" ? ShieldBan : ShieldCheck}
+            label={org.status === "active" ? "Block" : "Unblock"}
+            onClick={() => setConfirmToggleOrg(org)}
+            colorClasses={
+              org.status === "active"
+                ? "bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-300"
+                : "bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-300"
+            }
+          />
+        </div>
       ),
     },
   ];

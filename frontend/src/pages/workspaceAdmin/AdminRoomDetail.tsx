@@ -27,8 +27,12 @@ import {
   Trash2,
   UserCog,
   UserMinus,
+  DoorOpen,
+  Wifi,
 } from "lucide-react";
 import { updateWorkspaceUser } from "../../services/authServices";
+import { useSocket } from "../../context/SocketContext";
+import { RoomDocuments } from "./RoomDocuments";
 
 interface Room {
   _id: string;
@@ -69,7 +73,7 @@ type ConfirmState =
       username: string;
     };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 const CLOSED_CONFIRM: ConfirmState = { isOpen: false };
 
 const getErrorMessage = (err: unknown, fallback: string): string => {
@@ -166,6 +170,9 @@ const AdminRoomDetail = () => {
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
 
+  const { socket } = useSocket();
+  const [onlineUsers, setOnlineUsers] = useState<{ userId: string; username: string }[]>([]);
+
 
   const [confirmModal, setConfirmModal] = useState<ConfirmState>(CLOSED_CONFIRM);
 
@@ -260,14 +267,39 @@ const AdminRoomDetail = () => {
     }
   }, [roomId, page, debouncedSearch]);
 
-  // Bumping the request id in cleanup invalidates any in-flight request
-  // when the deps change or the component unmounts.
   useEffect(() => {
     fetchRoom();
     return () => {
       roomRequestIdRef.current++;
     };
   }, [fetchRoom]);
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    const handlePresence = (users: { userId: string; username: string }[]) => {
+      setOnlineUsers(users);
+    };
+
+    socket.on("room:presence-update", handlePresence);
+
+    const emitJoin = () => {
+      socket.emit("room:join", roomId);
+      socket.emit("room:get-presence", roomId);
+    };
+
+    if (socket.connected) {
+      emitJoin();
+    } else {
+      socket.once("connect", emitJoin);
+    }
+
+    return () => {
+      if (socket.connected) socket.emit("room:leave", roomId);
+      socket.off("room:presence-update", handlePresence);
+      socket.off("connect", emitJoin);
+    };
+  }, [roomId, socket]);
 
   useEffect(() => {
     fetchParticipants();
@@ -654,6 +686,56 @@ const AdminRoomDetail = () => {
             />
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm min-h-[200px] flex flex-col items-center justify-center text-gray-400">
+        <DoorOpen className="w-14 h-14 mb-4 text-gray-300" />
+        <p className="text-base font-medium text-gray-500">You're inside {room.name}</p>
+        <p className="text-sm mt-1">
+          {room.type === "public"
+            ? "This is a public room — all workspace members can join."
+            : "This is a private room — only invited members can join."}
+        </p>
+      </div>
+
+      <RoomDocuments roomId={room._id} />
+
+      <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+          <div className="p-2 rounded-lg bg-green-50">
+            <Wifi className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">Online Now</h2>
+            <p className="text-xs text-gray-400">
+              {onlineUsers.length} user{onlineUsers.length !== 1 ? "s" : ""} currently in this room
+            </p>
+          </div>
+        </div>
+
+        {onlineUsers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+            <Wifi className="w-7 h-7 mb-2 text-gray-300" />
+            <p className="text-sm text-gray-500">No one else is here right now</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {onlineUsers.map((u) => (
+              <li key={u.userId} className="flex items-center gap-3 px-6 py-3">
+                <div className="relative flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-green-700">
+                      {u.username.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  {/* Online dot */}
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-white" />
+                </div>
+                <p className="text-sm font-medium text-gray-900">{u.username}</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="mt-6 mb-3">

@@ -18,6 +18,8 @@ import { GetWorkspaceUseCase } from "../application/usecase/getWorkspaceUseCase"
 import { GetWorkspaceUsersUseCase } from "../application/usecase/getWorkspaceUsersUseCase";
 import { UserRepository } from "../../workspaceAdmin/infrastructure/userRepository";
 
+import { RemoveWorkspaceUserUseCase } from "../application/usecase/removeWorkspaceUserUseCase";
+
 const router = express.Router();
 
 const workspaceRepository = new WorkspaceReopsitory();
@@ -31,8 +33,9 @@ const deleteWorkspaceUseCase = new DeleteWorkspaceUseCase(workspaceRepository);
 const getAllWorkspacesUseCase = new GetAllWorkspacesUseCase(workspaceRepository);
 const getWorkspacesByOrgUseCase = new GetWorkspacesByOrgUseCase(workspaceRepository, organizationRepository);
 const sendWorkspaceInvitationUseCase = new SendWorkspaceInvitationUseCase(workspaceRepository, organizationRepository);
-const getWorkspaceUseCase=new GetWorkspaceUseCase(workspaceRepository)
+const getWorkspaceUseCase = new GetWorkspaceUseCase(workspaceRepository);
 const getWorkspaceUsersUseCase = new GetWorkspaceUsersUseCase(userRepository);
+const removeWorkspaceUserUseCase = new RemoveWorkspaceUserUseCase(userRepository);
 
 const controller = new WorkspaceController(
   createWorkspaceUseCase,
@@ -42,7 +45,8 @@ const controller = new WorkspaceController(
   getAllWorkspacesUseCase,
   getWorkspacesByOrgUseCase,
   sendWorkspaceInvitationUseCase,
-  getWorkspaceUsersUseCase
+  getWorkspaceUsersUseCase,
+  removeWorkspaceUserUseCase
 );
 
 router.post(API_ROUTES.WORKSSPACE.CREATE_WORKSPACE, authMiddleware, validateRequest(createWorkspaceSchema), controller.createWorkspace.bind(controller));
@@ -51,7 +55,8 @@ router.delete(API_ROUTES.WORKSSPACE.DELETE_WORKSPACE, controller.deleteWorkspace
 router.get(API_ROUTES.WORKSSPACE.GET_ALL_WORKSPACES, controller.getAllWorkspaces.bind(controller));
 router.get(API_ROUTES.WORKSSPACE.GET_MY_WORKSPACES, authMiddleware, controller.getMyWorkspaces.bind(controller));
 router.post(API_ROUTES.WORKSSPACE.INVITE, authMiddleware, validateRequest(inviteWorkspaceAdminSchema), controller.inviteWorkspaceAdmin.bind(controller));
-router.get('/getworkspace/:id',controller.getWorkspace.bind(controller));
+router.get('/getworkspace/:id', controller.getWorkspace.bind(controller));
 router.get('/:id/users', authMiddleware, controller.getWorkspaceUsers.bind(controller));
+router.delete('/:id/users/:userId', authMiddleware, controller.removeWorkspaceUser.bind(controller));
 
 export default router;

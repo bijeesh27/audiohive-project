@@ -10,6 +10,7 @@ export interface IorganizaionRepository{
     getAllorganizations(page: number, limit: number,searchQuery?:string, sortOrder?: string):Promise<{ organizations: IorganizationDocument[], total: number }>
     createInvitation(data:ICreateOrganizationInvitation):Promise<void>
     findInvitationByToken(token: string): Promise<ICreateOrganizationInvitation | null>
+    findInvitationByEmail(email: string): Promise<ICreateOrganizationInvitation | null>
     deleteInvitation(token: string): Promise<void>
     findByOwnerEmail(ownerEmail:string):Promise<IorganizationDocument | null>
     getUsersByOrganization(
