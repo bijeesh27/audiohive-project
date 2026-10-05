@@ -1,6 +1,7 @@
 import { BaseRepository } from "../../../shared/common/baseRepository";
 import { IroomRepository } from "../domain/IroomRepository";
 import { IRoomDocument, RoomModel } from "./roomSchema";
+import { FilterQuery } from "mongoose";
 
 export class RoomRepository
   extends BaseRepository<IRoomDocument>
@@ -35,7 +36,7 @@ export class RoomRepository
 
   async getAllRooms(workspaceId: string, page: number, limit: number, search?: string, userId?: string, role?: string): Promise<{ rooms: IRoomDocument[], total: number }> {
     const skip = (page - 1) * limit;
-    const query: any = { workspaceId };
+    const query: FilterQuery<IRoomDocument> = { workspaceId };
     
     if (search) {
       query.name = { $regex: search, $options: "i" };

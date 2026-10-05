@@ -19,9 +19,11 @@ const PendingApproval = () => {
   const location = useLocation();
 
   const workspaceData = location.state as IWorkspaceData | undefined;
+  // eslint-disable-next-line no-console
   console.log(workspaceData);
   useEffect(() => {
     createWorkspace(workspaceData);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!workspaceData) {

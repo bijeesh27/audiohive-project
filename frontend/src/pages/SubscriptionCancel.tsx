@@ -10,7 +10,8 @@ const SubscriptionCancel = () => {
         <XCircle className="h-16 w-16 text-yellow-500 mx-auto mb-6" />
         <h2 className="text-2xl font-bold text-gray-900">Payment Cancelled</h2>
         <p className="text-sm text-gray-500 mt-3 mb-8">
-          You cancelled the checkout process. Your organization is created but you need a plan to proceed.
+          Your payment was cancelled and your organization has not been created.
+          Please go back and choose a plan to complete your setup.
         </p>
         <button
           onClick={() => navigate("/choose-plan")}

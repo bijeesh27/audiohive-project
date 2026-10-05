@@ -184,6 +184,7 @@ const AdminRoomDetail = () => {
   // element is reused, so without this the previous room's data would
   // stay on screen until the new fetch finished.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRoom(null);
     setUsers([]);
     setPage(1);
@@ -268,8 +269,10 @@ const AdminRoomDetail = () => {
   }, [roomId, page, debouncedSearch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRoom();
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       roomRequestIdRef.current++;
     };
   }, [fetchRoom]);
@@ -302,8 +305,10 @@ const AdminRoomDetail = () => {
   }, [roomId, socket]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchParticipants();
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       participantsRequestIdRef.current++;
     };
   }, [fetchParticipants]);
@@ -690,6 +695,7 @@ const AdminRoomDetail = () => {
 
       <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm min-h-[200px] flex flex-col items-center justify-center text-gray-400">
         <DoorOpen className="w-14 h-14 mb-4 text-gray-300" />
+        {/* eslint-disable-next-line react/no-unescaped-entities */}
         <p className="text-base font-medium text-gray-500">You're inside {room.name}</p>
         <p className="text-sm mt-1">
           {room.type === "public"

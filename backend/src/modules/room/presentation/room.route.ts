@@ -16,6 +16,8 @@ import { UserRoles } from "../../../common/constant/userRoles";
 import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository";
 import { UserRepository } from "../../auth/infrastructure/userRepository";
 
+import { ResolveWorkspaceUseCase } from "../../workspace/application/usecases/resolveWorkspaceUseCase";
+
 const router = express.Router();
 
 const roomRepository = new RoomRepository();
@@ -30,6 +32,7 @@ const getAllRoomsUseCase = new GetAllRoomsUseCase(roomRepository);
 const allocateRoomUsersUseCase = new AllocateRoomUsersUseCase(roomRepository);
 const getRoomParticipantsUseCase = new GetRoomParticipantsUseCase(roomRepository);
 const removeRoomUserUseCase = new RemoveRoomUserUseCase(roomRepository);
+const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, userRepository);
 
 const controller = new RoomController(
   createRoomUseCase,
@@ -38,8 +41,7 @@ const controller = new RoomController(
   getRoomUseCase,
   getAllRoomsUseCase,
   allocateRoomUsersUseCase,
-  workspaceRepository,
-  userRepository,
+  resolveWorkspaceUseCase,
   getRoomParticipantsUseCase,
   removeRoomUserUseCase
 );

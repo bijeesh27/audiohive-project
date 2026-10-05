@@ -16,6 +16,7 @@ const ResetPasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!resetToken) {
@@ -27,20 +28,19 @@ const ResetPasswordPage = () => {
     e.preventDefault();
     setError(null);
 
+    const newErrors: Record<string, string> = {};
     if (!password) {
-      setError("New password is required");
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
+      newErrors.password = "New password is required";
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
     }
     if (!confirmPassword) {
-      setError("Please confirm your password");
-      return;
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (password && password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
     }
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -113,8 +113,14 @@ const ResetPasswordPage = () => {
               type="password"
               placeHolder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+              }}
             />
+            {errors.password && (
+              <p className="mt-1 text-xs text-red-500">{errors.password}</p>
+            )}
 
             <div className="mt-4 mb-1.5">
               <label className="text-sm font-medium text-slate-900 block">
@@ -125,8 +131,14 @@ const ResetPasswordPage = () => {
               type="password"
               placeHolder="••••••••"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+              }}
             />
+            {errors.confirmPassword && (
+              <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>
+            )}
 
             <div className="mt-6">
               <Button label="Reset Password" buttonType="submit" loading={isLoading} disabled={isLoading || success} />

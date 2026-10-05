@@ -4,7 +4,9 @@ import { AllSubscriptionsDTO, createSubscriptionDTO, deleteSubscriptionDTO, upda
 import { ISubscriptionDocument } from "../infrastructure/subscriptionSchema";
 import { ApiResposne } from "../../../common/Response/Response";
 import { MESSAGES } from "../../../common/constant/messages";
-
+import { CheckoutSessionInput } from "../application/usecases/createCheckoutSessionUseCase";
+import { VerifySessionResult } from "../application/usecases/verifyCheckoutSessionUseCase";
+import { AppError } from "../../../common/Errors/AppError";
 
 export class AuthController{
     constructor(
@@ -12,26 +14,20 @@ export class AuthController{
         private readonly updateSubscriptionUseCase:IuseCase<updateSubscriptionDTO,void>,
         private readonly deleteSubscriptionUseCase:IuseCase<deleteSubscriptionDTO,void>,
         private readonly getAllSubscriptionUseCase:IuseCase<AllSubscriptionsDTO,ISubscriptionDocument[]>,
-        private readonly createCheckoutSessionUseCase:IuseCase<{ planId: string; ownerEmail?: string }, string>,
-        private readonly verifyCheckoutSessionUseCase:IuseCase<string, { status: string; ownerEmail: string }>
+        private readonly createCheckoutSessionUseCase:IuseCase<CheckoutSessionInput, string>,
+        private readonly verifyCheckoutSessionUseCase:IuseCase<string, VerifySessionResult>
     ){}
 
     async createCheckoutSession(req:Request, res:Response, next:NextFunction) {
         try {
-            const { planId, ownerEmail } = req.body;
+            const { planId, ownerEmail, companyName, slug, ownerName } = req.body;
             if (!planId) {
-                return res.status(400).json({ message: "planId is required" });
+                throw new AppError("planId is required", 400);
             }
-            const sessionUrl = await this.createCheckoutSessionUseCase.execute({ planId, ownerEmail });
-            return res.json({ url: sessionUrl });
-        } catch (error: any) {
-            if (error.message === "Subscription plan not found") {
-                return res.status(404).json({ message: error.message });
-            }
-            if (error.message === "Stripe price is not configured for this plan") {
-                return res.status(400).json({ message: error.message });
-            }
-            return res.status(500).json({ message: "Unable to create checkout session" });
+            const sessionUrl = await this.createCheckoutSessionUseCase.execute({ planId, ownerEmail, companyName, slug, ownerName });
+            return ApiResposne.success(res, MESSAGES.SUCCESS.CHECKOUT_SESSION_CREATED, { url: sessionUrl });
+        } catch (error: unknown) {
+            next(error)
         }
     }
 
@@ -39,13 +35,12 @@ export class AuthController{
         try {
             const { sessionId } = req.body;
             if (!sessionId) {
-                return res.status(400).json({ message: "sessionId is required" });
+                throw new AppError("sessionId is required", 400);
             }
             const data = await this.verifyCheckoutSessionUseCase.execute(sessionId);
-            return res.json(data);
-        } catch (error: any) {
-            console.error("verifyCheckoutSession Error:", error);
-            return res.status(500).json({ message: error.message || "Unable to verify checkout session" });
+            return ApiResposne.success(res, MESSAGES.SUCCESS.CHECKOUT_SESSION_VERIFIED, data);
+        } catch (error: unknown) {
+            next(error)
         }
     }
 

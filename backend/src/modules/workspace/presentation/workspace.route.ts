@@ -49,14 +49,14 @@ const controller = new WorkspaceController(
   removeWorkspaceUserUseCase
 );
 
-router.post(API_ROUTES.WORKSSPACE.CREATE_WORKSPACE, authMiddleware, validateRequest(createWorkspaceSchema), controller.createWorkspace.bind(controller));
-router.put(API_ROUTES.WORKSSPACE.UPDATE_WORKSPACE, validateRequest(updateWorkspaceSchema), controller.updateWorkspace.bind(controller));
-router.delete(API_ROUTES.WORKSSPACE.DELETE_WORKSPACE, controller.deleteWorkspace.bind(controller));
-router.get(API_ROUTES.WORKSSPACE.GET_ALL_WORKSPACES, controller.getAllWorkspaces.bind(controller));
-router.get(API_ROUTES.WORKSSPACE.GET_MY_WORKSPACES, authMiddleware, controller.getMyWorkspaces.bind(controller));
-router.post(API_ROUTES.WORKSSPACE.INVITE, authMiddleware, validateRequest(inviteWorkspaceAdminSchema), controller.inviteWorkspaceAdmin.bind(controller));
-router.get('/getworkspace/:id', controller.getWorkspace.bind(controller));
-router.get('/:id/users', authMiddleware, controller.getWorkspaceUsers.bind(controller));
-router.delete('/:id/users/:userId', authMiddleware, controller.removeWorkspaceUser.bind(controller));
+router.post(API_ROUTES.WORKSPACE.CREATE_WORKSPACE, authMiddleware, validateRequest(createWorkspaceSchema), controller.createWorkspace.bind(controller));
+router.put(API_ROUTES.WORKSPACE.UPDATE_WORKSPACE, validateRequest(updateWorkspaceSchema), controller.updateWorkspace.bind(controller));
+router.delete(API_ROUTES.WORKSPACE.DELETE_WORKSPACE, controller.deleteWorkspace.bind(controller));
+router.get(API_ROUTES.WORKSPACE.GET_ALL_WORKSPACES, controller.getAllWorkspaces.bind(controller));
+router.get(API_ROUTES.WORKSPACE.GET_MY_WORKSPACES, authMiddleware, controller.getMyWorkspaces.bind(controller));
+router.post(API_ROUTES.WORKSPACE.INVITE, authMiddleware, validateRequest(inviteWorkspaceAdminSchema), controller.inviteWorkspaceAdmin.bind(controller));
+router.get(API_ROUTES.WORKSPACE.GET_WORKSPACE, controller.getWorkspace.bind(controller));
+router.get(API_ROUTES.WORKSPACE.GET_USERS, authMiddleware, controller.getWorkspaceUsers.bind(controller));
+router.delete(API_ROUTES.WORKSPACE.REMOVE_USER, authMiddleware, controller.removeWorkspaceUser.bind(controller));
 
 export default router;

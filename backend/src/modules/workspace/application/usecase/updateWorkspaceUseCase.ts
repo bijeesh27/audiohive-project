@@ -14,10 +14,30 @@ export class updateWorkspaceUsecase implements IuseCase<updateWorkspaceDTO,void>
         const { id, ...updateData } = data;
         try {
             await this.workspaceRepository.updateWorkspace(id, updateData as Partial<IWorkspaceDocument>);
-        } catch (error: any) {
-            if (error.code === 11000 && error.keyPattern && error.keyPattern.slug) {
-                throw new CreateWorkspaceError("Workspace slug is already in use");
+        } catch (error: unknown) {
+          if (
+                typeof error === "object" &&
+                error !== null &&
+                "code" in error &&
+                "keyPattern" in error
+            ) {
+                const mongoError = error as {
+                    code?: number;
+                    keyPattern?: {
+                        slug?: unknown;
+                    };
+                };
+
+                if (
+                    mongoError.code === 11000 &&
+                    mongoError.keyPattern?.slug
+                ) {
+                    throw new CreateWorkspaceError(
+                        "Workspace slug is already in use"
+                    );
+                }
             }
+
             throw error;
         }
     }

@@ -18,7 +18,6 @@ const CreateWorkspace = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<IFormData>({
@@ -40,7 +39,6 @@ const CreateWorkspace = () => {
   };
 
   const handleContinue = async () => {
-    setFieldErrors([]);
     setError(null);
     setFormErrors({});
 
@@ -87,7 +85,22 @@ const CreateWorkspace = () => {
         const raw = data?.errors;
         const fields: { field: string; message: string }[] = Array.isArray(raw) ? raw : [];
         if (fields.length > 0) {
-          setFieldErrors(fields.map((e) => e.message));
+          const knownFields = new Set(["companyName", "workspaceAdminName", "workspaceAdminEmail", "workspaceSlug"]);
+          const fieldErrs: Record<string, string> = {};
+          const unknownMessages: string[] = [];
+          fields.forEach(({ field, message }) => {
+            if (knownFields.has(field)) {
+              fieldErrs[field] = message;
+            } else {
+              unknownMessages.push(message);
+            }
+          });
+          if (Object.keys(fieldErrs).length > 0) {
+            setFormErrors(fieldErrs);
+          }
+          if (unknownMessages.length > 0) {
+            setError(unknownMessages.join(", "));
+          }
         } else {
           setError(data?.message || "Failed to create workspace");
         }
@@ -141,13 +154,6 @@ const CreateWorkspace = () => {
           {error && (
             <div className="mt-4 mx-6 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
               {error}
-            </div>
-          )}
-          {fieldErrors.length > 0 && (
-            <div className="mt-4 mx-6 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-              <ul className="list-disc list-inside space-y-1">
-                {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
-              </ul>
             </div>
           )}
 

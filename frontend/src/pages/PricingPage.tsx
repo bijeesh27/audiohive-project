@@ -2,15 +2,12 @@ import  { useEffect, useState } from 'react';
 import { subscriptionService } from '../services/subscriptionServices';
 import type { SubscriptionDTO } from '../services/subscriptionServices';
 import { Check } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import axiosInstance from '../config/axios';
+import { useNavigate } from 'react-router-dom';
 
 const PricingPage = () => {
   const [plans, setPlans] = useState<SubscriptionDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -18,6 +15,7 @@ const PricingPage = () => {
         const response = await subscriptionService.getAllSubscriptions();
         setPlans(response.data || []);
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to fetch plans", error);
       } finally {
         setLoading(false);
@@ -26,24 +24,8 @@ const PricingPage = () => {
     fetchPlans();
   }, []);
 
-  const handleChoosePlan = async (plan: SubscriptionDTO) => {
-    if (plan.price === 0) {
-      // Free plan selected
-      navigate('/invitation-sent', { state: location.state });
-    } else {
-      // Priced plan selected
-      try {
-        setSubscribingId(plan._id);
-        const response = await axiosInstance.post(
-          "/api/subscription/create-checkout-session",
-          { planId: plan._id }
-        );
-        window.location.href = response.data.url;
-      } catch (error) {
-        console.error("Subscription checkout error:", error);
-        setSubscribingId(null);
-      }
-    }
+  const handleChoosePlan = (plan: SubscriptionDTO) => {
+    navigate('/create-organization', { state: { selectedPlanId: plan._id } });
   };
 
   if (loading) {
@@ -102,11 +84,7 @@ const PricingPage = () => {
               <ul className="mt-8 space-y-3.5 pt-6 border-t border-gray-100">
                 <li className="flex items-start gap-3 text-sm text-gray-700">
                   <Check className="h-5 w-5 mt-0.5 text-indigo-600 shrink-0" strokeWidth={2.5} />
-                  <span>Up to <strong>{plan.maxUsers}</strong> users</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-gray-700">
-                  <Check className="h-5 w-5 mt-0.5 text-indigo-600 shrink-0" strokeWidth={2.5} />
-                  <span>Up to <strong>{plan.maxRooms}</strong> rooms</span>
+                  <span>Up to <strong>{plan.maxWorkspaces}</strong> workspaces</span>
                 </li>
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3 text-sm text-gray-700">
@@ -118,11 +96,10 @@ const PricingPage = () => {
               <div className="mt-8 pt-4">
                 <button
                   type="button"
-                  disabled={subscribingId === plan._id}
                   onClick={() => handleChoosePlan(plan)}
-                  className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors disabled:opacity-50"
+                  className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
                 >
-                  {subscribingId === plan._id ? "Processing..." : plan.price === 0 ? "Get Started" : "Choose Plan"}
+                  {plan.price === 0 ? "Get Started" : "Choose Plan"}
                 </button>
               </div>
             </div>

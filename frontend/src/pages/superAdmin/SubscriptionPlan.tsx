@@ -33,6 +33,7 @@ const SubscriptionPlan = () => {
   const [featureInput, setFeatureInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [confirmTogglePlan, setConfirmTogglePlan] = useState<ISubscription | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -48,6 +49,7 @@ const SubscriptionPlan = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlans();
   }, []);
 
@@ -56,6 +58,7 @@ const SubscriptionPlan = () => {
     setForm(emptyForm);
     setFeatureInput("");
     setFormError(null);
+    setFormErrors({});
     setShowModal(true);
   };
 
@@ -71,6 +74,7 @@ const SubscriptionPlan = () => {
     });
     setFeatureInput("");
     setFormError(null);
+    setFormErrors({});
     setShowModal(true);
   };
 
@@ -92,26 +96,30 @@ const SubscriptionPlan = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errs: Record<string, string> = {};
     if (!form.subscriptionName.trim()) {
-      setFormError("Plan name is required");
-      return;
+      errs.subscriptionName = "Plan name is required";
     }
     if (!form.description.trim() || form.description.trim().length < 10) {
-      setFormError("Description must be at least 10 characters");
-      return;
+      errs.description = "Description must be at least 10 characters";
     }
     if (form.price < 0) {
-      setFormError("Price cannot be negative");
-      return;
+      errs.price = "Price cannot be negative";
     }
     if (form.maxWorkspaces < 1) {
-      setFormError("Max workspaces must be at least 1");
-      return;
+      errs.maxWorkspaces = "Max workspaces must be at least 1";
     }
     if (!form.features || form.features.length === 0) {
-      setFormError("Add at least one feature");
+      errs.features = "Add at least one feature";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs);
       return;
     }
+
+    setFormErrors({});
     setSaving(true);
     setFormError(null);
     try {
@@ -122,13 +130,14 @@ const SubscriptionPlan = () => {
       }
       setShowModal(false);
       fetchPlans();
-    } catch (err: any) {
-  const apiErrors = err?.response?.data?.errors;
-  const message = Array.isArray(apiErrors)
-    ? apiErrors.map((e: { field: string; message: string }) => e.message).join(", ")
-    : err?.response?.data?.message || "Save failed";
-  setFormError(message);
-} finally {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const apiErrors = err?.response?.data?.errors;
+      const message = Array.isArray(apiErrors)
+        ? apiErrors.map((e: { field: string; message: string }) => e.message).join(", ")
+        : err?.response?.data?.message || "Save failed";
+      setFormError(message);
+    } finally {
       setSaving(false);
     }
   };
@@ -148,7 +157,8 @@ const SubscriptionPlan = () => {
       await subscriptionService.updateSubscription(confirmTogglePlan._id, updatedPlan);
       setConfirmTogglePlan(null);
       fetchPlans();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       alert(err?.response?.data?.message || "Failed to update status");
     } finally {
       setToggling(false);
@@ -162,7 +172,8 @@ const SubscriptionPlan = () => {
       await subscriptionService.deleteSubscription(confirmDeletePlan._id);
       setConfirmDeletePlan(null);
       fetchPlans();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       alert(err?.response?.data?.message || "Failed to delete plan");
     } finally {
       setDeleting(false);
@@ -294,19 +305,31 @@ const SubscriptionPlan = () => {
                 <input
                   type="text"
                   value={form.subscriptionName}
-                  onChange={(e) => setForm(f => ({ ...f, subscriptionName: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  onChange={(e) => {
+                    setForm(f => ({ ...f, subscriptionName: e.target.value }));
+                    if (formErrors.subscriptionName) setFormErrors(prev => { const n = { ...prev }; delete n.subscriptionName; return n; });
+                  }}
+                  className={`mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ${formErrors.subscriptionName ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {formErrors.subscriptionName && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.subscriptionName}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">Description</label>
                 <textarea
                   value={form.description}
-                  onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                  onChange={(e) => {
+                    setForm(f => ({ ...f, description: e.target.value }));
+                    if (formErrors.description) setFormErrors(prev => { const n = { ...prev }; delete n.description; return n; });
+                  }}
                   rows={2}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className={`mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ${formErrors.description ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {formErrors.description && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.description}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -316,9 +339,15 @@ const SubscriptionPlan = () => {
                     type="number"
                     min={0}
                     value={form.price}
-                    onChange={(e) => setForm(f => ({ ...f, price: Number(e.target.value) }))}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    onChange={(e) => {
+                      setForm(f => ({ ...f, price: Number(e.target.value) }));
+                      if (formErrors.price) setFormErrors(prev => { const n = { ...prev }; delete n.price; return n; });
+                    }}
+                    className={`mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ${formErrors.price ? 'border-red-400' : 'border-gray-300'}`}
                   />
+                  {formErrors.price && (
+                    <p className="mt-1 text-xs text-red-500">{formErrors.price}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Max Workspaces</label>
@@ -326,9 +355,15 @@ const SubscriptionPlan = () => {
                     type="number"
                     min={1}
                     value={form.maxWorkspaces}
-                    onChange={(e) => setForm(f => ({ ...f, maxWorkspaces: Number(e.target.value) }))}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    onChange={(e) => {
+                      setForm(f => ({ ...f, maxWorkspaces: Number(e.target.value) }));
+                      if (formErrors.maxWorkspaces) setFormErrors(prev => { const n = { ...prev }; delete n.maxWorkspaces; return n; });
+                    }}
+                    className={`mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ${formErrors.maxWorkspaces ? 'border-red-400' : 'border-gray-300'}`}
                   />
+                  {formErrors.maxWorkspaces && (
+                    <p className="mt-1 text-xs text-red-500">{formErrors.maxWorkspaces}</p>
+                  )}
                 </div>
               </div>
 
@@ -338,7 +373,10 @@ const SubscriptionPlan = () => {
                   <input
                     type="text"
                     value={featureInput}
-                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onChange={(e) => {
+                      setFeatureInput(e.target.value);
+                      if (formErrors.features) setFormErrors(prev => { const n = { ...prev }; delete n.features; return n; });
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -371,6 +409,9 @@ const SubscriptionPlan = () => {
                       </li>
                     ))}
                   </ul>
+                )}
+                {formErrors.features && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.features}</p>
                 )}
               </div>
 
@@ -414,6 +455,7 @@ const SubscriptionPlan = () => {
               {confirmTogglePlan.isActive ? "Block Plan" : "Unblock Plan"}
             </h3>
             <p className="mt-2 text-sm text-gray-500">
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
               Are you sure you want to {confirmTogglePlan.isActive ? "block" : "unblock"} the plan "{confirmTogglePlan.subscriptionName}"?
               {confirmTogglePlan.isActive && " New users won't be able to subscribe to it."}
             </p>
@@ -446,6 +488,7 @@ const SubscriptionPlan = () => {
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
             <h3 className="text-lg font-semibold text-gray-900">Delete Plan</h3>
             <p className="mt-2 text-sm text-gray-500">
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
               Are you sure you want to delete the plan "{confirmDeletePlan.subscriptionName}"? This action cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-3">
@@ -474,3 +517,4 @@ const SubscriptionPlan = () => {
 };
 
 export default SubscriptionPlan;
+

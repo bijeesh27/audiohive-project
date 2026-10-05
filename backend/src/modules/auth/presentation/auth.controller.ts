@@ -18,6 +18,29 @@ import {
   RefreshTokenNotFound,
 } from "../../../common/Errors/AuthError.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
+
+interface RegisterOwnerInput {
+  token: string;
+  password: string;
+}
+
+interface RegisterWorkspaceUserInput {
+  token: string;
+  username: string;
+  password: string;
+}
+
+interface InvitationDetails {
+  token: string;
+  email?: string;
+  role?: string;
+  workspaceId?: string;
+  organizationId?: string;
+  type: "workspace-user" | "workspace" | "organization";
+  ownerName?: string;
+  ownerEmail?: string;
+}
+
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
@@ -30,11 +53,15 @@ export class AuthController {
     >,
     private readonly resendOtpUseCase: IuseCase<{ email: string }, void>,
     private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDocument>,
-    private readonly registerWorkspaceAdminUseCase:IuseCase<RegisterDTO,void>,
-    private readonly registerOwnerUseCase:IuseCase<any,void>,
-    private readonly getInvitationDetailsUseCase:IuseCase<string,any>,
-    private readonly registerWorkspaceUserUseCase:IuseCase<any,void>
+    private readonly registerWorkspaceAdminUseCase: IuseCase<RegisterDTO, void>,
+    private readonly registerOwnerUseCase: IuseCase<RegisterOwnerInput, void>,
+    private readonly getInvitationDetailsUseCase: IuseCase<string, InvitationDetails>,
+    private readonly registerWorkspaceUserUseCase: IuseCase<
+      RegisterWorkspaceUserInput,
+      void
+    >
   ) {}
+
   async register(req: Request, res: Response, next: NextFunction) {
     try {
       await this.registerUserUseCase.execute(req.body);
@@ -46,6 +73,7 @@ export class AuthController {
       next(error);
     }
   }
+
   async verifyOtp(req: Request, res: Response, next: NextFunction) {
     try {
       const userData = await this.otpUseCase.execute(req.body);
@@ -68,7 +96,10 @@ export class AuthController {
   async resendOtp(req: Request, res: Response, next: NextFunction) {
     try {
       await this.resendOtpUseCase.execute(req.body);
-      return ApiResposne.success(res,MESSAGES.SUCCESS.OTP_SEND_SUCCESSFULLY );
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.OTP_SEND_SUCCESSFULLY
+      );
     } catch (error) {
       next(error);
     }
@@ -79,6 +110,7 @@ export class AuthController {
       const user = await this.loginUserUseCase.execute(req.body);
       const userRole = user?.role;
       const workspaceId = user?.workspaceId?.toString() ?? undefined;
+
       const accessToken = jwt.sign(
         {
           id: user._id,
@@ -90,6 +122,7 @@ export class AuthController {
         process.env.JWT_SECRET!,
         { expiresIn: "15m" },
       );
+
       const refreshToken = jwt.sign(
         {
           id: user._id,
@@ -101,12 +134,14 @@ export class AuthController {
         process.env.JWT_REFRESH_SECRET!,
         { expiresIn: "7d" },
       );
+
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         maxAge: parseInt(process.env.MAX_AGE!),
       });
+
       return ApiResposne.success(res, MESSAGES.SUCCESS.LOGIN_SUCCESS, {
         accessToken,
         userRole,
@@ -115,6 +150,7 @@ export class AuthController {
       next(error);
     }
   }
+
   async forgetPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const user = await this.forgetUseCase.execute(req.body);
@@ -123,6 +159,7 @@ export class AuthController {
       next(error);
     }
   }
+
   async changePassword(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const email = req.user?.userEmail;
@@ -134,15 +171,18 @@ export class AuthController {
     }
   }
 
-  
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const { token, password } = req.body;
       
       let decoded: jwt.JwtPayload;
+
       try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET!)as jwt.JwtPayload;
-      } catch{
+        decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET!
+        ) as jwt.JwtPayload;
+      } catch {
         throw new InvalidToken();
       }
 
@@ -150,7 +190,11 @@ export class AuthController {
         throw new InvalidToken();
       }
 
-      await this.resetPasswordUseCase.execute({ email: decoded.email, password });
+      await this.resetPasswordUseCase.execute({
+        email: decoded.email,
+        password
+      });
+
       return ApiResposne.success(res, MESSAGES.SUCCESS.PASSWORD_CHANGED);
     } catch (error) {
       next(error);
@@ -160,20 +204,27 @@ export class AuthController {
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
       const token = req.cookies?.refreshToken;
+
       if (!token) {
         throw new RefreshTokenNotFound();
       }
 
       let decoded: jwt.JwtPayload;
+
       try {
-        decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET! )as jwt.JwtPayload;
+        decoded = jwt.verify(
+          token,
+          process.env.JWT_REFRESH_SECRET!
+        ) as jwt.JwtPayload;
       } catch {
         throw new InvalidRefreshToken();
       }
 
       let workspaceId = decoded.workspaceId;
+
       if (!workspaceId && decoded.id) {
         const user = await UserModel.findById(decoded.id);
+
         if (user?.workspaceId) {
           workspaceId = user.workspaceId.toString();
         }
@@ -191,14 +242,19 @@ export class AuthController {
         { expiresIn: "15m" },
       );
 
-      return ApiResposne.success(res, MESSAGES.SUCCESS.TOKEN_REFRESHED, {
-        accessToken: newAccessToken,
-        userRole: decoded.role,
-      });
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.TOKEN_REFRESHED,
+        {
+          accessToken: newAccessToken,
+          userRole: decoded.role,
+        }
+      );
     } catch (error) {
       next(error);
     }
   }
+
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
       res.clearCookie("refreshToken", {
@@ -206,44 +262,88 @@ export class AuthController {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
       });
-      return ApiResposne.success(res, MESSAGES.SUCCESS.LOGOUT_SUCCESSFULLY);
+
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.LOGOUT_SUCCESSFULLY
+      );
     } catch (error) {
       next(error);
     }
   }
 
-async getInvitationDetails(req: Request, res: Response, next: NextFunction) {
+  async getInvitationDetails(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
     try {
-        const { token } = req.params;
-        const invitation = await this.getInvitationDetailsUseCase.execute(token as string);
-        return ApiResposne.success(res,MESSAGES.SUCCESS.INVITATION_VALID ,invitation );
-    } catch (error) {
-        next(error);
-    }
-}
+      const { token } = req.params;
 
-async registerAdmin(req: Request, res: Response, next: NextFunction) {
-    try {
-        await this.registerWorkspaceAdminUseCase.execute(req.body)
-        return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
+      const invitation =
+        await this.getInvitationDetailsUseCase.execute(token as string);
+
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.INVITATION_VALID,
+        invitation
+      );
     } catch (error) {
-        next(error);
+      next(error);
     }
-}
-async registerOwner(req: Request, res: Response, next: NextFunction) {
+  }
+
+  async registerAdmin(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
     try {
-        await this.registerOwnerUseCase.execute(req.body)
-        return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
+      await this.registerWorkspaceAdminUseCase.execute(req.body);
+
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY,
+        null
+      );
     } catch (error) {
-        next(error);
+      next(error);
     }
-}
-async registerWorkspaceUser(req: Request, res: Response, next: NextFunction) {
+  }
+
+  async registerOwner(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
     try {
-        await this.registerWorkspaceUserUseCase.execute(req.body)
-        return ApiResposne.success(res,MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY, null);
+      await this.registerOwnerUseCase.execute(req.body);
+
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY,
+        null
+      );
     } catch (error) {
-        next(error);
+      next(error);
     }
-}
+  }
+
+  async registerWorkspaceUser(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      await this.registerWorkspaceUserUseCase.execute(req.body);
+
+      return ApiResposne.success(
+        res,
+        MESSAGES.SUCCESS.REGISTARTION_SUCCESSFULLY,
+        null
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }

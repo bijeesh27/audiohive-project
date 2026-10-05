@@ -17,6 +17,7 @@ const CreateWorkspace = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -24,18 +25,27 @@ const CreateWorkspace = () => {
       ...prev,
       [name]: value,
     }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors: Record<string, string> = {};
     if (!formData.workspaceName.trim()) {
-      setError("Workspace name is required.");
-      return;
+      newErrors.workspaceName = "Workspace name is required.";
     }
     if (!formData.slug.trim()) {
-      setError("Slug is required.");
+      newErrors.slug = "Slug is required.";
+    } else if (!/^[a-z0-9-]{3,63}$/.test(formData.slug.trim())) {
+      newErrors.slug = "Slug must be 3–63 characters: lowercase letters, numbers, hyphens only.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+
     setError(null);
     setIsLoading(true);
     try {
@@ -85,8 +95,13 @@ const CreateWorkspace = () => {
             value={formData.workspaceName}
             onChange={handleChange}
             placeholder="Acme Inc"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className={`w-full rounded-md border px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+              errors.workspaceName ? "border-red-400" : "border-gray-300"
+            }`}
           />
+          {errors.workspaceName && (
+            <p className="mt-1 text-xs text-red-500">{errors.workspaceName}</p>
+          )}
         </div>
 
         <div className="mb-6">
@@ -100,11 +115,17 @@ const CreateWorkspace = () => {
             value={formData.slug}
             onChange={handleChange}
             placeholder="acme-inc"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className={`w-full rounded-md border px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+              errors.slug ? "border-red-400" : "border-gray-300"
+            }`}
           />
-          <p className="mt-1 text-xs text-gray-400">
-            Lowercase letters, numbers, hyphens only. 3–63 characters.
-          </p>
+          {errors.slug ? (
+            <p className="mt-1 text-xs text-red-500">{errors.slug}</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-400">
+              Lowercase letters, numbers, hyphens only. 3–63 characters.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-3">

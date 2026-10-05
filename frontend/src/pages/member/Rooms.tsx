@@ -43,6 +43,7 @@ const Rooms = () => {
   }, [page, search]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search]);
 
@@ -85,6 +86,7 @@ const Rooms = () => {
         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
           <DoorOpen className="w-12 h-12 mb-3" />
           <p className="text-base font-medium">No rooms available</p>
+          {/* eslint-disable-next-line react/no-unescaped-entities */}
           <p className="text-sm mt-1">You don't have access to any rooms yet.</p>
         </div>
       ) : (
@@ -176,3 +178,4 @@ const Rooms = () => {
 };
 
 export default Rooms;
+

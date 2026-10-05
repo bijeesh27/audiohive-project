@@ -4,20 +4,19 @@ import { IuseCase } from "../../../shared/interface/IuseCase.ts";
 import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
-import { IworkspaceRepository } from "../../workspace/domain/IworkspaceRepository.ts";
 import { SendUserInvitationDTO } from "../application/usecase/sendUserInvitationUseCase.ts";
-import { WorkspaceNotFound } from "../../../common/Errors/WorkspaceError.ts";
 import { AccessDeniedError } from "../../../common/Errors/AuthError.ts";
-import { GetActiveUserUseCase } from "../application/usecase/getActiveUserUseCase.ts";
+import { ResolveWorkspaceDTO, ResolvedWorkspaceResult } from "../../workspace/application/usecases/resolveWorkspaceUseCase.ts";
+import { UserRoles } from "../../../common/constant/userRoles.ts";
 
 export class WorkspaceAdminController {
   constructor(
     private readonly getAllUserUseCase: IuseCase<{ workspaceId: string; page: number; limit: number,search?: string }, { users: IuserDocument[]; total: number } | null>,
     private readonly sendUserInvitationUseCase: IuseCase<SendUserInvitationDTO, void>,
     private readonly getWorkspaceDashboardStatsUseCase: IuseCase<string, { totalRooms: number; totalUsers: number }>,
-    private readonly workspaceRepository: IworkspaceRepository,
-    private readonly getActiveUserUseCase:IuseCase<any,any>,
-    private readonly userRepository: { updateUser(userId: string, data: any): Promise<IuserDocument> }
+    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceResult>,
+    private readonly getActiveUserUseCase: IuseCase<string, number>,
+    private readonly updateUserUseCase: IuseCase<{ userId: string, updateData: Partial<IuserDocument> }, IuserDocument>
   ) {}
 
   getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -26,13 +25,12 @@ export class WorkspaceAdminController {
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search as string | undefined;
       
-      const userEmail = req.user?.userEmail;
-      const workspace = userEmail ? await this.workspaceRepository.findByAdminEmail(userEmail) : null;
-      if (!workspace) {
-         return res.status(404).json({ message: MESSAGES.ERRORS.WORKSPACE_ADMIN_NOT_FOUND });
-      }
+      const { workspaceId } = await this.resolveWorkspaceUseCase.execute({
+        userEmail: req.user?.userEmail,
+        role: UserRoles.WORKSPACE_ADMIN
+      });
 
-      const data = await this.getAllUserUseCase.execute({ workspaceId: workspace._id.toString(), page, limit, search });
+      const data = await this.getAllUserUseCase.execute({ workspaceId, page, limit, search });
       return ApiResposne.success(res, MESSAGES.SUCCESS.GET_ALL_MEMBERS, data);
     } catch (error) {
       next(error);
@@ -46,15 +44,15 @@ export class WorkspaceAdminController {
         throw new AccessDeniedError();
       }
 
-      const workspace = await this.workspaceRepository.findByAdminEmail(workspaceAdminEmail);
-      if (!workspace) {
-        throw new WorkspaceNotFound();
-      }
+      const { workspaceId } = await this.resolveWorkspaceUseCase.execute({
+        userEmail: workspaceAdminEmail,
+        role: UserRoles.WORKSPACE_ADMIN
+      });
 
       const { email, invitedName, role } = req.body;
       
       await this.sendUserInvitationUseCase.execute({
-        workspaceId: workspace._id.toString(),
+        workspaceId,
         email,
         invitedName,
         role,
@@ -69,12 +67,11 @@ export class WorkspaceAdminController {
 
   getDashboardStats = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const userEmail = req.user?.userEmail;
-      const workspace = userEmail ? await this.workspaceRepository.findByAdminEmail(userEmail) : null;
-      if (!workspace) {
-        return res.status(404).json({ message: MESSAGES.ERRORS.WORKSPACE_ADMIN_NOT_FOUND });
-      }
-      const data = await this.getWorkspaceDashboardStatsUseCase.execute(workspace._id.toString());
+      const { workspaceId } = await this.resolveWorkspaceUseCase.execute({
+        userEmail: req.user?.userEmail,
+        role: UserRoles.WORKSPACE_ADMIN
+      });
+      const data = await this.getWorkspaceDashboardStatsUseCase.execute(workspaceId);
       return ApiResposne.success(res, MESSAGES.SUCCESS.DASHBOARD_STATS_FETCHED, data);
     } catch (error) {
       next(error);
@@ -83,10 +80,10 @@ export class WorkspaceAdminController {
 
   getActiveUsers=async(req:AuthRequest,res:Response,next:NextFunction)=>{
     try {
-      const workspaceId=req.params.workspaceId
-      const activeUsercount=await this.getActiveUserUseCase.execute(workspaceId)
+      const workspaceId = req.params.workspaceId as string;
+      const activeUsercount = await this.getActiveUserUseCase.execute(workspaceId);
 
-      return ApiResposne.success(res,"success",activeUsercount)
+      return ApiResposne.success(res, MESSAGES.SUCCESS.ACTIVE_USERS_FETCHED, activeUsercount)
     } catch (error) {
       next(error)
     }
@@ -94,15 +91,12 @@ export class WorkspaceAdminController {
 
   getProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const userEmail = req.user?.userEmail;
-      const workspace = userEmail
-        ? await this.workspaceRepository.findByAdminEmail(userEmail)
-        : null;
-      if (!workspace) {
-        return res.status(404).json({ message: MESSAGES.ERRORS.WORKSPACE_ADMIN_NOT_FOUND });
-      }
-      return ApiResposne.success(res, "Profile fetched", {
-        workspaceId: workspace._id.toString(),
+      const { workspaceId } = await this.resolveWorkspaceUseCase.execute({
+        userEmail: req.user?.userEmail,
+        role: UserRoles.WORKSPACE_ADMIN
+      });
+      return ApiResposne.success(res, MESSAGES.SUCCESS.PROFILE_FETCHED, {
+        workspaceId,
       });
     } catch (error) {
       next(error);
@@ -113,7 +107,7 @@ export class WorkspaceAdminController {
     try {
       const id = req.params.id as string;
       const updateData = req.body;
-      const updatedUser = await this.userRepository.updateUser(id, updateData);
+      const updatedUser = await this.updateUserUseCase.execute({ userId: id, updateData });
       return ApiResposne.success(res, MESSAGES.SUCCESS.USER_UPDATED, updatedUser);
     } catch (error) {
       next(error);

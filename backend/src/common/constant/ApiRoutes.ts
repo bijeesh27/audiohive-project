@@ -32,6 +32,8 @@ export const API_ROUTES = {
     INVITE_USER: "/invite-user",
     DASHBOARD_STATS: "/dashboard-stats",
     PROFILE: "/profile",
+    UPDATE_USER: "/users/:id",
+    GET_ACTIVE_USERS: "/activeusers/:workspaceId",
   },
 
   MEMBER: {},
@@ -41,6 +43,8 @@ export const API_ROUTES = {
     UPDATE_SUBSCRIPTION: "/updatesubscription",
     DELETE_SUBSCRIPTION: "/deletesubscription",
     GET_ALL_SUBSCRIPTIONS: "/getallsubscriptions",
+    CREATE_CHECKOUT_SESSION: "/create-checkout-session",
+    VERIFY_SESSION: "/verify-session",
   },
 
   ORGANIZATION: {
@@ -51,16 +55,9 @@ export const API_ROUTES = {
     GET_USERS: "/get-users",
     GET_MY_ORGANIZATION: "/my-organization",
     DASHBOARD_STATS: "/dashboard-stats",
+    SEND_INVITATION: "/send-invitation",
   },
 
-  WORKSSPACE: {
-    CREATE_WORKSPACE: "/createworkspace",
-    UPDATE_WORKSPACE: "/updateworkspace/:id",
-    DELETE_WORKSPACE: "/deleteworkspace/:id",
-    GET_ALL_WORKSPACES: "/getallworkspaces",
-    GET_MY_WORKSPACES: "/my-workspaces",
-    INVITE: "/:id/invite",
-  },
   WORKSPACE: {
     CREATE_WORKSPACE: "/createworkspace",
     UPDATE_WORKSPACE: "/updateworkspace/:id",
@@ -68,6 +65,9 @@ export const API_ROUTES = {
     GET_ALL_WORKSPACES: "/getallworkspaces",
     GET_MY_WORKSPACES: "/my-workspaces",
     INVITE: "/:id/invite",
+    GET_WORKSPACE: "/getworkspace/:id",
+    GET_USERS: "/:id/users",
+    REMOVE_USER: "/:id/users/:userId",
   },
 
   ROOM: {
@@ -79,5 +79,23 @@ export const API_ROUTES = {
     ALLOCATE_USERS: "/:id/members",
     GET_PARTICIPANTS: "/:id/participants",
     REMOVE_USER: "/:id/members/:userId",
+  },
+
+  ANNOUNCEMENT: {
+    CREATE_ANNOUNCEMENT: "/",
+    UPDATE_ANNOUNCEMENT: "/:id",
+    DELETE_ANNOUNCEMENT: "/:id",
+    PIN_ANNOUNCEMENT: "/:id/pin",
+    UNREAD_COUNT: "/unread-count",
+    GET_BY_ROOM: "/room/:roomId",
+    GET_ALL: "/",
+    GET_ONE: "/:id",
+    MARK_READ: "/:id/read",
+  },
+
+  DOCUMENT: {
+    UPLOAD_DOCUMENT: "/:roomId/documents",
+    GET_ROOM_DOCUMENTS: "/:roomId/documents",
+    DELETE_DOCUMENT: "/:roomId/documents/:documentId",
   },
 };

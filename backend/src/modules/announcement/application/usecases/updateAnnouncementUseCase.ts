@@ -1,5 +1,6 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase.js";
 import { IAnnouncementRepository } from "../../domain/IAnnouncementRepository.js";
+import { IAnnouncementDocument } from "../../infrastructure/announcementSchema.js";
 import { UpdateAnnouncementDTO } from "../dto/announcementDTO.js";
 
 export class UpdateAnnouncementUseCase
@@ -10,6 +11,6 @@ export class UpdateAnnouncementUseCase
   ) {}
 
   async execute(input: { id: string; data: UpdateAnnouncementDTO }): Promise<void> {
-    await this.announcementRepository.updateAnnouncement(input.id, input.data as any);
+    await this.announcementRepository.updateAnnouncement(input.id, input.data as Partial<IAnnouncementDocument>);
   }
 }

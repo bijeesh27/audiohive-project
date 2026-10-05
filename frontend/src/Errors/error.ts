@@ -9,3 +9,11 @@ export class ContextError extends AppError{
         super(message)
     }
 }
+export interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}

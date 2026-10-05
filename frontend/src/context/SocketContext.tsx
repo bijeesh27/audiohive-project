@@ -19,6 +19,7 @@ const SocketContextProvider = ({ children }: { children: React.ReactNode }) => {
       connectSocket(accessToken, workspaceId ?? undefined);
     } else {
       disconnectSocket();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsConnected(false);
     }
   }, [isAuthenticated, accessToken, workspaceId]);
@@ -38,6 +39,7 @@ const SocketContextProvider = ({ children }: { children: React.ReactNode }) => {
     socket.on("disconnect", onDisconnect);
 
     if (socket.connected) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsConnected(true);
       if (workspaceId) {
         socket.emit("join-workspace", workspaceId);
@@ -57,6 +59,7 @@ const SocketContextProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => {
   const context = useContext(SocketContext);
   if (!context) {

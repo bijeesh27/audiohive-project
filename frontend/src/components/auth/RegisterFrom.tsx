@@ -15,8 +15,8 @@ const RegisterFrom = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [invitationType, setInvitationType] = useState<"workspace" | "organization" | "workspace-user" | null>(null);
 
   useEffect(() => {
@@ -24,7 +24,6 @@ const RegisterFrom = () => {
       getInvitationDetails(token)
         .then((res) => {
           if (res.success) {
-            console.log(res);
             if (res.data.type === "workspace") {
               setInvitationType("workspace");
               setUsername(res.data.workspaceAdminName);
@@ -47,32 +46,33 @@ const RegisterFrom = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setFieldErrors([]);
 
-    const validationErrors: string[] = [];
+    const newErrors: Record<string, string> = {};
+
     if (!username.trim()) {
-      validationErrors.push("Username is required");
+      newErrors.username = "Username is required";
     }
+    // Only validate email client-side when there is no invitation token
     if (!token) {
       if (!email.trim()) {
-        validationErrors.push("Email address is required");
+        newErrors.email = "Email address is required";
       } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
-        validationErrors.push("Please enter a valid email address");
+        newErrors.email = "Please enter a valid email address";
       }
     }
     if (!password) {
-      validationErrors.push("Password is required");
+      newErrors.password = "Password is required";
     } else if (password.length < 6) {
-      validationErrors.push("Password must be at least 6 characters");
+      newErrors.password = "Password must be at least 6 characters";
     }
     if (!confirmPassword) {
-      validationErrors.push("Please confirm your password");
+      newErrors.confirmPassword = "Please confirm your password";
     } else if (password !== confirmPassword) {
-      validationErrors.push("Passwords don't match");
+      newErrors.confirmPassword = "Passwords don't match";
     }
 
-    if (validationErrors.length > 0) {
-      setFieldErrors(validationErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -95,17 +95,9 @@ const RegisterFrom = () => {
       }
     } catch (err: unknown) {
       if (isAxiosError(err)) {
-    const data = err?.response?.data;
-    const raw = data?.errors;
-  const fields: {field:string; message:string}[] = Array.isArray(raw) ? raw : [];
-    if (fields.length > 0) {
-      setFieldErrors(fields.map(e => e.message));
-      setError(null);
-    } else {
-      setError(data?.message || "Registration failed");
-      setFieldErrors([]);
-    }
-  }
+        const data = err?.response?.data;
+        setError(data?.message || "Registration failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -114,25 +106,22 @@ const RegisterFrom = () => {
   return (
     <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-xl border border-slate-100 transition-all">
       <h2 className="text-2xl font-bold text-slate-900">
-        {invitationType === "workspace" ? "Create Workspace Admin" : invitationType === "workspace-user" ? "Create Workspace User" : "Create Organization"}
+        {invitationType === "workspace"
+          ? "Create Workspace Admin"
+          : invitationType === "workspace-user"
+          ? "Create Workspace User"
+          : "Create Organization"}
       </h2>
       <p className="text-sm text-slate-500 mt-1 mb-6">
         Sign up to get started with AudioHive.
       </p>
 
-     {error && (
-    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-      {error}
-    </div>
-  )}
-  {fieldErrors.length > 0 && (
-    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-      <ul className="list-disc list-inside space-y-1">
-        {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
-      </ul>
-    </div>
-  )}
- 
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       <form noValidate onSubmit={handleSubmit}>
         <label className="text-sm font-medium text-slate-900 block mb-1.5">
           Username
@@ -140,20 +129,34 @@ const RegisterFrom = () => {
         <Input
           placeHolder="username..."
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
           readOnly={!!token}
+          hasError={!!errors.username}
+          onChange={(e) => {
+            setUsername(e.target.value);
+            if (errors.username) setErrors((prev) => ({ ...prev, username: "" }));
+          }}
         />
- 
+        {errors.username && (
+          <p className="mt-1 text-xs text-red-500">{errors.username}</p>
+        )}
+
         <label className="text-sm font-medium text-slate-900 block mt-4 mb-1.5">
           Email Address
         </label>
         <Input
           placeHolder="email..."
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
           readOnly={!!token}
+          hasError={!!errors.email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+          }}
         />
- 
+        {errors.email && (
+          <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+        )}
+
         <label className="text-sm font-medium text-slate-900 block mt-4 mb-1.5">
           Password
         </label>
@@ -161,8 +164,15 @@ const RegisterFrom = () => {
           type="password"
           placeHolder="password..."
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          hasError={!!errors.password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+          }}
         />
+        {errors.password && (
+          <p className="mt-1 text-xs text-red-500">{errors.password}</p>
+        )}
 
         <label className="text-sm font-medium text-slate-900 block mt-4 mb-1.5">
           Confirm Password
@@ -171,14 +181,21 @@ const RegisterFrom = () => {
           type="password"
           placeHolder="confirm password..."
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          hasError={!!errors.confirmPassword}
+          onChange={(e) => {
+            setConfirmPassword(e.target.value);
+            if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+          }}
         />
- 
+        {errors.confirmPassword && (
+          <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>
+        )}
+
         <div className="mt-6">
           <Button label="Register" buttonType="submit" loading={isLoading} disabled={isLoading} />
         </div>
       </form>
- 
+
       <p className="mt-6 text-center text-sm text-slate-500">
         Already have an account?{" "}
         <Link to={API_ROUTES.PUBLIC.NAV.LOGIN} className="font-medium text-indigo-600 hover:underline">
@@ -190,4 +207,3 @@ const RegisterFrom = () => {
 };
 
 export default RegisterFrom;
-

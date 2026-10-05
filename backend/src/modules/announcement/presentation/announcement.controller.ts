@@ -3,11 +3,10 @@ import { AuthRequest } from "../../../middleware/authMiddleware.js";
 import { IuseCase } from "../../../shared/interface/IuseCase.js";
 import { CreateAnnouncementDTO, UpdateAnnouncementDTO, MarkReadDTO } from "../application/dto/announcementDTO.js";
 import { IAnnouncementDocument } from "../infrastructure/announcementSchema.js";
-import { IworkspaceRepository } from "../../workspace/domain/IworkspaceRepository.js";
-import { IuserRepository } from "../../auth/domain/IuserRepository.js";
+import { ResolveWorkspaceDTO, ResolvedWorkspaceResult } from "../../workspace/application/usecases/resolveWorkspaceUseCase.js";
 import { ApiResposne } from "../../../common/Response/Response.js";
-import { UserRoles } from "../../../common/constant/userRoles.js";
 import { MESSAGES } from "../../../common/constant/messages.js";
+import { AppError } from "../../../common/Errors/AppError.js";
 
 export class AnnouncementController {
   constructor(
@@ -20,28 +19,15 @@ export class AnnouncementController {
     private readonly markAsReadUseCase: IuseCase<MarkReadDTO, void>,
     private readonly getUnreadCountFn: (workspaceId: string, userId: string) => Promise<number>,
     private readonly getByRoomFn: (roomId: string) => Promise<IAnnouncementDocument[]>,
-    private readonly workspaceRepository: IworkspaceRepository,
-    private readonly userRepository: IuserRepository
+    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceResult>
   ) {}
 
   private async resolveWorkspace(req: AuthRequest) {
-    if (req.user?.role === UserRoles.WORKSPACE_ADMIN) {
-      const workspace = req.user.userEmail
-        ? await this.workspaceRepository.findByAdminEmail(req.user.userEmail)
-        : null;
-      if (!workspace) throw new Error(MESSAGES.ERRORS.WORKSPACE_ADMIN_NOT_FOUND);
-      return {
-        workspaceId: workspace._id.toString(),
-        organizationId: workspace.organizationId.toString(),
-      };
-    } else {
-      const user = req.user?.id ? await this.userRepository.findById(req.user.id) : null;
-      if (!user || !user.workspaceId) throw new Error(MESSAGES.ERRORS.USER_NOT_IN_WORKSPACE);
-      const workspaceId = user.workspaceId.toString();
-      const workspace = await this.workspaceRepository.getWorkspaceById(workspaceId);
-      const organizationId = workspace?.organizationId?.toString() ?? "";
-      return { workspaceId, organizationId };
-    }
+    return this.resolveWorkspaceUseCase.execute({
+      userId: req.user?.id,
+      userEmail: req.user?.userEmail,
+      role: req.user?.role
+    });
   }
 
   createAnnouncement = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -102,7 +88,7 @@ export class AnnouncementController {
       const id = req.params.id as string;
       const announcement = await this.getAnnouncementUseCase.execute(id);
       if (!announcement) {
-        return res.status(404).json({ success: false, message: MESSAGES.ERRORS.ANNOUNCEMENT_NOT_FOUND });
+        throw new AppError(MESSAGES.ERRORS.ANNOUNCEMENT_NOT_FOUND, 404);
       }
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_FETCHED, announcement);
     } catch (error) {

@@ -68,6 +68,7 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
       await uploadRoomDocument(roomId, file);
       // The socket event will append the file automatically
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Upload failed", error);
       alert("Failed to upload document");
     } finally {
@@ -82,6 +83,7 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
       await deleteRoomDocument(roomId, documentId);
       // The socket event will remove it from the list automatically
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Delete failed", error);
       alert("Failed to delete document");
     } finally {

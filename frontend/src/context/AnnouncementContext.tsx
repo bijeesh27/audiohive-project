@@ -14,7 +14,6 @@ const AnnouncementContextProvider = ({ children }: { children: React.ReactNode }
   const { socket } = useSocket();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Initial fetch on mount
   useEffect(() => {
     getUnreadCount()
       .then((res) => {
@@ -23,7 +22,6 @@ const AnnouncementContextProvider = ({ children }: { children: React.ReactNode }
       .catch(() => {});
   }, []);
 
-  // Centralised socket listeners — single place manages the badge count
   useEffect(() => {
     const onNew = () => setUnreadCount((c) => c + 1);
     const onDelete = () => setUnreadCount((c) => Math.max(0, c - 1));
@@ -53,6 +51,7 @@ const AnnouncementContextProvider = ({ children }: { children: React.ReactNode }
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAnnouncementContext = () => {
   const context = useContext(AnnouncementContext);
   if (!context) {

@@ -64,7 +64,8 @@ const WorkspaceDetailsPage = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Users Table
-  const [users, setUsers] = useState<any[]>([]);
+  interface WorkspaceUser { _id: string; username: string; email: string; role: string; isBlocked: boolean; }
+  const [users, setUsers] = useState<WorkspaceUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userPage, setUserPage] = useState(1);
   const [userTotalPages, setUserTotalPages] = useState(1);
@@ -83,7 +84,7 @@ const WorkspaceDetailsPage = () => {
   };
 
   useEffect(() => {
-    fetchWorkspace();
+    fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
@@ -138,8 +139,9 @@ const WorkspaceDetailsPage = () => {
         slug: editSlug,
       });
       setShowEditModal(false);
-      fetchWorkspace();
-    } catch (err: any) {
+      fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setEditError(err?.response?.data?.message || "Failed to update workspace");
     } finally {
       setEditing(false);
@@ -184,8 +186,9 @@ const WorkspaceDetailsPage = () => {
         workspaceAdminName: adminName.trim(),
       });
       setShowInviteModal(false);
-      fetchWorkspace();
-    } catch (err: any) {
+      fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setInviteError(err?.response?.data?.message || "Failed to send invitation");
     } finally {
       setInviting(false);
@@ -204,8 +207,9 @@ const WorkspaceDetailsPage = () => {
     try {
       await blockWorkspace(workspace._id, isSuspended ? "active" : "suspended");
       setShowBlockConfirm(false);
-      fetchWorkspace();
-    } catch (err: any) {
+      fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setBlockError(
         err?.response?.data?.message || "Failed to update workspace status"
       );
@@ -216,7 +220,7 @@ const WorkspaceDetailsPage = () => {
 
   // ---- Remove User ----
   const [showRemoveUserConfirm, setShowRemoveUserConfirm] = useState(false);
-  const [userToRemove, setUserToRemove] = useState<any>(null);
+  const [userToRemove, setUserToRemove] = useState<WorkspaceUser | null>(null);
   const [removingUser, setRemovingUser] = useState(false);
   const [removeUserError, setRemoveUserError] = useState<string | null>(null);
 
@@ -229,7 +233,8 @@ const WorkspaceDetailsPage = () => {
       setShowRemoveUserConfirm(false);
       setUserToRemove(null);
       fetchUsers();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setRemoveUserError(err?.response?.data?.message || "Failed to remove user");
     } finally {
       setRemovingUser(false);
@@ -249,7 +254,8 @@ const WorkspaceDetailsPage = () => {
     try {
       await deleteWorkspace(workspace._id);
       navigate("/organization-owner/workspace");
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setDeleteError(err?.response?.data?.message || "Failed to delete workspace");
       setDeleting(false);
     }

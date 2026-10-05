@@ -12,6 +12,7 @@ import organizationRouter from './modules/organization/presentation/organization
 import roomRouter from './modules/room/presentation/room.route.ts'
 import announcementRouter from './modules/announcement/presentation/announcement.route.ts'
 import documentRouter from './modules/document/presentation/documentRoutes.ts'
+import activityLogRouter from "./modules/activityLog/presentation/activity.routes.ts"
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from 'cors'
 import cookieParser from "cookie-parser";
@@ -42,6 +43,7 @@ export function connectApp() {
   app.use('/api/room', roomRouter)
   app.use('/api/announcement', announcementRouter)
   app.use('/api/rooms',documentRouter)
+  app.use('/api/activitylog',activityLogRouter)
 
   app.use(globelErrorHandler);
 

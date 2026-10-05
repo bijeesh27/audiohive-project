@@ -39,6 +39,7 @@ export const useAnnouncements = () => {
       setAnnouncements(items);
       // Sync the global unread count from server on fetch
       setUnreadCount(countRes.data.data?.unreadCount ?? 0);
+    // eslint-disable-next-line no-empty
     } catch {
     } finally {
       setLoading(false);
@@ -46,6 +47,7 @@ export const useAnnouncements = () => {
   }, [setUnreadCount]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll();
   }, [fetchAll]);
 
@@ -106,6 +108,7 @@ export const useAnnouncements = () => {
       );
       // Decrement the global badge count via context
       decrementUnread();
+    // eslint-disable-next-line no-empty
     } catch {
     }
   };

@@ -7,7 +7,7 @@ interface RoomModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  room?: any; // If provided, it's edit mode
+  room?: { _id: string; name: string; description?: string; type: string } | null; // If provided, it's edit mode
 }
 
 export default function RoomModal({ isOpen, onClose, onSuccess, room }: RoomModalProps) {
@@ -17,10 +17,12 @@ export default function RoomModal({ isOpen, onClose, onSuccess, room }: RoomModa
     type: "public",
   });
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (room) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         name: room.name || "",
         description: room.description || "",
@@ -34,14 +36,18 @@ export default function RoomModal({ isOpen, onClose, onSuccess, room }: RoomModa
       });
     }
     setError(null);
+    setErrors({});
   }, [room, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!formData.name.trim()) {
-      setError("Room name is required");
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) newErrors.name = "Room name is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -65,7 +71,8 @@ export default function RoomModal({ isOpen, onClose, onSuccess, room }: RoomModa
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setError(err?.response?.data?.message || `Failed to ${room ? 'update' : 'create'} room`);
     } finally {
       setLoading(false);
@@ -101,10 +108,18 @@ export default function RoomModal({ isOpen, onClose, onSuccess, room }: RoomModa
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
+              }}
+              className={`w-full rounded-md border px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                errors.name ? "border-red-400" : "border-gray-300"
+              }`}
               placeholder="E.g., Engineering Team"
             />
+            {errors.name && (
+              <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+            )}
           </div>
 
           <div>
@@ -175,3 +190,4 @@ export default function RoomModal({ isOpen, onClose, onSuccess, room }: RoomModa
     </div>
   );
 }
+

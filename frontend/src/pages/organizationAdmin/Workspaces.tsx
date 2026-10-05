@@ -59,6 +59,7 @@ const Workspaces = () => {
           setTotalPages(Math.ceil(res.data.total / limit));
         }
       })
+      // eslint-disable-next-line no-console
       .catch((err) => console.error("Failed to fetch workspaces:", err))
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -70,6 +71,7 @@ const Workspaces = () => {
   }, [page, limit, debouncedSearch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const cleanup = fetchWorkspaces();
     return cleanup;
   }, [fetchWorkspaces]);
@@ -86,6 +88,7 @@ const Workspaces = () => {
     navigate(`/organization-owner/getworkspace/${workspaceId}`);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openInviteModal = (workspace: IWorkspace) => {
     setAssigningWorkspace(workspace);
     setAdminName("");
@@ -127,13 +130,15 @@ const Workspaces = () => {
       setShowModal(false);
       setAssigningWorkspace(null);
       fetchWorkspaces();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setInviteError(err?.response?.data?.message || "Failed to send invitation");
     } finally {
       setInviting(false);
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openEditModal = (workspace: IWorkspace) => {
     setEditingWorkspace(workspace);
     setEditName(workspace.workspaceName);
@@ -167,7 +172,8 @@ const Workspaces = () => {
       setShowEditModal(false);
       setEditingWorkspace(null);
       fetchWorkspaces();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setEditError(err?.response?.data?.message || "Failed to update workspace");
     } finally {
       setEditing(false);

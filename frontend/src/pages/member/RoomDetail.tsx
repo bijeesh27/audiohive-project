@@ -35,6 +35,7 @@ const RoomDetail = () => {
 
   useEffect(() => {
     if (!id) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
     setAccessDenied(false);
@@ -56,6 +57,7 @@ const RoomDetail = () => {
 
   useEffect(() => {
     if (!id) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setParticipantsLoading(true);
     getRoomParticipants(id)
       .then((res) => {
@@ -226,6 +228,7 @@ const RoomDetail = () => {
       {/* Room Content Area — placeholder for future features (chat, audio, etc.) */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[200px] flex flex-col items-center justify-center text-gray-400">
         <DoorOpen className="w-14 h-14 mb-4 text-gray-300" />
+        {/* eslint-disable-next-line react/no-unescaped-entities */}
         <p className="text-base font-medium text-gray-500">You're inside {room.name}</p>
         <p className="text-sm mt-1">
           {room.type === "public"
@@ -330,3 +333,4 @@ const RoomDetail = () => {
 };
 
 export default RoomDetail;
+

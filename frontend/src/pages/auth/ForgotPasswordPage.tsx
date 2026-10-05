@@ -11,17 +11,20 @@ const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
+    const newErrors: Record<string, string> = {};
     if (!email.trim()) {
-      setError("Email address is required");
-      return;
+      newErrors.email = "Email address is required";
+    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      newErrors.email = "Please enter a valid email address";
     }
-    if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setError("Please enter a valid email address");
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -92,8 +95,14 @@ const ForgotPasswordPage = () => {
             <Input
               placeHolder="you@company.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+              }}
             />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+            )}
 
             <div className="mt-6">
               <Button

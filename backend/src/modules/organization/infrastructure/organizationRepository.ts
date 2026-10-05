@@ -1,119 +1,184 @@
 import { BaseRepository } from "../../../shared/common/baseRepository";
 import { createOrganizationDTO } from "../application/dto/organizationDTO";
 import { IorganizaionRepository } from "../domain/IorganizationRepository";
-import { ICreateOrganizationInvitation, InvitationModel } from "./organizationInvitationSchema";
+import {
+  ICreateOrganizationInvitation,
+  InvitationModel,
+} from "./organizationInvitationSchema";
 import { IorganizationDocument, OrganizationModel } from "./organizationSchema";
 import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema";
 import { UserModel } from "../../../shared/User.utils/userSchema";
+import { FilterQuery } from "mongoose";
 
-export class OrganizationRepository extends BaseRepository<IorganizationDocument> implements IorganizaionRepository  {
-    constructor(){
-        super(OrganizationModel)
-    }
-  async createOrganization(data: createOrganizationDTO): Promise<IorganizationDocument> {
-    return await this.create(data)
+export class OrganizationRepository
+  extends BaseRepository<IorganizationDocument>
+  implements IorganizaionRepository
+{
+  constructor() {
+    super(OrganizationModel);
   }
-  async updateOrganization(organizationId: string, data: Partial<IorganizationDocument>): Promise<void> {
-       await this.update(organizationId,data)
+
+  async createOrganization(
+    data: createOrganizationDTO,
+  ): Promise<IorganizationDocument> {
+    return await this.create(data);
   }
+
+  async updateOrganization(
+    organizationId: string,
+    data: Partial<IorganizationDocument>,
+  ): Promise<void> {
+    await this.update(organizationId, data);
+  }
+
   async deleteOrganization(organizationId: string): Promise<void> {
-      await this.delete(organizationId)
+    await this.delete(organizationId);
   }
+
   async getAllorganizations(
-  page: number,
-  limit: number,
-  searchQuery?: string,
-  sortOrder: string = 'desc'
-): Promise<{ organizations: IorganizationDocument[], total: number }> {
-  const skip = (page - 1) * limit;
+    page: number,
+    limit: number,
+    searchQuery?: string,
+    sortOrder: string = "desc",
+  ): Promise<{
+    organizations: IorganizationDocument[];
+    total: number;
+  }> {
+    const skip = (page - 1) * limit;
 
-  const query: any = {};
+    const query: FilterQuery<IorganizationDocument> = {};
 
-  if (searchQuery) {
-    query.$or = [
-      { ownerEmail: { $regex: searchQuery, $options: "i" } },
-      { companyName: { $regex: searchQuery, $options: "i" } },
-    ];
+    if (searchQuery) {
+      query.$or = [
+        {
+          ownerEmail: {
+            $regex: searchQuery,
+            $options: "i",
+          },
+        },
+        {
+          companyName: {
+            $regex: searchQuery,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
+    const sortOpt = sortOrder === "asc" ? 1 : -1;
+
+    const [organizations, total] = await Promise.all([
+      OrganizationModel.find(query)
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: sortOpt }),
+
+      OrganizationModel.countDocuments(query),
+    ]);
+
+    return {
+      organizations,
+      total,
+    };
   }
 
-  const sortOpt = sortOrder === 'asc' ? 1 : -1;
+  async createInvitation(data: ICreateOrganizationInvitation): Promise<void> {
+    await InvitationModel.create(data);
+  }
 
-  const [organizations, total] = await Promise.all([
-    OrganizationModel.find(query)
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: sortOpt }),
-    OrganizationModel.countDocuments(query)
-  ]);
+  async findInvitationByToken(
+    token: string,
+  ): Promise<ICreateOrganizationInvitation | null> {
+    return await InvitationModel.findOne({ token });
+  }
 
-  return { organizations, total };
-}
-   async createInvitation(data: ICreateOrganizationInvitation): Promise<void> {
-       await InvitationModel.create(data)
-   }
+  async findInvitationByEmail(
+    ownerEmail: string,
+  ): Promise<ICreateOrganizationInvitation | null> {
+    return await InvitationModel.findOne({ ownerEmail });
+  }
 
-   async findInvitationByToken(token: string): Promise<ICreateOrganizationInvitation | null> {
-       return await InvitationModel.findOne({ token })
-   }
+  async deleteInvitation(token: string): Promise<void> {
+    await InvitationModel.deleteOne({ token });
+  }
 
-   async findInvitationByEmail(ownerEmail: string): Promise<ICreateOrganizationInvitation | null> {
-       return await InvitationModel.findOne({ ownerEmail })
-   }
+  async findByOwnerEmail(
+    ownerEmail: string,
+  ): Promise<IorganizationDocument | null> {
+    return await OrganizationModel.findOne({ ownerEmail });
+  }
 
-   async deleteInvitation(token: string): Promise<void> {
-       await InvitationModel.deleteOne({ token })
-   }
+  async getUsersByOrganization(
+    organizationId: string,
+    page: number,
+    limit: number,
+    searchQuery?: string,
+  ) {
+    const workspaces = await WorkspaceModel.find({
+      organizationId,
+    }).select("_id");
 
-   async findByOwnerEmail(ownerEmail: string): Promise<IorganizationDocument | null> {
-       return await OrganizationModel.findOne({ ownerEmail })
-   }
+    const workspaceIds = workspaces.map((w) => w._id);
 
-   async getUsersByOrganization(
-       organizationId: string,
-       page: number,
-       limit: number,
-       searchQuery?: string
-   ) {
-       const workspaces = await WorkspaceModel.find({ organizationId }).select('_id');
-       const workspaceIds = workspaces.map((w) => w._id);
+    const query: FilterQuery<typeof UserModel> = {
+      workspaceId: { $in: workspaceIds },
+      role: {
+        $in: ["workspace-admin", "member"],
+      },
+    };
 
-       const query: any = {
-           workspaceId: { $in: workspaceIds },
-           role: { $in: ['workspace-admin', 'member'] }
-       };
+    if (searchQuery) {
+      query.$or = [
+        {
+          username: {
+            $regex: searchQuery,
+            $options: "i",
+          },
+        },
+        {
+          email: {
+            $regex: searchQuery,
+            $options: "i",
+          },
+        },
+      ];
+    }
 
-       if (searchQuery) {
-           query.$or = [
-               { username: { $regex: searchQuery, $options: "i" } },
-               { email: { $regex: searchQuery, $options: "i" } }
-           ];
-       }
+    const skip = (page - 1) * limit;
 
-       const skip = (page - 1) * limit;
+    const [users, total] = await Promise.all([
+      UserModel.find(query)
+        .select("-password")
+        .populate("workspaceId", "workspaceName")
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
 
-       const [users, total] = await Promise.all([
-           UserModel.find(query)
-               .select('-password')
-               .populate('workspaceId', 'workspaceName')
-               .skip(skip)
-               .limit(limit)
-               .sort({ createdAt: -1 }),
-           UserModel.countDocuments(query)
-       ]);
+      UserModel.countDocuments(query),
+    ]);
 
-       return { users, total };
-   }
+    return {
+      users,
+      total,
+    };
+  }
 
-   async getTotalWorkspacesByOrg(organizationId: string): Promise<number> {
-       return await WorkspaceModel.countDocuments({ organizationId });
-   }
+  async getTotalWorkspacesByOrg(organizationId: string): Promise<number> {
+    return await WorkspaceModel.countDocuments({
+      organizationId,
+    });
+  }
 
-   async getTotalUsersByOrg(organizationId: string): Promise<number> {
-       const workspaces = await WorkspaceModel.find({ organizationId }).select('_id');
-       const workspaceIds = workspaces.map((w) => w._id);
-       return await UserModel.countDocuments({
-           workspaceId: { $in: workspaceIds },
-           role: { $in: ['workspace-admin', 'member'] }
-       });
-   }
+  async getTotalUsersByOrg(organizationId: string): Promise<number> {
+    const workspaces = await WorkspaceModel.find({
+      organizationId,
+    }).select("_id");
+
+    const workspaceIds = workspaces.map((w) => w._id);
+
+    return await UserModel.countDocuments({
+      workspaceId: { $in: workspaceIds },
+      role: { $in: ["workspace-admin", "member"] },
+    });
+  }
 }

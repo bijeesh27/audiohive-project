@@ -37,8 +37,8 @@ router.post(API_ROUTES.SUBSCRIPTION.CREATE_SUBSCRIPTION, validateRequest(createS
 router.post(API_ROUTES.SUBSCRIPTION.UPDATE_SUBSCRIPTION, validateRequest(updateSubscriptionSchema), controller.updateSubscription.bind(controller))
 router.post(API_ROUTES.SUBSCRIPTION.DELETE_SUBSCRIPTION,controller.deleteSubscription.bind(controller))
 router.get(API_ROUTES.SUBSCRIPTION.GET_ALL_SUBSCRIPTIONS,controller.getAllSubscriptions.bind(controller))
-router.post('/create-checkout-session', controller.createCheckoutSession.bind(controller))
-router.post('/verify-session', controller.verifyCheckoutSession.bind(controller))
+router.post(API_ROUTES.SUBSCRIPTION.CREATE_CHECKOUT_SESSION, controller.createCheckoutSession.bind(controller))
+router.post(API_ROUTES.SUBSCRIPTION.VERIFY_SESSION, controller.verifyCheckoutSession.bind(controller))
 
 
 export default router

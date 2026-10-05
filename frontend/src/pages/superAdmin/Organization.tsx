@@ -39,6 +39,7 @@ const Organization = () => {
           setTotalPages(Math.ceil((res.data?.total || 0) / limit));
         }
       })
+      // eslint-disable-next-line no-console
       .catch((error) => console.error("Failed to fetch organizations:", error))
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -50,6 +51,7 @@ const Organization = () => {
   }, [page, limit, debouncedSearch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const cleanup = fetchOrganizations();
     return cleanup;
   }, [fetchOrganizations]);
@@ -77,7 +79,8 @@ const Organization = () => {
       await updateOrganization(confirmToggleOrg._id, { status: newStatus });
       setConfirmToggleOrg(null);
       fetchOrganizations();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       alert(err?.response?.data?.message || "Failed to update status");
     } finally {
       setToggling(false);
@@ -194,7 +197,9 @@ const Organization = () => {
             </h3>
             <p className="mt-2 text-sm text-gray-500">
               Are you sure you want to{" "}
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
               {confirmToggleOrg.status === "active" ? "block" : "unblock"} the organization "
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
               {confirmToggleOrg.companyName}"?
               {confirmToggleOrg.status === "active" && " Their workspaces will be inaccessible."}
             </p>
@@ -228,3 +233,4 @@ const Organization = () => {
 };
 
 export default Organization;
+

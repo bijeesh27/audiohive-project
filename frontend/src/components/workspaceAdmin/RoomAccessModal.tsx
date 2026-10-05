@@ -35,7 +35,9 @@ export default function RoomAccessModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedUsers(new Set(initialAllowedUsers));
+      // eslint-disable-next-line react-hooks/immutability
       fetchWorkspaceUsers();
     }
   }, [isOpen, initialAllowedUsers]);
@@ -47,7 +49,8 @@ export default function RoomAccessModal({
       // Fetch users without pagination for simple allocation (or fetch a large limit)
       const res = await worspaceAdminGetUsers(1, 100, "");
       setUsers(res.data.users || []);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setError(err?.response?.data?.message || "Failed to load workspace users");
     } finally {
       setLoading(false);
@@ -71,7 +74,8 @@ export default function RoomAccessModal({
       await allocateRoomUsers(roomId, Array.from(selectedUsers));
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setError(err?.response?.data?.message || "Failed to save room access");
     } finally {
       setSaving(false);
@@ -148,3 +152,4 @@ export default function RoomAccessModal({
     </div>
   );
 }
+

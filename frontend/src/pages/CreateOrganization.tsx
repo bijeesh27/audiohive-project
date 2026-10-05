@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Building2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { createOrganization } from "../services/organizationServices";
+import { useLocation, useNavigate } from "react-router-dom";
+import axiosInstance from "../config/axios";
 import { isAxiosError } from "axios";
 import { API_ROUTES } from "../constants/Api_Routes";
+
+const PENDING_ORGANIZATION_KEY = "audiohive.pendingOrganization";
 
 
 interface IFormData {
@@ -15,10 +17,11 @@ interface IFormData {
 
 const CreateOrganization = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const selectedPlanId = (location.state as { selectedPlanId?: string } | null)?.selectedPlanId;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<IFormData>({
@@ -40,7 +43,6 @@ const CreateOrganization = () => {
   };
 
   const handleContinue = async () => {
-    setFieldErrors([]);
     setError(null);
     setFormErrors({});
 
@@ -75,20 +77,40 @@ const CreateOrganization = () => {
     };
 
     try {
-      await createOrganization(organizationData);
+      // Create the invitation record (does NOT create the org yet).
+      // The org is created after the user selects and confirms a plan.
+      await axiosInstance.post("/api/organization/create-organization", organizationData);
+
+      const pendingOrganization = { ...organizationData, selectedPlanId };
+      try {
+        sessionStorage.setItem(PENDING_ORGANIZATION_KEY, JSON.stringify(pendingOrganization));
+      } catch {
+        // Router state still carries the data through normal navigation.
+      }
 
       navigate("/choose-plan", {
-        state: organizationData,
+        state: pendingOrganization,
       });
     } catch (err: unknown) {
       if (isAxiosError(err)) {
         const data = err?.response?.data;
         const raw = data?.errors;
-        const fields: { field: string; message: string }[] = Array.isArray(raw) ? raw : [];
-        if (fields.length > 0) {
-          setFieldErrors(fields.map((e) => e.message));
+        const knownFields = ["companyName", "slug", "ownerName", "ownerEmail"];
+        const apiFields: { field: string; message: string }[] = Array.isArray(raw) ? raw : [];
+        if (apiFields.length > 0) {
+          const mapped: Record<string, string> = {};
+          const unmapped: string[] = [];
+          apiFields.forEach(({ field, message }) => {
+            if (knownFields.includes(field)) {
+              mapped[field] = message;
+            } else {
+              unmapped.push(message);
+            }
+          });
+          if (Object.keys(mapped).length > 0) setFormErrors(mapped);
+          if (unmapped.length > 0) setError(unmapped.join(". "));
         } else {
-          setError(data?.message || "Failed to create organization");
+          setError(data?.message || "Failed to submit request");
         }
       }
     } finally {
@@ -142,13 +164,7 @@ const CreateOrganization = () => {
               {error}
             </div>
           )}
-          {fieldErrors.length > 0 && (
-            <div className="mt-4 mx-6 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-              <ul className="list-disc list-inside space-y-1">
-                {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
-              </ul>
-            </div>
-          )}
+
 
           <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
             <div>

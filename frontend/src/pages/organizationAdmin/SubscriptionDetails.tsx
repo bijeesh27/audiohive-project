@@ -31,18 +31,21 @@ const SubscriptionDetails = () => {
 
         const plansRes = await subscriptionService.getAllSubscriptions();
         const allPlans: ISubscription[] = plansRes.data || [];
-        
-        // Find the subscription matching the organization's planId (case-insensitive)
-        const myPlan = allPlans.find(
-          (p) => p.subscriptionName.toLowerCase() === orgPlanId.toLowerCase()
-        );
+
+        // Match by plan _id (orgPlanId is a MongoDB ObjectId stored in org.planId).
+        // If it's the legacy default value 'free', fall back to the zero-price plan.
+        const myPlan =
+          orgPlanId === "free"
+            ? allPlans.find((p) => p.price === 0)
+            : allPlans.find((p) => p._id === orgPlanId);
 
         if (myPlan) {
           setSubscription(myPlan);
         } else {
           throw new Error("Current plan details not found.");
         }
-      } catch (err: any) {
+      } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
         setError(err?.response?.data?.message || err.message || "Failed to load subscription details.");
       } finally {
         setLoading(false);
@@ -144,4 +147,5 @@ const SubscriptionDetails = () => {
 };
 
 export default SubscriptionDetails;
+
 
