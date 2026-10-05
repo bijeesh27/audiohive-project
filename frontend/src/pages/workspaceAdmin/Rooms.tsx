@@ -37,6 +37,7 @@ const Rooms = () => {
   const [editingRoom, setEditingRoom] = useState<Room | undefined>(undefined);
   
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [accessRoom, setAccessRoom] = useState<Room | undefined>(undefined);
 
 
@@ -79,6 +80,7 @@ const Rooms = () => {
   }, [page, limit, debouncedSearch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const cleanup = fetchRooms();
     return cleanup;
   }, [fetchRooms]);
@@ -102,7 +104,8 @@ const Rooms = () => {
       }
       fetchRooms();
       setConfirmModal({ isOpen: false, roomId: "", roomName: "", actionType: "delete" });
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setError(err?.response?.data?.message || `Failed to ${confirmModal.actionType} room`);
       setConfirmModal({ isOpen: false, roomId: "", roomName: "", actionType: "delete" });
     } finally {
@@ -110,25 +113,13 @@ const Rooms = () => {
     }
   };
 
-  // const handleEditClick = (room: Room) => {
-  //   setEditingRoom(room);
-  //   setIsRoomModalOpen(true);
-  // };
 
   const handleCreateClick = () => {
     setEditingRoom(undefined);
     setIsRoomModalOpen(true);
   };
 
-  // const handleAccessClick = (room: Room) => {
-  //   setAccessRoom(room);
-  //   setIsAccessModalOpen(true);
-  // };
-
-  // const handleParticipantsClick = (room: Room) => {
-  //   setParticipantsRoom(room);
-  //   setIsParticipantsModalOpen(true);
-  // };
+  
 
   const columns: Column<Room>[] = [
     {
@@ -279,3 +270,4 @@ const Rooms = () => {
 };
 
 export default Rooms;
+

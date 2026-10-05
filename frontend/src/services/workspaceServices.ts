@@ -18,7 +18,7 @@ export const getMyWorkspaces = (page: number = 1, limit: number = 10, search: st
   return axiosInstance.get(url).then((res) => res.data);
 };
 
-export const createWorkspace = (data: any) => {
+export const createWorkspace = (data: Record<string, unknown>) => {
   return axiosInstance.post(API_ENDPOINTS.WORKSPACE.CREATE, data).then((res) => res.data);
 };
 

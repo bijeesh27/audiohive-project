@@ -10,8 +10,14 @@ import { WorkspaceAdminController } from "./workspaceAdmin.controller.ts";
 import { GetWorkspaceDashboardStatsUseCase } from "../application/usecase/getWorkspaceDashboardStatsUseCase.ts";
 import { GetActiveUserUseCase } from "../application/usecase/getActiveUserUseCase.ts";
 
+import { ResolveWorkspaceUseCase } from "../../workspace/application/usecases/resolveWorkspaceUseCase.ts";
+import { UpdateUserUseCase } from "../../superAdmin/application/usecases/updateUserUseCase.ts";
+
+import { UserRepository as AuthUserRepository } from "../../auth/infrastructure/userRepository.ts";
+
 const router = express.Router();
 const userRepository = new UserRepository();
+const authUserRepository = new AuthUserRepository();
 const workspaceRepository = new WorkspaceReopsitory();
 
 const getAllUserUseCase = new GetAllUserUseCase(userRepository);
@@ -19,7 +25,17 @@ const sendUserInvitationUseCase = new SendUserInvitationUseCase(workspaceReposit
 const getWorkspaceDashboardStatsUseCase = new GetWorkspaceDashboardStatsUseCase(userRepository);
 const getActiveUserUseCase=new GetActiveUserUseCase(userRepository)
 
-const controller = new WorkspaceAdminController(getAllUserUseCase, sendUserInvitationUseCase, getWorkspaceDashboardStatsUseCase, workspaceRepository, getActiveUserUseCase, userRepository);
+const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, authUserRepository);
+const updateUserUseCase = new UpdateUserUseCase(authUserRepository);
+
+const controller = new WorkspaceAdminController(
+  getAllUserUseCase,
+  sendUserInvitationUseCase,
+  getWorkspaceDashboardStatsUseCase,
+  resolveWorkspaceUseCase,
+  getActiveUserUseCase,
+  updateUserUseCase
+);
 
 router.get(
   API_ROUTES.WORKSPACE_ADMIN.GET_USERS,
@@ -50,12 +66,12 @@ router.get(
 );
 
 router.patch(
-  '/users/:id',
+  API_ROUTES.WORKSPACE_ADMIN.UPDATE_USER,
   authMiddleware,
   roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
   controller.updateUser.bind(controller),
 );
 
-router.get('/activeusers/:workspaceId', controller.getActiveUsers.bind(controller))
+router.get(API_ROUTES.WORKSPACE_ADMIN.GET_ACTIVE_USERS, controller.getActiveUsers.bind(controller))
 
 export default router;

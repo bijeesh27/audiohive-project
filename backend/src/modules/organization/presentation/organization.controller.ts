@@ -2,9 +2,12 @@ import { NextFunction, Request, Response } from "express";
 import { ApiResposne } from "../../../common/Response/Response";
 import { IuseCase } from "../../../shared/interface/IuseCase";
 import { IorganizationDocument } from "../infrastructure/organizationSchema";
-import { createOrganizationDTO, updateOrganizationDTO } from "../application/dto/organizationDTO";
+import { createOrganizationDTO } from "../application/dto/organizationDTO";
 import { MESSAGES } from "../../../common/constant/messages";
 import { IuserDocument } from "../../../shared/User.utils/userSchema";
+import { SendInvitationDTO } from "../application/usecases/sendOrganizationInvitationUseCase";
+import { AppError } from "../../../common/Errors/AppError";
+import { HttpStatus } from "../../../common/constant/httpStatus";
 
 export class OrganizationController {
     constructor(
@@ -15,7 +18,7 @@ export class OrganizationController {
         private readonly getMyOrganizationUseCase: IuseCase<string, IorganizationDocument>,
         private readonly getAllOrganizationUsersUseCase: IuseCase<{ ownerEmail: string; page: number; limit: number; search?: string }, { users: IuserDocument[]; total: number }>,
         private readonly getOrgDashboardStatsUseCase: IuseCase<string, { totalWorkspaces: number; totalUsers: number }>,
-        private readonly sendOrganizationInvitationUseCase: IuseCase<string, void>
+        private readonly sendOrganizationInvitationUseCase: IuseCase<SendInvitationDTO, void>
     ) {}
 
     async createOrganization(req: Request, res: Response, next: NextFunction) {
@@ -29,11 +32,11 @@ export class OrganizationController {
 
     async sendInvitation(req: Request, res: Response, next: NextFunction) {
         try {
-            const { ownerEmail } = req.body;
-            if (!ownerEmail) {
-                return res.status(400).json({ message: "Owner email is required" });
+            const { ownerEmail, companyName, slug, ownerName, planId } = req.body;
+            if (!ownerEmail || !companyName || !slug || !ownerName) {
+                throw new AppError("ownerEmail, companyName, slug, and ownerName are required", HttpStatus.BAD_REQUEST);
             }
-            await this.sendOrganizationInvitationUseCase.execute(ownerEmail);
+            await this.sendOrganizationInvitationUseCase.execute({ ownerEmail, companyName, slug, ownerName, planId });
             return ApiResposne.success(res, "Invitation sent successfully", null, 200);
         } catch (error) {
             next(error);
@@ -78,7 +81,7 @@ export class OrganizationController {
         try {
             const userEmail = req.user?.userEmail;
             if (!userEmail) {
-                return res.status(401).json({ success: false, message: MESSAGES.ERRORS.UNAUTHORIZED });
+                throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
             }
             const data = await this.getMyOrganizationUseCase.execute(userEmail);
             return ApiResposne.success(res, MESSAGES.SUCCESS.ORGANIZATION_FETCHED, data, 200);
@@ -91,7 +94,7 @@ export class OrganizationController {
         try {
             const userEmail = req.user?.userEmail;
             if (!userEmail) {
-                return res.status(401).json({ success: false, message: MESSAGES.ERRORS.UNAUTHORIZED });
+                throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
             }
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 10;
@@ -108,7 +111,7 @@ export class OrganizationController {
         try {
             const userEmail = req.user?.userEmail;
             if (!userEmail) {
-                return res.status(401).json({ success: false, message: MESSAGES.ERRORS.UNAUTHORIZED });
+                throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
             }
             const data = await this.getOrgDashboardStatsUseCase.execute(userEmail);
             return ApiResposne.success(res, MESSAGES.SUCCESS.DASHBOARD_STATS_FETCHED, data, 200);

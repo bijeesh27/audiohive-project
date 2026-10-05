@@ -7,8 +7,7 @@ export interface SubscriptionDTO {
   subscriptionName: string;
   price: number;
   description: string;
-  maxRooms: number;
-  maxUsers: number;
+  maxWorkspaces: number;
   features: string[];
   isActive?: boolean;
 }
@@ -24,7 +23,7 @@ export const subscriptionService = {
     return response.data;
   },
 
-  updateSubscription: async (subscriptionId: any, data: SubscriptionDTO) => {
+  updateSubscription: async (subscriptionId: string, data: SubscriptionDTO) => {
     const response = await axiosInstance.post(API_ENDPOINTS.SUBSCRIPTION.UPDATE, {
       subscriptionId,
       data,

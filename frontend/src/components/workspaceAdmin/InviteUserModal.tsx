@@ -15,6 +15,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
   const [role, setRole] = useState("member");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!isOpen) return null;
 
@@ -22,16 +23,16 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
     e.preventDefault();
     setError(null);
 
-    if (!invitedName.trim()) {
-      setError("Name is required");
-      return;
-    }
+    const newErrors: Record<string, string> = {};
+    if (!invitedName.trim()) newErrors.invitedName = "Name is required";
     if (!email.trim()) {
-      setError("Email address is required");
-      return;
+      newErrors.email = "Email address is required";
+    } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      newErrors.email = "Please enter a valid email address";
     }
-    if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setError("Please enter a valid email address");
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -44,7 +45,9 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
       setEmail("");
       setInvitedName("");
       setRole("member");
-    } catch (err: any) {
+      setErrors({});
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setError(err?.response?.data?.message || "Failed to invite user");
     } finally {
       setIsLoading(false);
@@ -71,8 +74,15 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
             <Input
               placeHolder="User's name"
               value={invitedName}
-              onChange={(e) => setInvitedName(e.target.value)}
+              hasError={!!errors.invitedName}
+              onChange={(e) => {
+                setInvitedName(e.target.value);
+                if (errors.invitedName) setErrors((prev) => ({ ...prev, invitedName: "" }));
+              }}
             />
+            {errors.invitedName && (
+              <p className="mt-1 text-xs text-red-500">{errors.invitedName}</p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
@@ -80,8 +90,15 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
               type="text"
               placeHolder="User's email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              hasError={!!errors.email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+              }}
             />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+            )}
           </div>
 
           <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -107,4 +124,5 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
 };
 
 export default InviteUserModal;
+
 

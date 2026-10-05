@@ -1,5 +1,6 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IroomRepository } from "../../domain/IroomRepository";
+import { IRoomDocument } from "../../infrastructure/roomSchema";
 import { UpdateRoomDTO } from "../dto/roomDTO";
 
 export class UpdateRoomUseCase implements IuseCase<{ roomId: string; data: UpdateRoomDTO }, void> {
@@ -11,6 +12,6 @@ export class UpdateRoomUseCase implements IuseCase<{ roomId: string; data: Updat
     } else if (data.type === "public") {
       data.isPrivate = false;
     }
-    await this.roomRepository.updateRoom(roomId, data as unknown as any);
+    await this.roomRepository.updateRoom(roomId, data as Partial<IRoomDocument>);
   }
 }

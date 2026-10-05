@@ -8,6 +8,7 @@ import { setToken } from "../../config/axios";
 import { UserRoles } from "../../constants/userRole";
 import { API_ROUTES } from "../../constants/Api_Routes";
 import { isAxiosError } from "axios";
+import { recordActivityLog } from "../../services/activityServices";
 
 const LoginFrom = () => {
   const navigate = useNavigate();
@@ -15,25 +16,24 @@ const LoginFrom = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { setAccessToken, setUserRole } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setFieldErrors([]);
 
-    const validationErrors: string[] = [];
+    const newErrors: Record<string, string> = {};
     if (!email.trim()) {
-      validationErrors.push("Email address is required");
+      newErrors.email = "Email address is required";
     } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      validationErrors.push("Please enter a valid email address");
+      newErrors.email = "Please enter a valid email address";
     }
     if (!password) {
-      validationErrors.push("Password is required");
+      newErrors.password = "Password is required";
     }
-    if (validationErrors.length > 0) {
-      setFieldErrors(validationErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -44,6 +44,22 @@ const LoginFrom = () => {
         setToken(res.data.accessToken);
         setAccessToken(res.data.accessToken);
         setUserRole(res.data.userRole);
+         try {
+          await recordActivityLog({
+            action: "LOGIN",
+            actorId: res.data.userId,
+            actorRole: res.data.userRole,
+            organizationId: res.data.organizationId,
+            workspaceId: res.data.workspaceId,
+            targetType: res.data.userRole,
+            targetId: res.data.userId,
+            metadata: {
+              loginMethod: "password",
+            },
+          });
+        } catch (activityError) {
+          console.error("Failed to record login activity:", activityError);
+        }
 
         if (res.data.userRole === UserRoles.SUPER_ADMIN) {
           navigate(API_ROUTES.SUPER_ADMIN.NAV.DASHBOARD);
@@ -51,23 +67,15 @@ const LoginFrom = () => {
           navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD);
         } else if (res.data.userRole === UserRoles.MEMBER) {
           navigate(API_ROUTES.MEMBER.NAV.DASHBOARD);
-        }else if (res.data.userRole === UserRoles.ORGANIZATION_OWNER) {
-  navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.DASHBOARD);
-}
+        } else if (res.data.userRole === UserRoles.ORGANIZATION_OWNER) {
+          navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.DASHBOARD);
+        }
       }
     } catch (err: unknown) {
       if (isAxiosError(err)) {
-    const data = err?.response?.data;
-    const raw = data?.errors;
-  const fields: {field:string; message:string}[] = Array.isArray(raw) ? raw : [];
-    if (fields.length > 0) {
-      setFieldErrors(fields.map(e => e.message));
-      setError(null);
-    } else {
-      setError(data?.message || "Login failed");
-      setFieldErrors([]);
-    }
-  }
+        const data = err?.response?.data;
+        setError(data?.message || "Login failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -81,17 +89,10 @@ const LoginFrom = () => {
       </p>
 
       {error && (
-    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-      {error}
-    </div>
-  )}
-  {fieldErrors.length > 0 && (
-    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-      <ul className="list-disc list-inside space-y-1">
-        {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
-      </ul>
-    </div>
-  )}
+        <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       <form noValidate onSubmit={handleSubmit}>
         <label className="text-sm font-medium text-slate-900 block mb-1.5">
@@ -100,8 +101,15 @@ const LoginFrom = () => {
         <Input
           placeHolder="you@company.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          hasError={!!errors.email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+          }}
         />
+        {errors.email && (
+          <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+        )}
 
         <div className="flex items-center justify-between mt-4 mb-1.5">
           <label className="text-sm font-medium text-slate-900">Password</label>
@@ -116,8 +124,15 @@ const LoginFrom = () => {
           type="password"
           placeHolder="••••••••"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          hasError={!!errors.password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+          }}
         />
+        {errors.password && (
+          <p className="mt-1 text-xs text-red-500">{errors.password}</p>
+        )}
 
         <div className="mt-6">
           <Button
@@ -132,10 +147,10 @@ const LoginFrom = () => {
       <p className="mt-6 text-center text-sm text-slate-500">
         Need a new workspace?{" "}
         <Link
-          to={API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE}
+          to={API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION}
           className="font-medium text-indigo-600 hover:underline"
         >
-          Create Workspace
+          Create Organization
         </Link>
       </p>
     </div>
@@ -143,4 +158,3 @@ const LoginFrom = () => {
 };
 
 export default LoginFrom;
-

@@ -1,5 +1,4 @@
-import { API_ROUTES } from "../../../../common/constant/ApiRoutes";
-import { emailQueue } from "../../../../config/queue.config";
+
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../domain/IorganizationRepository";
 import { createOrganizationDTO } from "../dto/organizationDTO";
@@ -20,7 +19,9 @@ export class CreateOrganizationUseCase implements IuseCase<
       ownerEmail: data.ownerEmail,
       token: token,
     };
+    // Only create the invitation record here.
+    // The organization itself is created later, in SendOrganizationInvitationUseCase,
+    // after the user has chosen and (if needed) paid for a plan.
     await this.oragnizationRepository.createInvitation(organizationInvitation);
-    await this.oragnizationRepository.createOrganization(data);
   }
 }

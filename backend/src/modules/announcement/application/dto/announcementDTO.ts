@@ -30,3 +30,23 @@ export interface MarkReadDTO {
   announcementId: string;
   userId: string;
 }
+
+export interface AnnouncementResponseDTO {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  roomId?: string;
+  title: string;
+  content: string;
+  type: string;
+  targetAudience: string;
+  status: string;
+  isScheduled: boolean;
+  scheduledAt?: Date;
+  expiresAt?: Date;
+  isPinned: boolean;
+  createdBy: string;
+  readBy: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}

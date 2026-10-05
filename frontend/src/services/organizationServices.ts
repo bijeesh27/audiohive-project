@@ -1,17 +1,17 @@
 import axiosInstance from "../config/axios"
 
 
-export const createOrganization=async(data:any)=>{
+export const createOrganization=async(data: Record<string, unknown>)=>{
     await axiosInstance.post('/api/organization/create-organization',data).then(res=>res.data)
 }
 
-export const getAllOrganizations=async(page:any,limit:any,search:any)=>{
+export const getAllOrganizations=async(page: number, limit: number, search?: string)=>{
     return await axiosInstance.get('/api/organization/getall-organizations', {
         params: { page, limit, search }
     }).then(res=>res.data)
 }
 
-export const updateOrganization = async (id: string, data: any) => {
+export const updateOrganization = async (id: string, data: Record<string, unknown>) => {
     return await axiosInstance.post(`/api/organization/update-organization/${id}`, data).then(res => res.data);
 }
 

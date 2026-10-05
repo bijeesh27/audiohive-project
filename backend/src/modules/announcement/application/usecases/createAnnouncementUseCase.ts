@@ -17,8 +17,7 @@ export class CreateAnnouncementUseCase
       data as unknown as Partial<IAnnouncementDocument>
     );
 
-    // Emit directly — no queue dependency. If the DB save succeeded,
-    // the live event is guaranteed to fire immediately.
+
     if (data.status === "published") {
       socketService.emitToWorkspace(
         data.workspaceId,

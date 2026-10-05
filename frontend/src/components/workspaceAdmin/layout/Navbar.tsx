@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Search, Bell } from "lucide-react";
 import ActionButton from "../../common/ActionButton";
 

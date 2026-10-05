@@ -1,11 +1,20 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IsubscriptionRepository } from "../../domain/IsubscriptionRepository";
 import {stripe} from '../../../../config/stripe'
+import logger from "../../../../shared/utils/logger";
 
-export class CreateCheckoutSessionUseCase implements IuseCase<{ planId: string; ownerEmail?: string }, string> {
+export interface CheckoutSessionInput {
+  planId: string;
+  ownerEmail?: string;
+  companyName?: string;
+  slug?: string;
+  ownerName?: string;
+}
+
+export class CreateCheckoutSessionUseCase implements IuseCase<CheckoutSessionInput, string> {
   constructor(private readonly subscriptionRepository: IsubscriptionRepository) {}
 
-  async execute({ planId, ownerEmail }: { planId: string; ownerEmail?: string }): Promise<string> {
+  async execute({ planId, ownerEmail, companyName, slug, ownerName }: CheckoutSessionInput): Promise<string> {
     const plan = await this.subscriptionRepository.findSubscriptionById(planId);
 
     if (!plan) {
@@ -30,13 +39,19 @@ export class CreateCheckoutSessionUseCase implements IuseCase<{ planId: string; 
         metadata: {
           planId: plan._id.toString(),
           ownerEmail: ownerEmail || "",
+          companyName: companyName || "",
+          slug: slug || "",
+          ownerName: ownerName || "",
         },
       });
 
+      if (!session.url) {
+        throw new Error("Stripe did not return a checkout URL");
+      }
       return session.url;
     } catch (error) {
-      console.error("Stripe Session Creation Error:", error);
-      throw new Error("Unable to create checkout session");
+      logger.error("Stripe Session Creation Error:", error);
+      throw new Error("Unable to create checkout session", { cause: error });
     }
   }
 }

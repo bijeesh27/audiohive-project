@@ -20,6 +20,8 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [svalue,setSvalue]=useState()
+
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
@@ -61,7 +63,7 @@ const Users = () => {
     };
   }, [page, search]);
 
-  
+
 
   useEffect(() => {
   
@@ -86,7 +88,8 @@ const Users = () => {
         }
       }
       setConfirmModal({ isOpen: false, userId: "", username: "", action: "status" });
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setError(err?.response?.data?.message || `Failed to ${confirmModal.action === "remove" ? "remove" : "update"} user`);
       setConfirmModal({ isOpen: false, userId: "", username: "", action: "status" });
     } finally {
@@ -190,12 +193,19 @@ const Users = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
+
+          
           <button
             onClick={() => setIsInviteModalOpen(true)}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
           >
             Assign User
           </button>
+
+
+          
+
+
         </div>
       </div>
 
@@ -253,3 +263,4 @@ const Users = () => {
 };
 
 export default Users;
+

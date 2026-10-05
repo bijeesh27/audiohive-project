@@ -3,11 +3,11 @@ import { AuthRequest } from "../../../middleware/authMiddleware";
 import { IuseCase } from "../../../shared/interface/IuseCase";
 import { CreateRoomDTO, UpdateRoomDTO, AllocateRoomUsersDTO, RemoveRoomUserDTO } from "../application/dto/roomDTO";
 import { IRoomDocument } from "../infrastructure/roomSchema";
-import { IworkspaceRepository } from "../../workspace/domain/IworkspaceRepository";
-import { IuserRepository } from "../../auth/domain/IuserRepository";
+import { ResolveWorkspaceDTO, ResolvedWorkspaceResult } from "../../workspace/application/usecases/resolveWorkspaceUseCase";
 import { ApiResposne } from "../../../common/Response/Response";
 import { UserRoles } from "../../../common/constant/userRoles";
 import { MESSAGES } from "../../../common/constant/messages";
+import { AppError } from "../../../common/Errors/AppError";
 
 export class RoomController {
   constructor(
@@ -17,25 +17,17 @@ export class RoomController {
     private readonly getRoomUseCase: IuseCase<string, IRoomDocument | null>,
     private readonly getAllRoomsUseCase: IuseCase<{ workspaceId: string; page: number; limit: number; search?: string, userId?: string, role?: string }, { rooms: IRoomDocument[]; total: number }>,
     private readonly allocateRoomUsersUseCase: IuseCase<AllocateRoomUsersDTO, void>,
-    private readonly workspaceRepository: IworkspaceRepository,
-    private readonly userRepository: IuserRepository,
+    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceResult>,
     private readonly getRoomParticipantsUseCase: IuseCase<{ roomId: string; page?: number; limit?: number; search?: string }, { participants: { _id: string; username: string; email: string; role: string; status: boolean }[]; total: number }>,
     private readonly removeRoomUserUseCase: IuseCase<RemoveRoomUserDTO, void>
   ) {}
 
   private async getWorkspaceAndOrgForUser(req: AuthRequest) {
-    if (req.user?.role === UserRoles.WORKSPACE_ADMIN) {
-      const workspace = req.user.userEmail ? await this.workspaceRepository.findByAdminEmail(req.user.userEmail) : null;
-      if (!workspace) throw new Error(MESSAGES.ERRORS.WORKSPACE_ADMIN_NOT_FOUND);
-      return { workspaceId: workspace._id.toString(), organizationId: workspace.organizationId.toString() };
-    } else {
-      const user = req.user?.id ? await this.userRepository.findById(req.user.id) : null;
-      if (!user || !user.workspaceId) throw new Error(MESSAGES.ERRORS.USER_NOT_IN_WORKSPACE);
-      const workspaceId = user.workspaceId.toString();
-      const workspace = await this.workspaceRepository.getWorkspaceById(workspaceId);
-      const organizationId = workspace?.organizationId?.toString() ?? "";
-      return { workspaceId, organizationId };
-    }
+    return this.resolveWorkspaceUseCase.execute({
+      userId: req.user?.id,
+      userEmail: req.user?.userEmail,
+      role: req.user?.role
+    });
   }
 
   createRoom = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -81,21 +73,18 @@ export class RoomController {
       const room = await this.getRoomUseCase.execute(roomId);
 
       if (!room) {
-        return res.status(404).json({ success: false, message: MESSAGES.ERRORS.ROOM_NOT_FOUND });
+        throw new AppError(MESSAGES.ERRORS.ROOM_NOT_FOUND, 404);
       }
 
       if (req.user?.role === UserRoles.MEMBER) {
         const isPublic = room.type === "public";
         const userId = req.user.id;
         const isAllowed = room.allowedUsers?.some(
-          (id: any) => id.toString() === userId
+          (id: unknown) => String(id) === userId
         );
 
         if (!isPublic && !isAllowed) {
-          return res.status(403).json({
-            success: false,
-            message: MESSAGES.ERRORS.PRIVATE_ROOM_ACCESS_DENIED,
-          });
+          throw new AppError(MESSAGES.ERRORS.PRIVATE_ROOM_ACCESS_DENIED, 403);
         }
       }
 
@@ -142,7 +131,7 @@ export class RoomController {
       const { participants, total } = await this.getRoomParticipantsUseCase.execute({ roomId, page, limit, search });
       const totalPages = Math.max(1, Math.ceil(total / limit));
 
-      return ApiResposne.success(res, "Participants fetched", { users: participants, totalPages });
+      return ApiResposne.success(res, MESSAGES.SUCCESS.PARTICIPANTS_FETCHED, { users: participants, totalPages });
     } catch (error) {
       next(error);
     }
@@ -153,7 +142,7 @@ export class RoomController {
       const roomId = req.params.id as string;
       const userId = req.params.userId as string;
       await this.removeRoomUserUseCase.execute({ roomId, userId });
-      return ApiResposne.success(res, "User removed from room");
+      return ApiResposne.success(res, MESSAGES.SUCCESS.USER_REMOVED_FROM_ROOM);
     } catch (error) {
       next(error);
     }

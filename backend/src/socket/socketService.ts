@@ -4,7 +4,6 @@ import { socketAuthMiddleware } from "./socketMiddleware.js";
 import { SOCKET_EVENTS } from "./socketEvents.js";
 import logger from "../shared/utils/logger.js";
 
-// roomId -> Set of { userId, username }
 const roomPresence = new Map<string, Map<string, { userId: string; username: string }>>();
 
 let io: SocketIOServer;
@@ -18,12 +17,11 @@ export const socketService = {
       },
     });
 
-    // Authenticate every connection with JWT
     io.use(socketAuthMiddleware);
 
     io.on("connection", (socket) => {
       const user = socket.data.user;
-      let workspaceId: string | undefined = user?.workspaceId
+      const workspaceId: string | undefined = user?.workspaceId
         ? String(user.workspaceId)
         : (socket.handshake.query?.workspaceId as string | undefined);
 
@@ -57,17 +55,13 @@ export const socketService = {
 
         const online = Array.from(roomPresence.get(roomId)!.values());
 
-        // Broadcast updated list to ALL sockets in the room (including sender)
         io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
 
-        // Also send directly to the joining socket so they always get it
-        // even if StrictMode caused a timing delay on the listener
         socket.emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
 
         logger.info(`[Socket] User ${user.id} joined room:${roomId} — ${online.length} online`);
       });
 
-      // Allow a client to fetch current presence without rejoining
       socket.on(SOCKET_EVENTS.ROOM_GET_PRESENCE, (roomId: string) => {
         const online = Array.from(roomPresence.get(roomId)?.values() ?? []);
         socket.emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
@@ -80,7 +74,6 @@ export const socketService = {
         const online = Array.from(roomPresence.get(roomId)?.values() ?? []);
         io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
 
-        // Clean up empty room maps
         if (roomPresence.get(roomId)?.size === 0) {
           roomPresence.delete(roomId);
         }
@@ -89,7 +82,7 @@ export const socketService = {
       });
 
       socket.on("disconnect", () => {
-        // Remove this socket from every room it was present in
+
         roomPresence.forEach((members, roomId) => {
           if (members.has(socket.id)) {
             members.delete(socket.id);

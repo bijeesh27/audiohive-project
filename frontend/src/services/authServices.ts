@@ -89,14 +89,14 @@ export const registerWorkspaceUser = (username: string, password: string, token:
     .then((res) => res.data);
 };
 
-export const updateUser = (userId: string, data: Partial<any>) => {
+export const updateUser = (userId: string, data: Record<string, unknown>) => {
   return axiosInstance
     .patch(API_ENDPOINTS.AUTH.UPDATE_USER(userId), data)
     .then((res) => res.data);
 };
 
 // Used by workspace admin to block/unblock users (dedicated workspace-admin route)
-export const updateWorkspaceUser = (userId: string, data: Partial<any>) => {
+export const updateWorkspaceUser = (userId: string, data: Record<string, unknown>) => {
   return axiosInstance
     .patch(`/api/workspaceadmin/users/${userId}`, data)
     .then((res) => res.data);

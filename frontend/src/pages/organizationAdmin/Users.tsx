@@ -60,6 +60,7 @@ const Users = () => {
   }, [page, limit, debouncedSearch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const cleanup = fetchUsers();
     return cleanup;
   }, [fetchUsers]);
@@ -80,7 +81,8 @@ const Users = () => {
         prev.map((u) => (u._id === confirmModal.userId ? { ...u, status: confirmModal.newStatus } : u))
       );
       setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false });
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       setError(err?.response?.data?.message || "Failed to update user status");
       setConfirmModal({ isOpen: false, userId: "", username: "", newStatus: false });
     } finally {
@@ -210,3 +212,4 @@ const Users = () => {
 };
 
 export default Users;
+

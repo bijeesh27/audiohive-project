@@ -50,6 +50,7 @@ const Users = () => {
   }, [page, limit, debouncedSearch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const cleanup = fetchUsers();
     return cleanup;
   }, [fetchUsers]);
@@ -71,6 +72,7 @@ const Users = () => {
         u._id === user._id ? { ...u, status: newStatus } : u
       ));
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Failed to update user:", err);
     } finally {
       setToggling(false);

@@ -18,8 +18,9 @@ export class UpdateSubscriptionUseCase implements IuseCase<updateSubscriptionDTO
         }
         try {
             await this.subscrptionRepository.updateSubscription(subscription._id.toString(),data)
-        } catch (error: any) {
-            if (error.code === 11000 && error.keyPattern && error.keyPattern.subscriptionName) {
+        } catch (error: unknown) {
+            const err = error as { code?: number; keyPattern?: { subscriptionName?: number } };
+            if (err.code === 11000 && err.keyPattern && err.keyPattern.subscriptionName) {
                 throw new UpdateSubscriptionError(MESSAGES.ERRORS.SUBSCRIPTION_PLAN_EXIST);
             }
             throw error;

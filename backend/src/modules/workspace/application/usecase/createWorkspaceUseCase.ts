@@ -51,10 +51,31 @@ export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void
                 workspaceName: data.workspaceName,
                 slug: data.slug,
             } as unknown as IWorkspaceDocument);
-        } catch (error: any) {
-            if (error.code === 11000 && error.keyPattern && error.keyPattern.slug) {
-                throw new CreateWorkspaceError("Workspace slug is already in use");
+        } catch (error: unknown) {
+            if (
+                typeof error === "object" &&
+                error !== null &&
+                "code" in error &&
+                "keyPattern" in error
+            ) {
+                const mongoError = error as {
+                    code?: number;
+                    keyPattern?: {
+                        slug?: unknown;
+                    };
+                };
+
+                if (
+                    mongoError.code === 11000 &&
+                    mongoError.keyPattern &&
+                    mongoError.keyPattern.slug
+                ) {
+                    throw new CreateWorkspaceError(
+                        "Workspace slug is already in use"
+                    );
+                }
             }
+
             throw error;
         }
     }

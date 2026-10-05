@@ -7,6 +7,7 @@ import { createWorkspaceDTO, deleteWorkspaceDTO, updateWorkspaceDTO } from "../a
 import { IWorkspaceDocument } from "../infrastructure/workspaceSchema";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import { IuserDocument } from "../../../shared/User.utils/userSchema";
+import { AppError } from "../../../common/Errors/AppError";
 
 export class WorkspaceController {
   constructor(
@@ -40,7 +41,7 @@ export class WorkspaceController {
     try {
       const userEmail = req.user?.userEmail;
       if (!userEmail) {
-        return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized: missing user info" });
+        throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
       }
 
       await this.createWorkspaceUseCase.execute({
@@ -91,7 +92,7 @@ export class WorkspaceController {
     try {
       const userEmail = req.user?.userEmail;
       if (!userEmail) {
-        return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
+        throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
       }
 
       const page = parseInt(req.query.page as string) || 1;
@@ -109,7 +110,7 @@ export class WorkspaceController {
     try {
       const userEmail = req.user?.userEmail;
       if (!userEmail) {
-        return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
+        throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
       }
 
       const workspaceId = req.params.id as string;
@@ -128,9 +129,13 @@ export class WorkspaceController {
     }
   }
   async getWorkspace(req:Request,res:Response,next:NextFunction){
-    const workspaceId=req.params.id as string
-    const workspace= await this.getWorkspaceUseCase.execute(workspaceId)
-    return ApiResposne.success(res,"fetched",workspace)
+    try {
+      const workspaceId=req.params.id as string
+      const workspace= await this.getWorkspaceUseCase.execute(workspaceId)
+      return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_FETCHED, workspace)
+    } catch (error) {
+      next(error)
+    }
   }
 
   async getWorkspaceUsers(req: Request, res: Response, next: NextFunction) {
@@ -141,7 +146,7 @@ export class WorkspaceController {
       const search = req.query.search as string | undefined;
 
       const data = await this.getWorkspaceUsersUseCase.execute({ workspaceId, page, limit, search });
-      return ApiResposne.success(res, "Users fetched successfully", data);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.USERS_FETCHED, data);
     } catch (error) {
       next(error);
     }
@@ -153,7 +158,7 @@ export class WorkspaceController {
       const userId = req.params.userId as string;
 
       const data = await this.removeWorkspaceUserUseCase.execute({ workspaceId, userId });
-      return ApiResposne.success(res, "User removed from workspace successfully", data);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.USER_REMOVED_FROM_WORKSPACE, data);
     } catch (error) {
       next(error);
     }

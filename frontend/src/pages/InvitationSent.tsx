@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ArrowLeft, MailCheck } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_ROUTES } from "../constants/Api_Routes";
@@ -5,6 +6,10 @@ import { API_ROUTES } from "../constants/Api_Routes";
 const InvitationSent = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    sessionStorage.removeItem("audiohive.pendingOrganization");
+  }, []);
 
   const ownerEmail = location.state?.ownerEmail || location.state?.adminEmail || "your registered email";
 
@@ -38,6 +43,7 @@ const InvitationSent = () => {
               </h1>
               
               <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-500">
+                {/* eslint-disable-next-line react/no-unescaped-entities */}
                 We've sent an invitation email to{" "}
                 <span className="font-medium text-gray-700">
                   {ownerEmail}
@@ -59,6 +65,7 @@ const InvitationSent = () => {
           </div>
 
           <p className="mt-5 text-center text-xs text-gray-400">
+            {/* eslint-disable-next-line react/no-unescaped-entities */}
             Didn't receive the email? Contact our support team.
           </p>
         </div>

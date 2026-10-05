@@ -7,7 +7,7 @@ const LandingPage: FC = () => {
 
   const handleLogin = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
   const handleCreateOrganization = (): void => navigate(API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION);
-  const handleAccessOrganization = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
+  const  handleAccessOrganization = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
 
   return (
     <div className="min-h-screen bg-brand-bg">

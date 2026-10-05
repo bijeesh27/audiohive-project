@@ -36,6 +36,7 @@ const EMPTY_FORM = {
   type: "info" as Announcement["type"],
   targetAudience: "all" as "all" | "room-specific",
   status: "published" as "draft" | "published",
+  expiresAt: "",
 };
 
 const TABS = ["all", "published", "draft", "archived", "pinned"] as const;
@@ -46,6 +47,8 @@ export default function AdminAnnouncements() {
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Announcement | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -58,6 +61,8 @@ export default function AdminAnnouncements() {
   const openCreate = () => {
     setEditTarget(null);
     setForm(EMPTY_FORM);
+    setFormErrors({});
+    setApiError(null);
     setShowModal(true);
   };
 
@@ -69,22 +74,63 @@ export default function AdminAnnouncements() {
       type: a.type,
       targetAudience: a.targetAudience,
       status: a.status === "archived" ? "published" : (a.status as "draft" | "published"),
+      expiresAt: a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : "",
     });
+    setFormErrors({});
+    setApiError(null);
     setShowModal(true);
   };
 
+  const handleFieldChange = (field: string, value: string) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    if (formErrors[field]) {
+      setFormErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+    }
+  };
+
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.title.trim()) {
+      errs.title = "Title is required";
+    } else if (form.title.trim().length > 120) {
+      errs.title = "Title must be 120 characters or fewer";
+    }
+    if (!form.content.trim()) {
+      errs.content = "Content is required";
+    } else if (form.content.trim().length < 10) {
+      errs.content = "Content must be at least 10 characters";
+    }
+    if (form.expiresAt) {
+      const expiry = new Date(form.expiresAt);
+      if (isNaN(expiry.getTime()) || expiry <= new Date()) {
+        errs.expiresAt = "Expiry must be a future date and time";
+      }
+    }
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSave = async () => {
-    if (!form.title.trim() || !form.content.trim()) return;
+    if (!validate()) return;
     setSaving(true);
+    setApiError(null);
     try {
+      const payload = {
+        ...form,
+        title: form.title.trim(),
+        content: form.content.trim(),
+        expiresAt: form.expiresAt || undefined,
+      };
       if (editTarget) {
-        await updateAnnouncement(editTarget._id, form);
+        await updateAnnouncement(editTarget._id, payload);
       } else {
-        await createAnnouncement(form);
+        await createAnnouncement(payload);
       }
       setShowModal(false);
       refetch();
-    } catch {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      setApiError(err?.response?.data?.message || "Failed to save announcement");
     } finally {
       setSaving(false);
     }
@@ -151,6 +197,7 @@ export default function AdminAnnouncements() {
         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
           <Megaphone className="w-12 h-12 mb-3 text-gray-300" />
           <p className="text-base font-medium text-gray-500">No announcements yet</p>
+          {/* eslint-disable-next-line react/no-unescaped-entities */}
           <p className="text-sm mt-1">Click "New Announcement" to get started</p>
         </div>
       ) : (
@@ -239,32 +286,46 @@ export default function AdminAnnouncements() {
               </button>
             </div>
             <div className="p-6 space-y-4">
+              {apiError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 mb-4">
+                  {apiError}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
                 <input
                   type="text"
                   value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) => handleFieldChange("title", e.target.value)}
                   placeholder="Announcement title..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${formErrors.title ? "border-red-400" : "border-gray-200"}`}
                 />
+                {formErrors.title && <p className="mt-1 text-xs text-red-500">{formErrors.title}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Content *</label>
                 <textarea
                   rows={4}
                   value={form.content}
-                  onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+                  onChange={(e) => handleFieldChange("content", e.target.value)}
                   placeholder="Write your announcement..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${formErrors.content ? "border-red-400" : "border-gray-200"}`}
                 />
+                <div className="flex justify-between items-center mt-1">
+                  {formErrors.content ? (
+                    <p className="text-xs text-red-500">{formErrors.content}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400">At least 10 characters.</p>
+                  )}
+                  <span className="text-xs text-gray-400">{form.content.length} chars</span>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                   <select
                     value={form.type}
-                    onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as Announcement["type"] }))}
+                    onChange={(e) => handleFieldChange("type", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     {Object.entries(TYPE_CONFIG).map(([key, val]) => (
@@ -276,13 +337,27 @@ export default function AdminAnnouncements() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
                     value={form.status}
-                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as "draft" | "published" }))}
+                    onChange={(e) => handleFieldChange("status", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="published">Publish Now</option>
                     <option value="draft">Save as Draft</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date & Time (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={form.expiresAt}
+                  onChange={(e) => handleFieldChange("expiresAt", e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${formErrors.expiresAt ? "border-red-400" : "border-gray-200"}`}
+                />
+                {formErrors.expiresAt ? (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.expiresAt}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400">If set, the announcement will automatically hide after this time.</p>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
@@ -294,7 +369,7 @@ export default function AdminAnnouncements() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || !form.title.trim() || !form.content.trim()}
+                disabled={saving}
                 className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? "Saving..." : editTarget ? "Save Changes" : "Create"}
@@ -337,3 +412,5 @@ export default function AdminAnnouncements() {
     </div>
   );
 }
+
+

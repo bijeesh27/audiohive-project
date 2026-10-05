@@ -21,6 +21,7 @@ export default function Sidebar() {
   const handleLogout = async () => {
     try {
       await logout();
+    // eslint-disable-next-line no-empty
     } catch {
         
     } finally {

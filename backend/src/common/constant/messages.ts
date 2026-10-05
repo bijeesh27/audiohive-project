@@ -58,6 +58,8 @@ export const MESSAGES = {
     WORKSPACE_UPDATED: "Workspace updated successfully",
     WORKSPACE_DELETED: "Workspace deleted successfully",
     WORKSPACE_GET_ALL: "All workspaces retrieved successfully",
+    WORKSPACE_FETCHED: "Workspace fetched successfully",
+    USER_REMOVED_FROM_WORKSPACE: "User removed from workspace successfully",
     WORKSPACE_APPROVED: "Workspace approved and invitation sent successfully",
 
     INVITATION_VALID: "Invitation is valid",
@@ -66,6 +68,8 @@ export const MESSAGES = {
     GET_WORKSPACE_ADMIN: "All Workspace Admins retrieved successfully",
     GET_ALL_MEMBERS: "All members retrieved successfully",
     USER_UPDATED: "User updated successfully",
+    ACTIVE_USERS_FETCHED: "Active users fetched successfully",
+    PROFILE_FETCHED: "Profile fetched successfully",
 
     ORGANIZATION_CREATED: "Organization created successfully",
     ORGANIZATION_UPDATED: "Organization updated successfully",
@@ -81,6 +85,8 @@ export const MESSAGES = {
     ROOM_FETCHED: "Room fetched successfully",
     ROOMS_FETCHED: "Rooms fetched successfully",
     ROOM_ACCESS_UPDATED: "Room access updated successfully",
+    PARTICIPANTS_FETCHED: "Participants fetched",
+    USER_REMOVED_FROM_ROOM: "User removed from room",
 
     ANNOUNCEMENT_CREATED: "Announcement created successfully",
     ANNOUNCEMENT_UPDATED: "Announcement updated successfully",
@@ -89,5 +95,12 @@ export const MESSAGES = {
     ANNOUNCEMENTS_FETCHED: "Announcements fetched successfully",
     ANNOUNCEMENT_PINNED: "Announcement pin status updated",
     ANNOUNCEMENT_READ: "Announcement marked as read",
+
+    DOCUMENT_UPLOADED: "Document uploaded successfully",
+    DOCUMENTS_FETCHED: "Documents fetched successfully",
+    DOCUMENT_DELETED: "Document deleted successfully",
+
+    CHECKOUT_SESSION_CREATED: "Checkout session created successfully",
+    CHECKOUT_SESSION_VERIFIED: "Checkout session verified successfully",
   },
 };

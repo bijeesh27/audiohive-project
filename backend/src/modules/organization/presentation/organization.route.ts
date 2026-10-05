@@ -48,7 +48,7 @@ sendOrganizationInvitationUseCase
 
 
 router.post(API_ROUTES.ORGANIZATION.CREATE_ORGANIZATION, validateRequest(createOrganizationSchema), controller.createOrganization.bind(controller))
-router.post('/send-invitation', controller.sendInvitation.bind(controller))
+router.post(API_ROUTES.ORGANIZATION.SEND_INVITATION, controller.sendInvitation.bind(controller))
 router.post(API_ROUTES.ORGANIZATION.UPDATE_ORGANIZATION, validateRequest(updateOrganizationSchema), controller.updateOrganization.bind(controller))
 router.post(API_ROUTES.ORGANIZATION.DELETE_ORGANIZATION, controller.deleteOrganization.bind(controller))
 router.get(API_ROUTES.ORGANIZATION.GET_ALL_ORGANIZATIONS,controller.getAllOrganizations.bind(controller))

@@ -7,9 +7,8 @@ export class GetWorkspaceUseCase implements IuseCase<string,IWorkspaceDocument>{
      constructor(
         private readonly workspaceRepository:IworkspaceRepository
     ){}
-    async execute(workspaceId:string): Promise<any> {
-        console.log('hi')
-        console.log(workspaceId)
+    async execute(workspaceId:string): Promise<IWorkspaceDocument> {
+        
         return await this.workspaceRepository.getWorkspaceById(workspaceId)   
     }
 }

@@ -13,6 +13,10 @@ import { UserRoles } from "../../../common/constant/userRoles.js";
 import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository.js";
 import { UserRepository } from "../../auth/infrastructure/userRepository.js";
 
+import { ResolveWorkspaceUseCase } from "../../workspace/application/usecases/resolveWorkspaceUseCase.js";
+
+import { API_ROUTES } from "../../../common/constant/ApiRoutes.js";
+
 const router = express.Router();
 
 const announcementRepository = new AnnouncementRepository();
@@ -26,6 +30,7 @@ const getAllAnnouncementsUseCase = new GetAllAnnouncementsUseCase(announcementRe
 const getAnnouncementUseCase = new GetAnnouncementUseCase(announcementRepository);
 const pinAnnouncementUseCase = new PinAnnouncementUseCase(announcementRepository);
 const markAsReadUseCase = new MarkAsReadUseCase(announcementRepository);
+const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, userRepository);
 
 const controller = new AnnouncementController(
   createAnnouncementUseCase,
@@ -37,22 +42,21 @@ const controller = new AnnouncementController(
   markAsReadUseCase,
   announcementRepository.getUnreadCount.bind(announcementRepository),
   announcementRepository.getByRoom.bind(announcementRepository),
-  workspaceRepository,
-  userRepository
+  resolveWorkspaceUseCase
 );
 
 
-router.post("/", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.createAnnouncement.bind(controller));
-router.put("/:id", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.updateAnnouncement.bind(controller));
-router.delete("/:id", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.deleteAnnouncement.bind(controller));
-router.patch("/:id/pin", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.pinAnnouncement.bind(controller));
+router.post(API_ROUTES.ANNOUNCEMENT.CREATE_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.createAnnouncement.bind(controller));
+router.put(API_ROUTES.ANNOUNCEMENT.UPDATE_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.updateAnnouncement.bind(controller));
+router.delete(API_ROUTES.ANNOUNCEMENT.DELETE_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.deleteAnnouncement.bind(controller));
+router.patch(API_ROUTES.ANNOUNCEMENT.PIN_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.pinAnnouncement.bind(controller));
 
-router.get("/unread-count", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getUnreadCount.bind(controller));
-router.get("/room/:roomId", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getByRoom.bind(controller));
-router.get("/", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAllAnnouncements.bind(controller));
-router.get("/:id", authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAnnouncement.bind(controller));
+router.get(API_ROUTES.ANNOUNCEMENT.UNREAD_COUNT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getUnreadCount.bind(controller));
+router.get(API_ROUTES.ANNOUNCEMENT.GET_BY_ROOM, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getByRoom.bind(controller));
+router.get(API_ROUTES.ANNOUNCEMENT.GET_ALL, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAllAnnouncements.bind(controller));
+router.get(API_ROUTES.ANNOUNCEMENT.GET_ONE, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAnnouncement.bind(controller));
 
 
-router.patch("/:id/read", authMiddleware, roleMiddleware([UserRoles.MEMBER]), controller.markAsRead.bind(controller));
+router.patch(API_ROUTES.ANNOUNCEMENT.MARK_READ, authMiddleware, roleMiddleware([UserRoles.MEMBER]), controller.markAsRead.bind(controller));
 
 export default router;

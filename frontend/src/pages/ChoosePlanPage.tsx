@@ -5,6 +5,25 @@ import { Check } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../config/axios';
 
+const PENDING_ORGANIZATION_KEY = 'audiohive.pendingOrganization';
+
+interface OrganizationData {
+  companyName: string;
+  slug: string;
+  ownerName: string;
+  ownerEmail: string;
+  selectedPlanId?: string;
+}
+
+const readPendingOrganization = (): OrganizationData | null => {
+  try {
+    const saved = sessionStorage.getItem(PENDING_ORGANIZATION_KEY);
+    return saved ? JSON.parse(saved) as OrganizationData : null;
+  } catch {
+    return null;
+  }
+};
+
 const ChoosePlanPage = () => {
   const [plans, setPlans] = useState<SubscriptionDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,8 +31,14 @@ const ChoosePlanPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const organizationData = location.state;
-  const ownerEmail = organizationData?.ownerEmail || "";
+  // Use router state during normal navigation and session storage after a refresh.
+  const routeOrganizationData = location.state as OrganizationData | null;
+  const organizationData = routeOrganizationData?.ownerEmail
+    ? routeOrganizationData
+    : readPendingOrganization();
+  const [selectedPlanId, setSelectedPlanId] = useState(
+    routeOrganizationData?.selectedPlanId ?? organizationData?.selectedPlanId ?? null,
+  );
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -21,6 +46,7 @@ const ChoosePlanPage = () => {
         const response = await subscriptionService.getAllSubscriptions();
         setPlans(response.data || []);
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to fetch plans", error);
       } finally {
         setLoading(false);
@@ -30,26 +56,50 @@ const ChoosePlanPage = () => {
   }, []);
 
   const handleChoosePlan = async (plan: SubscriptionDTO) => {
+    setSelectedPlanId(plan._id ?? null);
+    if (!organizationData) {
+      // Guard: if org data is missing, send user back to create org
+      navigate('/create-organization');
+      return;
+    }
+
     if (plan.price === 0) {
-      // Free plan selected
+      // Free plan: create the organization and send the invitation email
       try {
         setSubscribingId(plan._id);
-        await axiosInstance.post("/api/organization/send-invitation", { ownerEmail });
-        navigate('/invitation-sent', { state: location.state });
+        await axiosInstance.post("/api/organization/send-invitation", {
+          ownerEmail: organizationData.ownerEmail,
+          companyName: organizationData.companyName,
+          slug: organizationData.slug,
+          ownerName: organizationData.ownerName,
+          planId: plan._id,
+        });
+        sessionStorage.removeItem(PENDING_ORGANIZATION_KEY);
+        navigate('/invitation-sent', { state: organizationData });
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to send free plan invitation", error);
         setSubscribingId(null);
       }
     } else {
-      // Priced plan selected
+      // Paid plan: redirect to Stripe Checkout.
+      // The org will be created after payment succeeds (in SubscriptionSuccess).
       try {
         setSubscribingId(plan._id);
         const response = await axiosInstance.post(
           "/api/subscription/create-checkout-session",
-          { planId: plan._id, ownerEmail }
+          {
+            planId: plan._id,
+            ownerEmail: organizationData.ownerEmail,
+            companyName: organizationData.companyName,
+            slug: organizationData.slug,
+            ownerName: organizationData.ownerName,
+          }
         );
-        window.location.href = response.data.url;
+        // eslint-disable-next-line react-hooks/immutability
+        window.location.href = response.data.data.url;
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Subscription checkout error:", error);
         setSubscribingId(null);
       }
@@ -78,6 +128,7 @@ const ChoosePlanPage = () => {
             Choose Your <span className="text-indigo-600">Plan</span>
           </h2>
           <p className="mt-4 text-lg text-gray-500">
+            {/* eslint-disable-next-line react/no-unescaped-entities */}
             Select the subscription plan that best fits your organization's needs.
           </p>
         </div>
@@ -87,7 +138,7 @@ const ChoosePlanPage = () => {
           {activePlans.map((plan) => (
             <div
               key={plan._id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-8 flex flex-col"
+              className={`bg-white rounded-2xl border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-8 flex flex-col ${selectedPlanId === plan._id ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-100'}`}
             >
               <h3 className="text-xl font-bold text-[#1A1B25]">
                 {plan.subscriptionName}
@@ -106,11 +157,7 @@ const ChoosePlanPage = () => {
               <ul className="mt-8 space-y-3.5 pt-6 border-t border-gray-100">
                 <li className="flex items-start gap-3 text-sm text-gray-700">
                   <Check className="h-5 w-5 mt-0.5 text-indigo-600 shrink-0" strokeWidth={2.5} />
-                  <span>Up to <strong>{plan.maxUsers}</strong> users</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-gray-700">
-                  <Check className="h-5 w-5 mt-0.5 text-indigo-600 shrink-0" strokeWidth={2.5} />
-                  <span>Up to <strong>{plan.maxRooms}</strong> rooms</span>
+                  <span>Up to <strong>{plan.maxWorkspaces}</strong> workspaces</span>
                 </li>
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3 text-sm text-gray-700">

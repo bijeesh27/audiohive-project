@@ -9,14 +9,15 @@ import { API_ROUTES } from "../../constants/Api_Routes";
 const OtpFrom = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const purpose = location.state?.purpose;
   const email = location.state?.email;
 
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState("");
+  const [resendInfo, setResendInfo] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(60);
 
   useEffect(() => {
@@ -33,16 +34,17 @@ const OtpFrom = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
-    setFieldErrors([])
-    try {
-      if (!otp || otp.length < 4) {
-        setFieldErrors(["Please enter a valid OTP."]);
-        setIsLoading(false);
-        return;
-      }
+    setOtpError("");
+    setResendInfo(null);
 
+    if (!otp || otp.length < 4) {
+      setOtpError("Please enter a valid 4-digit OTP.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
       const res = await verifyOtp(email, otp, purpose);
       if (res.success) {
         if (purpose === "forget") {
@@ -53,18 +55,10 @@ const OtpFrom = () => {
         }
       }
     } catch (err: unknown) {
-     if (isAxiosError(err)) {
-    const data = err?.response?.data;
-    const raw = data?.errors;
-  const fields: {field:string; message:string}[] = Array.isArray(raw) ? raw : [];
-    if (fields.length > 0) {
-      setFieldErrors(fields.map(e => e.message));
-      setError(null);
-    } else {
-      setError(data?.message || "Login failed");
-      setFieldErrors([]);
-    }
-  }
+      if (isAxiosError(err)) {
+        const data = err?.response?.data;
+        setError(data?.message || "OTP verification failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -72,12 +66,13 @@ const OtpFrom = () => {
 
   const handleResend = async () => {
     setError(null);
+    setResendInfo(null);
     try {
       await resendOtp(email);
       setTimeLeft(60);
-      setError("A new OTP has been sent to your email!");
+      setResendInfo("A new OTP has been sent to your email.");
     } catch (err: unknown) {
-      if(isAxiosError(err)){
+      if (isAxiosError(err)) {
         setError(err?.response?.data?.message || "Failed to resend OTP");
       }
     }
@@ -91,34 +86,39 @@ const OtpFrom = () => {
       </p>
 
       {error && (
-    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-      {error}
-    </div>
-  )}
-  {fieldErrors.length > 0 && (
-    <div className="mb-4 rounded-lg bg-red-50  px-4 py-3 text-sm text-red-600">
-      <ul className="list-disc list-inside space-y-1">
-        {fieldErrors.map((msg, i) => <li key={i}>{msg}</li>)}
-      </ul>
-    </div>
-  )}
- 
+        <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
+      {resendInfo && (
+        <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-600">
+          {resendInfo}
+        </div>
+      )}
+
       <form noValidate onSubmit={handleSubmit}>
         <OtpInput
-          placeHolder="enter otp.."
+          placeHolder="enter otp..."
           value={otp}
-          onChange={(e) => setOtp(e.target.value)}
+          onChange={(e) => {
+            setOtp(e.target.value);
+            if (otpError) setOtpError("");
+          }}
         />
- 
+        {otpError && (
+          <p className="mt-1 text-xs text-red-500">{otpError}</p>
+        )}
+
         <div className="mt-6">
           <Button label="Verify Otp" buttonType="submit" loading={isLoading} disabled={isLoading} />
         </div>
       </form>
- 
+
       <p className="mt-6 text-center text-sm text-slate-500">
         Didn&apos;t get a code?{" "}
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={handleResend}
           disabled={timeLeft > 0}
           className="font-medium text-indigo-600 hover:underline disabled:text-slate-400 disabled:no-underline"
@@ -131,4 +131,3 @@ const OtpFrom = () => {
 };
 
 export default OtpFrom;
-
