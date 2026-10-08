@@ -2,22 +2,17 @@ import { API_ROUTES } from "../../../../common/constant/ApiRoutes";
 import { emailQueue } from "../../../../config/queue.config";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../domain/IorganizationRepository";
+import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
+import { SendOrganizationInvitationDTO } from "../dto/organizationDTO";
 
-export interface SendInvitationDTO {
-  ownerEmail: string;
-  /** Full org data required to create the organization record. */
-  companyName: string;
-  slug: string;
-  ownerName: string;
-  /** The subscription plan ID to associate with the organization. */
-  planId?: string;
-}
+export class SendOrganizationInvitationUseCase implements IuseCase<SendOrganizationInvitationDTO, void> {
+  constructor(
+    private readonly organizationRepository: IorganizaionRepository,
+    private readonly activityLogRepository: IactivityLogRepository
+  ) {}
 
-export class SendOrganizationInvitationUseCase implements IuseCase<SendInvitationDTO, void> {
-  constructor(private readonly organizationRepository: IorganizaionRepository) {}
-
-  async execute(input: SendInvitationDTO) {
-    const { ownerEmail, companyName, slug, ownerName, planId } = input;
+  async execute(input: SendOrganizationInvitationDTO) {
+    const { ownerEmail, companyName, slug, ownerName, planId, actorId, workspaceId, organizationId } = input;
 
     const invitation = await this.organizationRepository.findInvitationByEmail(ownerEmail);
     if (!invitation) {
@@ -39,6 +34,17 @@ export class SendOrganizationInvitationUseCase implements IuseCase<SendInvitatio
       to: invitation.ownerEmail,
       companyName: invitation.companyName,
       invitationLink,
+    });
+
+    await this.activityLogRepository.recordActivity({
+      occurredAt: new Date(),
+      action: "ORGANIZATION_CREATED",
+      actorId: actorId || null,
+      organizationId: organizationId,
+      workspaceId: workspaceId,
+      targetType: "ORGANIZATION",
+      targetId: undefined,
+      metadata: { companyName, ownerEmail, slug }
     });
   }
 }

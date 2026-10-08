@@ -1,3 +1,5 @@
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
+const activityLogRepository = new ActivityLogRepository();
 import express from 'express'
 import { SubscriptionRepository } from '../infrastructure/subcriptionRepository'
 import { AuthController } from './subscription.controller'
@@ -15,12 +17,12 @@ import { createSubscriptionSchema, updateSubscriptionSchema } from "../../../com
 const router=express.Router()
 
 const subscriptionRepository=new SubscriptionRepository()
-const createSubscriptionUseCase=new CreateSubscriptionUseCase(subscriptionRepository)
-const updateSubscriptionUseCase=new UpdateSubscriptionUseCase(subscriptionRepository)
-const deleteSubscriptionUseCase=new DeleteSubcriptionUseCase(subscriptionRepository)
+const createSubscriptionUseCase=new CreateSubscriptionUseCase(subscriptionRepository,activityLogRepository)
+const updateSubscriptionUseCase=new UpdateSubscriptionUseCase(subscriptionRepository,activityLogRepository)
+const deleteSubscriptionUseCase=new DeleteSubcriptionUseCase(subscriptionRepository,activityLogRepository)
 const getAllSubscriptionsUseCase=new GetAllSubscriptionsUseCase(subscriptionRepository)
-const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(subscriptionRepository)
-const verifyCheckoutSessionUseCase = new VerifyCheckoutSessionUseCase()
+const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(subscriptionRepository,activityLogRepository)
+const verifyCheckoutSessionUseCase = new VerifyCheckoutSessionUseCase(activityLogRepository)
 
 
 

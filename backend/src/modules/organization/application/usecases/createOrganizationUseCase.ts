@@ -1,17 +1,19 @@
 
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../domain/IorganizationRepository";
-import { createOrganizationDTO } from "../dto/organizationDTO";
+import { CreateOrganizationDTO } from "../dto/organizationDTO";
 import crypto from "crypto";
+import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
 
 export class CreateOrganizationUseCase implements IuseCase<
-  createOrganizationDTO,
+  CreateOrganizationDTO,
   void
 > {
   constructor(
     private readonly oragnizationRepository: IorganizaionRepository,
+    private readonly activityLogRepository: IactivityLogRepository
   ) {}
-  async execute(data: createOrganizationDTO) {
+  async execute(data: CreateOrganizationDTO) {
     const token = crypto.randomBytes(32).toString("hex");
     const organizationInvitation = {
       companyName: data.companyName,
@@ -23,5 +25,16 @@ export class CreateOrganizationUseCase implements IuseCase<
     // The organization itself is created later, in SendOrganizationInvitationUseCase,
     // after the user has chosen and (if needed) paid for a plan.
     await this.oragnizationRepository.createInvitation(organizationInvitation);
+
+    await this.activityLogRepository.recordActivity({
+      occurredAt: new Date(),
+      action: "ORGANIZATION_INVITATION_CREATED",
+      actorId: data.actorId || null,
+      organizationId: data.organizationId,
+      workspaceId: data.workspaceId,
+      targetType: "ORGANIZATION_INVITATION",
+      targetId: undefined,
+      metadata: { companyName: data.companyName, ownerEmail: data.ownerEmail }
+    });
   }
 }

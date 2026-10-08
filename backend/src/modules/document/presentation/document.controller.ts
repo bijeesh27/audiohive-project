@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { IuseCase } from "../../../shared/interface/IuseCase.js";
-import { UploadDocumentDTO, DeleteDocumentDTO } from "../application/dto/documentDTO.js";
+import { UploadDocumentDTO, DeleteDocumentDTO, GetRoomDocumentsDTO } from "../application/dto/documentDTO.js";
 import { IDocument } from "../infrastructure/documentSchema.js";
 import logger from "../../../shared/utils/logger.js";
 import { AuthRequest } from "../../../middleware/authMiddleware.js";
@@ -11,7 +11,7 @@ import { AppError } from "../../../common/Errors/AppError.js";
 export class DocumentController {
   constructor(
     private readonly uploadDocumentUseCase: IuseCase<UploadDocumentDTO, IDocument>,
-    private readonly getRoomDocumentsUseCase: IuseCase<string, IDocument[]>,
+    private readonly getRoomDocumentsUseCase: IuseCase<GetRoomDocumentsDTO, IDocument[]>,
     private readonly deleteDocumentUseCase: IuseCase<DeleteDocumentDTO, void>
   ) {}
 
@@ -61,7 +61,7 @@ export class DocumentController {
   getRoomDocuments = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { roomId } = req.params;
-      const documents = await this.getRoomDocumentsUseCase.execute(roomId as string);
+      const documents = await this.getRoomDocumentsUseCase.execute({ roomId: roomId as string });
       return ApiResposne.success(res, MESSAGES.SUCCESS.DOCUMENTS_FETCHED, documents);
     } catch (error: unknown) {
       logger.error("Fetch documents error:", error);

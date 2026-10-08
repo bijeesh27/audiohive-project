@@ -16,19 +16,21 @@ import { validateRequest } from "../../../middleware/validateRequest";
 import { createOrganizationSchema, updateOrganizationSchema } from "../../../common/validation/formValidation";
 import { authMiddleware, roleMiddleware } from '../../../middleware/authMiddleware'
 import { UserRoles } from '../../../common/constant/userRoles'
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
 
 const router=express.Router()
 
 
 const organizationRepository=new OrganizationRepository()
-const createOrganizationUseCase=new CreateOrganizationUseCase(organizationRepository)
-const updateOrganizationUseCase=new UpdateOrganizationUseCase(organizationRepository)
-const deleteOrganizationUseCase=new DeleteOrganizationUseCase(organizationRepository)
+const activityLogRepository=new ActivityLogRepository
+const createOrganizationUseCase=new CreateOrganizationUseCase(organizationRepository,activityLogRepository)
+const updateOrganizationUseCase=new UpdateOrganizationUseCase(organizationRepository,activityLogRepository)
+const deleteOrganizationUseCase=new DeleteOrganizationUseCase(organizationRepository,activityLogRepository)
 const getAllOrganizationUseCase=new GetAllOrganizationUseCase(organizationRepository)
 const getMyOrganizationUseCase=new GetMyOrganizationUseCase(organizationRepository)
 const getAllOrganizationUsersUseCase=new GetAllOrganizationUsersUseCase(organizationRepository)
 const getOrgDashboardStatsUseCase=new GetOrgDashboardStatsUseCase(organizationRepository)
-const sendOrganizationInvitationUseCase = new SendOrganizationInvitationUseCase(organizationRepository)
+const sendOrganizationInvitationUseCase = new SendOrganizationInvitationUseCase(organizationRepository,activityLogRepository)
 
 
 

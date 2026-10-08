@@ -3,7 +3,17 @@ import { ApiResposne } from "../../../common/Response/Response";
 import { MESSAGES } from "../../../common/constant/messages";
 import { HttpStatus } from "../../../common/constant/httpStatus";
 import { IuseCase } from "../../../shared/interface/IuseCase";
-import { createWorkspaceDTO, deleteWorkspaceDTO, updateWorkspaceDTO } from "../application/dto/workspaceDTOs";
+import {
+  CreateWorkspaceDTO,
+  DeleteWorkspaceDTO,
+  GetWorkspaceDTO,
+  GetWorkspaceUsersDTO,
+  GetWorkspacesByOrgDTO,
+  RemoveWorkspaceUserDTO,
+  SendWorkspaceInvitationDTO,
+  UpdateWorkspaceDTO,
+  WorkspacePaginationDTO,
+} from "../application/dto/workspaceDTOs";
 import { IWorkspaceDocument } from "../infrastructure/workspaceSchema";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import { IuserDocument } from "../../../shared/User.utils/userSchema";
@@ -11,30 +21,24 @@ import { AppError } from "../../../common/Errors/AppError";
 
 export class WorkspaceController {
   constructor(
-    private readonly createWorkspaceUseCase: IuseCase<createWorkspaceDTO, void>,
-    private readonly updateWorkspaceUseCase: IuseCase<updateWorkspaceDTO, void>,
-    private readonly deleteWorkspaceUseCase: IuseCase<deleteWorkspaceDTO, void>,
-    private readonly getWorkspaceUseCase:IuseCase<string,IWorkspaceDocument>,
+    private readonly createWorkspaceUseCase: IuseCase<CreateWorkspaceDTO, void>,
+    private readonly updateWorkspaceUseCase: IuseCase<UpdateWorkspaceDTO, void>,
+    private readonly deleteWorkspaceUseCase: IuseCase<DeleteWorkspaceDTO, void>,
+    private readonly getWorkspaceUseCase: IuseCase<GetWorkspaceDTO, IWorkspaceDocument | null>,
     private readonly getAllWorkspacesUseCase: IuseCase<
-      { page: number; limit: number; search?: string },
+      WorkspacePaginationDTO,
       { workspaces: IWorkspaceDocument[]; total: number }
     >,
     private readonly getWorkspacesByOrgUseCase: IuseCase<
-      { userEmail: string; page: number; limit: number; search?: string },
+      GetWorkspacesByOrgDTO,
       { workspaces: IWorkspaceDocument[]; total: number }
     >,
-    private readonly sendWorkspaceInvitationUseCase: IuseCase<
-      { workspaceId: string; email: string; workspaceAdminName: string; organizationOwnerEmail: string },
-      void
-    >,
+    private readonly sendWorkspaceInvitationUseCase: IuseCase<SendWorkspaceInvitationDTO, void>,
     private readonly getWorkspaceUsersUseCase: IuseCase<
-      { workspaceId: string; page: number; limit: number; search?: string },
+      GetWorkspaceUsersDTO,
       { users: IuserDocument[]; total: number } | null
     >,
-    private readonly removeWorkspaceUserUseCase: IuseCase<
-      { workspaceId: string; userId: string },
-      IuserDocument
-    >
+    private readonly removeWorkspaceUserUseCase: IuseCase<RemoveWorkspaceUserDTO, IuserDocument>
   ) {}
 
   async createWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
@@ -131,7 +135,7 @@ export class WorkspaceController {
   async getWorkspace(req:Request,res:Response,next:NextFunction){
     try {
       const workspaceId=req.params.id as string
-      const workspace= await this.getWorkspaceUseCase.execute(workspaceId)
+      const workspace= await this.getWorkspaceUseCase.execute({ workspaceId })
       return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_FETCHED, workspace)
     } catch (error) {
       next(error)

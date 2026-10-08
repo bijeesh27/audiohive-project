@@ -1,5 +1,5 @@
 import { IotpDocument } from "../infrastructure/otpSchema.ts";
-import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 
 export interface IotpReposiroty {
   findOtp(email: string, otp: string): Promise<IotpDocument | null>;
@@ -8,6 +8,6 @@ export interface IotpReposiroty {
   createOtp(
     email: string,
     newOtp: string,
-    data: IuserDocument,
+    data: IuserDTO,
   ): Promise<IotpDocument | null>;
 }

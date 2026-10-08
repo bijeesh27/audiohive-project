@@ -15,6 +15,10 @@ export interface DeleteDocumentDTO {
   userId: string;
 }
 
+export interface GetRoomDocumentsDTO {
+  roomId: string;
+}
+
 export interface DocumentResponseDTO {
   id: string;
   roomId: string;

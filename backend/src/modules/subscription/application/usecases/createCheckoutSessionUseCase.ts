@@ -2,19 +2,13 @@ import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IsubscriptionRepository } from "../../domain/IsubscriptionRepository";
 import {stripe} from '../../../../config/stripe'
 import logger from "../../../../shared/utils/logger";
+import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
+import { CreateCheckoutSessionDTO } from "../dto/subcriptionDTOs";
 
-export interface CheckoutSessionInput {
-  planId: string;
-  ownerEmail?: string;
-  companyName?: string;
-  slug?: string;
-  ownerName?: string;
-}
+export class CreateCheckoutSessionUseCase implements IuseCase<CreateCheckoutSessionDTO, string> {
+  constructor(private readonly subscriptionRepository: IsubscriptionRepository, private readonly activityLogRepository: IactivityLogRepository) {}
 
-export class CreateCheckoutSessionUseCase implements IuseCase<CheckoutSessionInput, string> {
-  constructor(private readonly subscriptionRepository: IsubscriptionRepository) {}
-
-  async execute({ planId, ownerEmail, companyName, slug, ownerName }: CheckoutSessionInput): Promise<string> {
+  async execute({ planId, ownerEmail, companyName, slug, ownerName }: CreateCheckoutSessionDTO): Promise<string> {
     const plan = await this.subscriptionRepository.findSubscriptionById(planId);
 
     if (!plan) {
@@ -53,5 +47,16 @@ export class CreateCheckoutSessionUseCase implements IuseCase<CheckoutSessionInp
       logger.error("Stripe Session Creation Error:", error);
       throw new Error("Unable to create checkout session", { cause: error });
     }
+
+      await this.activityLogRepository.recordActivity({
+            occurredAt: new Date(),
+            action: "CREATE_CHECKOUT_SESSION",
+            actorId: { planId, ownerEmail, companyName, slug, ownerName } ? ({ planId, ownerEmail, companyName, slug, ownerName } as any).actorId || ({ planId, ownerEmail, companyName, slug, ownerName } as any).userId || ({ planId, ownerEmail, companyName, slug, ownerName } as any).uploaderId || null : null,
+            organizationId: { planId, ownerEmail, companyName, slug, ownerName } ? ({ planId, ownerEmail, companyName, slug, ownerName } as any).organizationId : undefined,
+            workspaceId: { planId, ownerEmail, companyName, slug, ownerName } ? ({ planId, ownerEmail, companyName, slug, ownerName } as any).workspaceId || ({ planId, ownerEmail, companyName, slug, ownerName } as any).roomId : undefined,
+            targetType: "CREATE",
+            targetId: undefined,
+            metadata: {}
+          });
   }
 }

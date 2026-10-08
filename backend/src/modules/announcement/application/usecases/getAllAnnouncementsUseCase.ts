@@ -1,25 +1,19 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase.js";
 import { IAnnouncementRepository } from "../../domain/IAnnouncementRepository.js";
-import { IAnnouncementDocument } from "../../infrastructure/announcementSchema.js";
+import { AnnouncementResponseDTO, GetAnnouncementsQueryDTO } from "../dto/announcementDTO.js";
 
 export class GetAllAnnouncementsUseCase
   implements
     IuseCase<
-      { workspaceId: string; page: number; limit: number; status?: string; search?: string },
-      { announcements: IAnnouncementDocument[]; total: number }
+      GetAnnouncementsQueryDTO,
+      { announcements: AnnouncementResponseDTO[]; total: number }
     >
 {
   constructor(
     private readonly announcementRepository: IAnnouncementRepository
   ) {}
 
-  async execute(input: {
-    workspaceId: string;
-    page: number;
-    limit: number;
-    status?: string;
-    search?: string;
-  }): Promise<{ announcements: IAnnouncementDocument[]; total: number }> {
+  async execute(input: GetAnnouncementsQueryDTO): Promise<{ announcements: AnnouncementResponseDTO[]; total: number }> {
     return await this.announcementRepository.getAllAnnouncements(
       input.workspaceId,
       input.page,

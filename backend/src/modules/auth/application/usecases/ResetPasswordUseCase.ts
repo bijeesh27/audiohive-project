@@ -1,14 +1,14 @@
 import { UserNotFound } from "../../../../common/Errors/AuthError.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
-import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../../shared/User.utils/userDTO.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
 import bcrypt from "bcrypt";
 import { ResetPasswordDTO } from "../dtos/AuthDTO.ts";
 
-export class ResetPasswordUseCase implements IuseCase<ResetPasswordDTO, IuserDocument> {
+export class ResetPasswordUseCase implements IuseCase<ResetPasswordDTO, IuserDTO> {
   constructor(private readonly userRepository: IuserRepository) {}
 
-  async execute(data: ResetPasswordDTO): Promise<IuserDocument> {
+  async execute(data: ResetPasswordDTO): Promise<IuserDTO> {
     const { email, password } = data;
     
     const user = await this.userRepository.findByEmail(email);
@@ -22,6 +22,6 @@ export class ResetPasswordUseCase implements IuseCase<ResetPasswordDTO, IuserDoc
       password: hashedPassword,
     });
 
-    return updatedUser as IuserDocument;
+    return updatedUser as IuserDTO;
   }
 }

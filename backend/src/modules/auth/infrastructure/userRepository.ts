@@ -1,19 +1,17 @@
 import { IuserRepository } from "../domain/IuserRepository.ts";
-import {
-  IuserDocument,
-  UserModel,
-} from "../../../shared/User.utils/userSchema.ts";
+import { UserModel } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 import { BaseRepository } from "../../../shared/common/baseRepository.ts";
 import { RegisterDTO } from "../application/dtos/AuthDTO.ts";
 
 export class UserRepository
-  extends BaseRepository<IuserDocument>
+  extends BaseRepository<IuserDTO>
   implements IuserRepository
 {
   constructor() {
     super(UserModel);
   }
-  async findByEmail(email: string): Promise<IuserDocument | null> {
+  async findByEmail(email: string): Promise<IuserDTO | null> {
     const user = await UserModel.findOne({ email });
     return user;
   }
@@ -27,9 +25,9 @@ export class UserRepository
   }
   async updateUser(
     userId: string,
-    data: Partial<IuserDocument>,
-  ): Promise<IuserDocument> {
+    data: Partial<IuserDTO>,
+  ): Promise<IuserDTO> {
     const updated = await this.model.findByIdAndUpdate(userId, data, { new: true });
-    return updated as IuserDocument;
+    return updated as IuserDTO;
   }
 }

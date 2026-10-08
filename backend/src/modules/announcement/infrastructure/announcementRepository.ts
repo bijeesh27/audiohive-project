@@ -1,12 +1,10 @@
 import { BaseRepository } from "../../../shared/common/baseRepository.js";
 import { IAnnouncementRepository } from "../domain/IAnnouncementRepository.js";
-import {
-  AnnouncementModel,
-  IAnnouncementDocument,
-} from "./announcementSchema.js";
+import { AnnouncementModel } from "./announcementSchema.js";
+import { AnnouncementResponseDTO } from "../application/dto/announcementDTO.js";
 
 export class AnnouncementRepository
-  extends BaseRepository<IAnnouncementDocument>
+  extends BaseRepository<AnnouncementResponseDTO>
   implements IAnnouncementRepository
 {
   constructor() {
@@ -14,15 +12,15 @@ export class AnnouncementRepository
   }
 
   async createAnnouncement(
-    data: Partial<IAnnouncementDocument>
-  ): Promise<IAnnouncementDocument> {
+    data: Partial<AnnouncementResponseDTO>
+  ): Promise<AnnouncementResponseDTO> {
     const created = await this.model.create(data);
     return created;
   }
 
   async updateAnnouncement(
     id: string,
-    data: Partial<IAnnouncementDocument>
+    data: Partial<AnnouncementResponseDTO>
   ): Promise<void> {
     await this.model.updateOne({ _id: id }, { $set: data });
   }
@@ -31,8 +29,8 @@ export class AnnouncementRepository
     await this.model.deleteOne({ _id: id });
   }
 
-  async findAnnouncement(id: string): Promise<IAnnouncementDocument | null> {
-    return await this.model.findById(id).lean<IAnnouncementDocument>();
+  async findAnnouncement(id: string): Promise<AnnouncementResponseDTO | null> {
+    return await this.model.findById(id).lean<AnnouncementResponseDTO>();
   }
 
   async getAllAnnouncements(
@@ -41,7 +39,7 @@ export class AnnouncementRepository
     limit: number,
     status?: string,
     search?: string
-  ): Promise<{ announcements: IAnnouncementDocument[]; total: number }> {
+  ): Promise<{ announcements: AnnouncementResponseDTO[]; total: number }> {
     const skip = (page - 1) * limit;
     const query: Record<string, unknown> = { workspaceId };
 
@@ -64,7 +62,7 @@ export class AnnouncementRepository
         .sort({ isPinned: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean<IAnnouncementDocument[]>(),
+        .lean<AnnouncementResponseDTO[]>(),
       this.model.countDocuments(query),
     ]);
 
@@ -91,10 +89,10 @@ export class AnnouncementRepository
     });
   }
 
-  async getByRoom(roomId: string): Promise<IAnnouncementDocument[]> {
+  async getByRoom(roomId: string): Promise<AnnouncementResponseDTO[]> {
     return await this.model
       .find({ roomId, status: "published" })
       .sort({ isPinned: -1, createdAt: -1 })
-      .lean<IAnnouncementDocument[]>();
+      .lean<AnnouncementResponseDTO[]>();
   }
 }

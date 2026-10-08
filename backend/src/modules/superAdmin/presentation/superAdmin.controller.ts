@@ -1,15 +1,22 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
-import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
+import {
+  ApproveWorkspaceDTO,
+  GetAllUsersDTO,
+  GetAllUsersResultDTO,
+  SuperAdminDashboardStatsDTO,
+  UpdateUserDTO,
+} from "../application/dtos/SuperAdminDTO.ts";
 
 export class SuperAdminController {
   constructor(
-    private readonly getAllUserUseCase: IuseCase<{ page: number; limit: number,search?: string }, { users: IuserDocument[]; total: number } | null>,
-    private readonly approveWorkspaceUseCase:IuseCase<{ workspaceId: string, adminEmail: string, workspaceName: string, workspaceAdminName: string }, void>,
-    private readonly updateUserUseCase:IuseCase<{ userId: string, updateData: Partial<IuserDocument> }, IuserDocument>,
-    private readonly getSuperAdminDashboardStatsUseCase:IuseCase<void, { totalOrganizations: number }>
+    private readonly getAllUserUseCase: IuseCase<GetAllUsersDTO, GetAllUsersResultDTO | null>,
+    private readonly approveWorkspaceUseCase: IuseCase<ApproveWorkspaceDTO, void>,
+    private readonly updateUserUseCase: IuseCase<UpdateUserDTO, IuserDTO>,
+    private readonly getSuperAdminDashboardStatsUseCase: IuseCase<void, SuperAdminDashboardStatsDTO>
   ) {}
   getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {

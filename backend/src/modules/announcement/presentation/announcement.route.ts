@@ -13,23 +13,26 @@ import { UserRoles } from "../../../common/constant/userRoles.js";
 import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository.js";
 import { UserRepository } from "../../auth/infrastructure/userRepository.js";
 
-import { ResolveWorkspaceUseCase } from "../../workspace/application/usecases/resolveWorkspaceUseCase.js";
+import { ResolveWorkspaceUseCase } from "../../workspace/application/usecase/resolveWorkspaceUseCase.js";
 
 import { API_ROUTES } from "../../../common/constant/ApiRoutes.js";
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
 
 const router = express.Router();
+const activityLogRepository = new ActivityLogRepository();
+
 
 const announcementRepository = new AnnouncementRepository();
 const workspaceRepository = new WorkspaceReopsitory();
 const userRepository = new UserRepository();
 
-const createAnnouncementUseCase = new CreateAnnouncementUseCase(announcementRepository);
-const updateAnnouncementUseCase = new UpdateAnnouncementUseCase(announcementRepository);
-const deleteAnnouncementUseCase = new DeleteAnnouncementUseCase(announcementRepository);
+const createAnnouncementUseCase = new CreateAnnouncementUseCase(announcementRepository,activityLogRepository);
+const updateAnnouncementUseCase = new UpdateAnnouncementUseCase(announcementRepository,activityLogRepository);
+const deleteAnnouncementUseCase = new DeleteAnnouncementUseCase(announcementRepository,activityLogRepository);
 const getAllAnnouncementsUseCase = new GetAllAnnouncementsUseCase(announcementRepository);
 const getAnnouncementUseCase = new GetAnnouncementUseCase(announcementRepository);
-const pinAnnouncementUseCase = new PinAnnouncementUseCase(announcementRepository);
-const markAsReadUseCase = new MarkAsReadUseCase(announcementRepository);
+const pinAnnouncementUseCase = new PinAnnouncementUseCase(announcementRepository,activityLogRepository);
+const markAsReadUseCase = new MarkAsReadUseCase(announcementRepository,activityLogRepository);
 const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, userRepository);
 
 const controller = new AnnouncementController(

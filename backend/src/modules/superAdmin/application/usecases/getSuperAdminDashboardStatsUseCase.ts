@@ -1,8 +1,9 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
+import { SuperAdminDashboardStatsDTO } from "../dtos/SuperAdminDTO.ts";
 
 export class GetSuperAdminDashboardStatsUseCase
-  implements IuseCase<void, { totalOrganizations: number; totalUsers: number }>
+  implements IuseCase<void, SuperAdminDashboardStatsDTO>
 {
   constructor(private readonly userRepository: IuserRepository) {}
 

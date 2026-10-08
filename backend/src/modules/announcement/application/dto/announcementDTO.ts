@@ -19,6 +19,9 @@ export interface UpdateAnnouncementDTO {
   type?: "info" | "warning" | "critical" | "event";
   status?: "draft" | "published" | "archived";
   expiresAt?: string;
+  actorId?: string;
+  workspaceId?: string;
+  organizationId?: string;
 }
 
 export interface PinAnnouncementDTO {
@@ -50,3 +53,27 @@ export interface AnnouncementResponseDTO {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface DeleteAnnouncementDTO {
+  id: string;
+  workspaceId: string;
+  organizationId?: string;
+  actorId?: string;
+}
+
+export interface PinAnnouncementInputDTO {
+  id: string;
+  isPinned: boolean;
+  workspaceId: string;
+  organizationId?: string;
+  actorId?: string;
+}
+
+export interface GetAnnouncementsQueryDTO {
+  workspaceId: string;
+  page: number;
+  limit: number;
+  status?: string;
+  search?: string;
+}
+

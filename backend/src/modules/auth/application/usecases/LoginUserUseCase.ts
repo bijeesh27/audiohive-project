@@ -3,16 +3,16 @@ import {
   UserNotFound,
   AccountDisabledError,
 } from "../../../../common/Errors/AuthError.ts";
-import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
 import bcrypt from "bcrypt";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { LoginDTO } from "../dtos/AuthDTO.ts";
+import { IuserDTO } from "../../../../shared/User.utils/userDTO.ts";
 
-export class LoginUserUseCase implements IuseCase<LoginDTO, IuserDocument> {
+export class LoginUserUseCase implements IuseCase<LoginDTO, IuserDTO> {
   constructor(private readonly userRepository: IuserRepository) {}
 
-  async execute(data: IuserDocument) {
+  async execute(data: IuserDTO) {
     const { email, password } = data;
     const user = await this.userRepository.findByEmail(email);
     if (!user) {

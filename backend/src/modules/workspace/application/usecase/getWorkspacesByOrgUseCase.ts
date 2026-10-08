@@ -3,26 +3,20 @@ import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../../organization/domain/IorganizationRepository";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
 import { IWorkspaceDocument } from "../../infrastructure/workspaceSchema";
-
-interface Input {
-    userEmail: string;
-    page: number;
-    limit: number;
-    search?: string;
-}
+import { GetWorkspacesByOrgDTO } from "../dto/workspaceDTOs";
 
 interface Output {
     workspaces: IWorkspaceDocument[];
     total: number;
 }
 
-export class GetWorkspacesByOrgUseCase implements IuseCase<Input, Output> {
+export class GetWorkspacesByOrgUseCase implements IuseCase<GetWorkspacesByOrgDTO, Output> {
     constructor(
         private readonly workspaceRepository: IworkspaceRepository,
         private readonly organizationRepository: IorganizaionRepository,
     ) {}
 
-    async execute(data: Input): Promise<Output> {
+    async execute(data: GetWorkspacesByOrgDTO): Promise<Output> {
         const organization = await this.organizationRepository.findByOwnerEmail(data.userEmail);
         if (!organization) {
             throw new OrganizationNotFound()

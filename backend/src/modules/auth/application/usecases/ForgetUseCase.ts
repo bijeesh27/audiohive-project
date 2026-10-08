@@ -1,7 +1,7 @@
 import { UserNotFound } from "../../../../common/Errors/AuthError.ts";
 import { emailQueue } from "../../../../config/queue.config.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
-import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../../shared/User.utils/userDTO.ts";
 import { generateOtp } from "../../../../shared/utils/otp.utils.ts";
 import { IotpReposiroty } from "../../domain/IotpRepository.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
@@ -9,7 +9,7 @@ import { ForgetPasswordDTO } from "../dtos/AuthDTO.ts";
 
 export class ForgetUseCase implements IuseCase<
   ForgetPasswordDTO,
-  IuserDocument
+  IuserDTO
 > {
   constructor(
     private readonly userRepository: IuserRepository,

@@ -1,4 +1,5 @@
 import { BaseRepository } from "../../../shared/common/baseRepository";
+import { ActivityLogInputDTO } from "../application/dto/activityLogDTO";
 import { IactivityLogRepository } from "../domain/IactivitylogRepository";
 import { ActivityLogModel, IActivityLogDocumet } from "./activitylogSchema";
 
@@ -8,7 +9,7 @@ export class ActivityLogRepository extends BaseRepository<IActivityLogDocumet> i
     ){
         super(ActivityLogModel)
     }
-    async recordActivity(data:IActivityLogDocumet): Promise<void> {
+    async recordActivity(data:ActivityLogInputDTO): Promise<void> {
         await this.model.create(data)
     }
 }

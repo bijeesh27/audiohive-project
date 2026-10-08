@@ -98,4 +98,7 @@ export const API_ROUTES = {
     GET_ROOM_DOCUMENTS: "/:roomId/documents",
     DELETE_DOCUMENT: "/:roomId/documents/:documentId",
   },
+  ACTIVITY:{
+    RECORD_ACTIVITY:'/record'
+  }
 };

@@ -2,23 +2,33 @@ import { NextFunction, Request, Response } from "express";
 import { ApiResposne } from "../../../common/Response/Response";
 import { IuseCase } from "../../../shared/interface/IuseCase";
 import { IorganizationDocument } from "../infrastructure/organizationSchema";
-import { createOrganizationDTO } from "../application/dto/organizationDTO";
+import {
+    CreateOrganizationDTO,
+    DeleteOrganizationDTO,
+    GetAllOrganizationsDTO,
+    GetAllOrganizationsResultDTO,
+    GetMyOrganizationDTO,
+    GetOrganizationUsersDTO,
+    GetOrganizationUsersResultDTO,
+    GetOrgDashboardStatsDTO,
+    OrgDashboardStatsDTO,
+    SendOrganizationInvitationDTO,
+    UpdateOrganizationDTO,
+} from "../application/dto/organizationDTO";
 import { MESSAGES } from "../../../common/constant/messages";
-import { IuserDocument } from "../../../shared/User.utils/userSchema";
-import { SendInvitationDTO } from "../application/usecases/sendOrganizationInvitationUseCase";
 import { AppError } from "../../../common/Errors/AppError";
 import { HttpStatus } from "../../../common/constant/httpStatus";
 
 export class OrganizationController {
     constructor(
-        private readonly createOrganizationUseCase: IuseCase<createOrganizationDTO, void>,
-        private readonly updateOrganizationUseCase: IuseCase<{ organizationId: string; data: Partial<IorganizationDocument> }, void>,
-        private readonly deleteOrganizationUseCase: IuseCase<string, void>,
-        private readonly getAllOrganizationUseCase: IuseCase<{ page: number; limit: number; search?: string; sort?: string }, { organizations: IorganizationDocument[]; total: number }>,
-        private readonly getMyOrganizationUseCase: IuseCase<string, IorganizationDocument>,
-        private readonly getAllOrganizationUsersUseCase: IuseCase<{ ownerEmail: string; page: number; limit: number; search?: string }, { users: IuserDocument[]; total: number }>,
-        private readonly getOrgDashboardStatsUseCase: IuseCase<string, { totalWorkspaces: number; totalUsers: number }>,
-        private readonly sendOrganizationInvitationUseCase: IuseCase<SendInvitationDTO, void>
+        private readonly createOrganizationUseCase: IuseCase<CreateOrganizationDTO, void>,
+        private readonly updateOrganizationUseCase: IuseCase<UpdateOrganizationDTO, void>,
+        private readonly deleteOrganizationUseCase: IuseCase<DeleteOrganizationDTO, void>,
+        private readonly getAllOrganizationUseCase: IuseCase<GetAllOrganizationsDTO, GetAllOrganizationsResultDTO>,
+        private readonly getMyOrganizationUseCase: IuseCase<GetMyOrganizationDTO, IorganizationDocument>,
+        private readonly getAllOrganizationUsersUseCase: IuseCase<GetOrganizationUsersDTO, GetOrganizationUsersResultDTO>,
+        private readonly getOrgDashboardStatsUseCase: IuseCase<GetOrgDashboardStatsDTO, OrgDashboardStatsDTO>,
+        private readonly sendOrganizationInvitationUseCase: IuseCase<SendOrganizationInvitationDTO, void>
     ) {}
 
     async createOrganization(req: Request, res: Response, next: NextFunction) {
@@ -56,7 +66,7 @@ export class OrganizationController {
     async deleteOrganization(req: Request, res: Response, next: NextFunction) {
         try {
             const organizationId = req.params.id as string;
-            await this.deleteOrganizationUseCase.execute(organizationId)
+            await this.deleteOrganizationUseCase.execute({ organizationId })
             return ApiResposne.success(res, MESSAGES.SUCCESS.ORGANIZATION_DELETED, null, 200)
         } catch (error) {
             next(error)
@@ -83,7 +93,7 @@ export class OrganizationController {
             if (!userEmail) {
                 throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
             }
-            const data = await this.getMyOrganizationUseCase.execute(userEmail);
+            const data = await this.getMyOrganizationUseCase.execute({ ownerEmail: userEmail });
             return ApiResposne.success(res, MESSAGES.SUCCESS.ORGANIZATION_FETCHED, data, 200);
         } catch (error) {
             next(error);
@@ -113,7 +123,7 @@ export class OrganizationController {
             if (!userEmail) {
                 throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
             }
-            const data = await this.getOrgDashboardStatsUseCase.execute(userEmail);
+            const data = await this.getOrgDashboardStatsUseCase.execute({ ownerEmail: userEmail });
             return ApiResposne.success(res, MESSAGES.SUCCESS.DASHBOARD_STATS_FETCHED, data, 200);
         } catch (error) {
             next(error);

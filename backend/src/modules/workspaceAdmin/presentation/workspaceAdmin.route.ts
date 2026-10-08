@@ -10,23 +10,25 @@ import { WorkspaceAdminController } from "./workspaceAdmin.controller.ts";
 import { GetWorkspaceDashboardStatsUseCase } from "../application/usecase/getWorkspaceDashboardStatsUseCase.ts";
 import { GetActiveUserUseCase } from "../application/usecase/getActiveUserUseCase.ts";
 
-import { ResolveWorkspaceUseCase } from "../../workspace/application/usecases/resolveWorkspaceUseCase.ts";
+import { ResolveWorkspaceUseCase } from "../../workspace/application/usecase/resolveWorkspaceUseCase.ts";
 import { UpdateUserUseCase } from "../../superAdmin/application/usecases/updateUserUseCase.ts";
 
 import { UserRepository as AuthUserRepository } from "../../auth/infrastructure/userRepository.ts";
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
 
 const router = express.Router();
+const activityLogRepository = new ActivityLogRepository();
 const userRepository = new UserRepository();
 const authUserRepository = new AuthUserRepository();
 const workspaceRepository = new WorkspaceReopsitory();
 
 const getAllUserUseCase = new GetAllUserUseCase(userRepository);
-const sendUserInvitationUseCase = new SendUserInvitationUseCase(workspaceRepository);
+const sendUserInvitationUseCase = new SendUserInvitationUseCase(workspaceRepository,activityLogRepository);
 const getWorkspaceDashboardStatsUseCase = new GetWorkspaceDashboardStatsUseCase(userRepository);
 const getActiveUserUseCase=new GetActiveUserUseCase(userRepository)
 
 const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, authUserRepository);
-const updateUserUseCase = new UpdateUserUseCase(authUserRepository);
+const updateUserUseCase = new UpdateUserUseCase(authUserRepository,activityLogRepository);
 
 const controller = new WorkspaceAdminController(
   getAllUserUseCase,

@@ -1,3 +1,5 @@
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
+const activityLogRepository = new ActivityLogRepository();
 import express from "express";
 import { SuperAdminController } from "./superAdmin.controller.ts";
 import { GetAllUserUseCase } from "../application/usecases/getAllUserUseCase.ts";
@@ -16,10 +18,10 @@ const userRepository = new UserRepository();
 const workspaceRepository=new WorkspaceReopsitory()
 
 const getAllUserUseCase = new GetAllUserUseCase(userRepository);
-const approveWorkspaceUseCase=new ApproveWorkspaceUseCase(workspaceRepository)
+const approveWorkspaceUseCase=new ApproveWorkspaceUseCase(workspaceRepository,activityLogRepository)
 
 const authUserRepository = new AuthUserRepository();
-const updateUserUseCase = new UpdateUserUseCase(authUserRepository);
+const updateUserUseCase = new UpdateUserUseCase(authUserRepository,activityLogRepository);
 const getSuperAdminDashboardStatsUseCase = new GetSuperAdminDashboardStatsUseCase(userRepository);
 
 const controller = new SuperAdminController(getAllUserUseCase,approveWorkspaceUseCase,updateUserUseCase,getSuperAdminDashboardStatsUseCase);

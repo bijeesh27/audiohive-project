@@ -1,22 +1,22 @@
 import { NextFunction, Response } from "express";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
-import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 import { MESSAGES } from "../../../common/constant/messages.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
-import { SendUserInvitationDTO } from "../application/usecase/sendUserInvitationUseCase.ts";
+import { SendUserInvitationDTO, GetAllUsersQueryDTO, UpdateUserRequestDTO, WorkspaceDashboardStatsDTO } from "../application/dtos/workspaceAdminDTO.ts";
 import { AccessDeniedError } from "../../../common/Errors/AuthError.ts";
-import { ResolveWorkspaceDTO, ResolvedWorkspaceResult } from "../../workspace/application/usecases/resolveWorkspaceUseCase.ts";
+import { ResolveWorkspaceDTO, ResolvedWorkspaceDTO } from "../../workspace/application/dto/workspaceDTOs.ts";
 import { UserRoles } from "../../../common/constant/userRoles.ts";
 
 export class WorkspaceAdminController {
   constructor(
-    private readonly getAllUserUseCase: IuseCase<{ workspaceId: string; page: number; limit: number,search?: string }, { users: IuserDocument[]; total: number } | null>,
+    private readonly getAllUserUseCase: IuseCase<GetAllUsersQueryDTO, { users: IuserDTO[]; total: number } | null>,
     private readonly sendUserInvitationUseCase: IuseCase<SendUserInvitationDTO, void>,
-    private readonly getWorkspaceDashboardStatsUseCase: IuseCase<string, { totalRooms: number; totalUsers: number }>,
-    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceResult>,
+    private readonly getWorkspaceDashboardStatsUseCase: IuseCase<string, WorkspaceDashboardStatsDTO>,
+    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>,
     private readonly getActiveUserUseCase: IuseCase<string, number>,
-    private readonly updateUserUseCase: IuseCase<{ userId: string, updateData: Partial<IuserDocument> }, IuserDocument>
+    private readonly updateUserUseCase: IuseCase<UpdateUserRequestDTO, IuserDTO>
   ) {}
 
   getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -114,3 +114,5 @@ export class WorkspaceAdminController {
     }
   };
 }
+
+
