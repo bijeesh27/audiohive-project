@@ -1,6 +1,7 @@
+import { ActivityLogInputDTO } from "../application/dto/activityLogDTO";
 import { IActivityLogDocumet } from "../infrastructure/activitylogSchema";
 
 
 export interface IactivityLogRepository{
-    recordActivity(data:IActivityLogDocumet):Promise<void>
+    recordActivity(data:ActivityLogInputDTO):Promise<void>
 }

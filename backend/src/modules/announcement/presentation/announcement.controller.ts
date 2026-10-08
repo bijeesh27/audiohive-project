@@ -1,25 +1,32 @@
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware.js";
 import { IuseCase } from "../../../shared/interface/IuseCase.js";
-import { CreateAnnouncementDTO, UpdateAnnouncementDTO, MarkReadDTO } from "../application/dto/announcementDTO.js";
-import { IAnnouncementDocument } from "../infrastructure/announcementSchema.js";
-import { ResolveWorkspaceDTO, ResolvedWorkspaceResult } from "../../workspace/application/usecases/resolveWorkspaceUseCase.js";
+import {
+  AnnouncementResponseDTO,
+  CreateAnnouncementDTO,
+  DeleteAnnouncementDTO,
+  GetAnnouncementsQueryDTO,
+  MarkReadDTO,
+  PinAnnouncementInputDTO,
+  UpdateAnnouncementDTO,
+} from "../application/dto/announcementDTO.js";
+import { ResolveWorkspaceDTO, ResolvedWorkspaceDTO } from "../../workspace/application/dto/workspaceDTOs.js";
 import { ApiResposne } from "../../../common/Response/Response.js";
 import { MESSAGES } from "../../../common/constant/messages.js";
 import { AppError } from "../../../common/Errors/AppError.js";
 
 export class AnnouncementController {
   constructor(
-    private readonly createAnnouncementUseCase: IuseCase<CreateAnnouncementDTO, IAnnouncementDocument>,
+    private readonly createAnnouncementUseCase: IuseCase<CreateAnnouncementDTO, AnnouncementResponseDTO>,
     private readonly updateAnnouncementUseCase: IuseCase<{ id: string; data: UpdateAnnouncementDTO }, void>,
-    private readonly deleteAnnouncementUseCase: IuseCase<{ id: string; workspaceId: string }, void>,
-    private readonly getAllAnnouncementsUseCase: IuseCase<{ workspaceId: string; page: number; limit: number; status?: string; search?: string }, { announcements: IAnnouncementDocument[]; total: number }>,
-    private readonly getAnnouncementUseCase: IuseCase<string, IAnnouncementDocument | null>,
-    private readonly pinAnnouncementUseCase: IuseCase<{ id: string; isPinned: boolean; workspaceId: string }, void>,
+    private readonly deleteAnnouncementUseCase: IuseCase<DeleteAnnouncementDTO, void>,
+    private readonly getAllAnnouncementsUseCase: IuseCase<GetAnnouncementsQueryDTO, { announcements: AnnouncementResponseDTO[]; total: number }>,
+    private readonly getAnnouncementUseCase: IuseCase<string, AnnouncementResponseDTO | null>,
+    private readonly pinAnnouncementUseCase: IuseCase<PinAnnouncementInputDTO, void>,
     private readonly markAsReadUseCase: IuseCase<MarkReadDTO, void>,
     private readonly getUnreadCountFn: (workspaceId: string, userId: string) => Promise<number>,
-    private readonly getByRoomFn: (roomId: string) => Promise<IAnnouncementDocument[]>,
-    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceResult>
+    private readonly getByRoomFn: (roomId: string) => Promise<AnnouncementResponseDTO[]>,
+    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>
   ) {}
 
   private async resolveWorkspace(req: AuthRequest) {
@@ -49,7 +56,14 @@ export class AnnouncementController {
   updateAnnouncement = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
-      await this.updateAnnouncementUseCase.execute({ id, data: req.body });
+      const { workspaceId, organizationId } = await this.resolveWorkspace(req);
+      const data: UpdateAnnouncementDTO = {
+        ...req.body,
+        workspaceId,
+        organizationId,
+        actorId: req.user?.id
+      };
+      await this.updateAnnouncementUseCase.execute({ id, data });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_UPDATED);
     } catch (error) {
       next(error);
@@ -58,9 +72,9 @@ export class AnnouncementController {
 
   deleteAnnouncement = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const { workspaceId } = await this.resolveWorkspace(req);
+      const { workspaceId, organizationId } = await this.resolveWorkspace(req);
       const id = req.params.id as string;
-      await this.deleteAnnouncementUseCase.execute({ id, workspaceId });
+      await this.deleteAnnouncementUseCase.execute({ id, workspaceId, organizationId, actorId: req.user?.id });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_DELETED);
     } catch (error) {
       next(error);
@@ -98,10 +112,10 @@ export class AnnouncementController {
 
   pinAnnouncement = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const { workspaceId } = await this.resolveWorkspace(req);
+      const { workspaceId, organizationId } = await this.resolveWorkspace(req);
       const { isPinned } = req.body;
       const id = req.params.id as string;
-      await this.pinAnnouncementUseCase.execute({ id, isPinned, workspaceId });
+      await this.pinAnnouncementUseCase.execute({ id, isPinned, workspaceId, organizationId, actorId: req.user?.id });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_PINNED);
     } catch (error) {
       next(error);

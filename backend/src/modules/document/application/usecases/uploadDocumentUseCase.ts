@@ -5,12 +5,13 @@ import { IDocument } from "../../infrastructure/documentSchema.js";
 import { socketService } from "../../../../socket/socketService.js";
 import { Types } from "mongoose";
 import {s3Service } from "../../../../services/s3.service";
+import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
 
 export class UploadDocumentUseCase
   implements IuseCase<UploadDocumentDTO, IDocument> {
 
   constructor(
-    private readonly documentRepository: IDocumentRepository
+    private readonly documentRepository: IDocumentRepository, private readonly activityLogRepository: IactivityLogRepository
   ) {}
 
   async execute(data: UploadDocumentDTO): Promise<IDocument> {
@@ -42,6 +43,18 @@ export class UploadDocumentUseCase
       .getIO()
       .to(`room:${data.roomId}`)
       .emit("room:new-document", document);
+
+      await this.activityLogRepository.recordActivity({
+            occurredAt: new Date(),
+            action: "UPLOAD_DOCUMENT",
+            actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
+            organizationId: data ? (data as any).organizationId : undefined,
+            workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
+            targetType: "UPLOAD",
+            targetId: undefined,
+            metadata: {}
+          });
+
 
     return document;
   }

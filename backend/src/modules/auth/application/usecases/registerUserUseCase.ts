@@ -2,7 +2,7 @@ import { UserAlreadyExist } from "../../../../common/Errors/AuthError.ts";
 import { generateOtp } from "../../../../shared/utils/otp.utils.ts";
 import { IotpReposiroty } from "../../domain/IotpRepository.ts";
 import { IuserRepository } from "../../domain/IuserRepository.ts";
-import { IuserDocument } from "../../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../../shared/User.utils/userDTO.ts";
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { RegisterDTO } from "../dtos/AuthDTO.ts";
 import bcrypt from "bcrypt";
@@ -13,7 +13,7 @@ export class RegiterUserUseCase implements IuseCase<RegisterDTO, void> {
     private readonly otpRepository: IotpReposiroty,
   ) {}
 
-  async execute(data: IuserDocument) {
+  async execute(data: RegisterDTO) {
     const { username, email, password } = data;
     const exist = await this.userRpository.findByEmail(email);
     if (exist) {
@@ -21,10 +21,10 @@ export class RegiterUserUseCase implements IuseCase<RegisterDTO, void> {
     }
     const newOtp = generateOtp();
     const hashedPassword = await bcrypt.hash(password, 12);
-    const newUser:IuserDocument = {
+    const newUser: IuserDTO = {
       username,
       email,
-      password:hashedPassword
+      password: hashedPassword
     };
     await this.otpRepository.createOtp(email, newOtp, newUser);
   }

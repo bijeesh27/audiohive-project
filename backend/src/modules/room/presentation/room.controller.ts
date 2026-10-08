@@ -1,9 +1,21 @@
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import { IuseCase } from "../../../shared/interface/IuseCase";
-import { CreateRoomDTO, UpdateRoomDTO, AllocateRoomUsersDTO, RemoveRoomUserDTO } from "../application/dto/roomDTO";
+import {
+  AllocateRoomUsersDTO,
+  CreateRoomDTO,
+  DeleteRoomDTO,
+  GetAllRoomsDTO,
+  GetAllRoomsResultDTO,
+  GetRoomDTO,
+  GetRoomParticipantsDTO,
+  GetRoomParticipantsResultDTO,
+  RemoveRoomUserDTO,
+  UpdateRoomDTO,
+  UpdateRoomRequestDTO,
+} from "../application/dto/roomDTO";
 import { IRoomDocument } from "../infrastructure/roomSchema";
-import { ResolveWorkspaceDTO, ResolvedWorkspaceResult } from "../../workspace/application/usecases/resolveWorkspaceUseCase";
+import { ResolveWorkspaceDTO, ResolvedWorkspaceDTO } from "../../workspace/application/dto/workspaceDTOs";
 import { ApiResposne } from "../../../common/Response/Response";
 import { UserRoles } from "../../../common/constant/userRoles";
 import { MESSAGES } from "../../../common/constant/messages";
@@ -12,13 +24,13 @@ import { AppError } from "../../../common/Errors/AppError";
 export class RoomController {
   constructor(
     private readonly createRoomUseCase: IuseCase<CreateRoomDTO, void>,
-    private readonly updateRoomUseCase: IuseCase<{ roomId: string; data: UpdateRoomDTO }, void>,
-    private readonly deleteRoomUseCase: IuseCase<string, void>,
-    private readonly getRoomUseCase: IuseCase<string, IRoomDocument | null>,
-    private readonly getAllRoomsUseCase: IuseCase<{ workspaceId: string; page: number; limit: number; search?: string, userId?: string, role?: string }, { rooms: IRoomDocument[]; total: number }>,
+    private readonly updateRoomUseCase: IuseCase<UpdateRoomRequestDTO, void>,
+    private readonly deleteRoomUseCase: IuseCase<DeleteRoomDTO, void>,
+    private readonly getRoomUseCase: IuseCase<GetRoomDTO, IRoomDocument | null>,
+    private readonly getAllRoomsUseCase: IuseCase<GetAllRoomsDTO, GetAllRoomsResultDTO>,
     private readonly allocateRoomUsersUseCase: IuseCase<AllocateRoomUsersDTO, void>,
-    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceResult>,
-    private readonly getRoomParticipantsUseCase: IuseCase<{ roomId: string; page?: number; limit?: number; search?: string }, { participants: { _id: string; username: string; email: string; role: string; status: boolean }[]; total: number }>,
+    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>,
+    private readonly getRoomParticipantsUseCase: IuseCase<GetRoomParticipantsDTO, GetRoomParticipantsResultDTO>,
     private readonly removeRoomUserUseCase: IuseCase<RemoveRoomUserDTO, void>
   ) {}
 
@@ -49,7 +61,13 @@ export class RoomController {
   updateRoom = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const roomId = req.params.id as string;
-      const data: UpdateRoomDTO = req.body;
+      const { workspaceId, organizationId } = await this.getWorkspaceAndOrgForUser(req);
+      const data: UpdateRoomDTO = {
+        ...req.body,
+        workspaceId,
+        organizationId,
+        actorId: req.user?.id
+      };
       await this.updateRoomUseCase.execute({ roomId, data });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ROOM_UPDATED);
     } catch (error) {
@@ -60,7 +78,7 @@ export class RoomController {
   deleteRoom = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const roomId = req.params.id as string;
-      await this.deleteRoomUseCase.execute(roomId);
+      await this.deleteRoomUseCase.execute({ roomId });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ROOM_DELETED);
     } catch (error) {
       next(error);
@@ -70,7 +88,7 @@ export class RoomController {
   getRoom = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const roomId = req.params.id as string;
-      const room = await this.getRoomUseCase.execute(roomId);
+      const room = await this.getRoomUseCase.execute({ roomId });
 
       if (!room) {
         throw new AppError(MESSAGES.ERRORS.ROOM_NOT_FOUND, 404);
@@ -114,7 +132,14 @@ export class RoomController {
     try {
       const roomId = req.params.id as string;
       const { userIds } = req.body;
-      await this.allocateRoomUsersUseCase.execute({ roomId, userIds });
+      const { workspaceId, organizationId } = await this.getWorkspaceAndOrgForUser(req);
+      await this.allocateRoomUsersUseCase.execute({
+        roomId,
+        userIds,
+        actorId: req.user?.id,
+        workspaceId,
+        organizationId,
+      });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ROOM_ACCESS_UPDATED);
     } catch (error) {
       next(error);
@@ -141,7 +166,14 @@ export class RoomController {
     try {
       const roomId = req.params.id as string;
       const userId = req.params.userId as string;
-      await this.removeRoomUserUseCase.execute({ roomId, userId });
+      const { workspaceId, organizationId } = await this.getWorkspaceAndOrgForUser(req);
+      await this.removeRoomUserUseCase.execute({ 
+        roomId, 
+        userId,
+        workspaceId,
+        organizationId,
+        actorId: req.user?.id
+      });
       return ApiResposne.success(res, MESSAGES.SUCCESS.USER_REMOVED_FROM_ROOM);
     } catch (error) {
       next(error);

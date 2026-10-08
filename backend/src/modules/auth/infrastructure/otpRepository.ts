@@ -1,6 +1,6 @@
 import { IotpReposiroty } from "../domain/IotpRepository.ts";
 import { IotpDocument, OtpModel } from "./otpSchema.ts";
-import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 
 export class OtpRepository implements IotpReposiroty {
   async findOtp(email: string, otp: string): Promise<IotpDocument | null> {
@@ -23,7 +23,7 @@ export class OtpRepository implements IotpReposiroty {
   async createOtp(
     email: string,
     newOtp: string,
-    data: IuserDocument,
+    data: IuserDTO,
   ): Promise<IotpDocument | null> {
     const otp = await OtpModel.create({
       userEmail: email,

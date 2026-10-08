@@ -5,18 +5,13 @@ import { emailQueue } from "../../../../config/queue.config.ts";
 import { WorkspaceNotFound } from "../../../../common/Errors/WorkspaceError.ts";
 import { InvalidOtpError } from "../../../../common/Errors/AuthError.ts";
 import { IInvitationDocument } from "../../../workspace/infrastructure/invitationSchema.ts";
+import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
 
-export interface SendUserInvitationDTO {
-    workspaceId: string;
-    email: string;
-    invitedName: string;
-    role: string;
-    workspaceAdminEmail: string;
-}
+import { SendUserInvitationDTO } from "../dtos/workspaceAdminDTO.ts";
 
 export class SendUserInvitationUseCase implements IuseCase<SendUserInvitationDTO, void> {
     constructor(
-        private readonly workspaceRepository: IworkspaceRepository,
+        private readonly workspaceRepository: IworkspaceRepository, private readonly activityLogRepository: IactivityLogRepository
     ) {}
 
     async execute(data: SendUserInvitationDTO): Promise<void> {
@@ -55,5 +50,17 @@ export class SendUserInvitationUseCase implements IuseCase<SendUserInvitationDTO
             role,
             invitationLink,
         });
+
+        await this.activityLogRepository.recordActivity({
+              occurredAt: new Date(),
+              action: "SEND_USER_INVITATION",
+              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
+              organizationId: data ? (data as any).organizationId : undefined,
+              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
+              targetType: "SEND",
+              targetId: undefined,
+              metadata: {}
+            });
     }
 }
+

@@ -1,8 +1,6 @@
 import { UserRoles } from "../../../common/constant/userRoles.ts";
-import {
-  IuserDocument,
-  UserModel,
-} from "../../../shared/User.utils/userSchema.ts";
+import { UserModel } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 import { IuserRepository } from "../domain/IuserRepository.ts";
 import { RoomModel } from "../../room/infrastructure/roomSchema.ts";
 
@@ -12,7 +10,7 @@ export class UserRepository implements IuserRepository {
     page: number,
     limit: number,
     searchQuery?: string,
-  ): Promise<{ users: Array<IuserDocument>; total: number } | null> {
+  ): Promise<{ users: Array<IuserDTO>; total: number } | null> {
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown>  = {
@@ -34,7 +32,7 @@ export class UserRepository implements IuserRepository {
     return { users, total };
   }
 
-  async getDashboardStats(workspaceId: string): Promise<{ totalRooms: number; totalUsers: number }> {
+  async getDashboardStats(workspaceId: string): Promise<import("../application/dtos/workspaceAdminDTO.ts").WorkspaceDashboardStatsDTO> {
     const [totalRooms, totalUsers] = await Promise.all([
       RoomModel.countDocuments({ workspaceId }),
       UserModel.countDocuments({ workspaceId, role: UserRoles.MEMBER }),
@@ -45,7 +43,7 @@ export class UserRepository implements IuserRepository {
     return await UserModel.countDocuments({ status: true, workspaceId });
   }
 
-  async updateUser(userId: string, data: Partial<IuserDocument>): Promise<IuserDocument> {
+  async updateUser(userId: string, data: Partial<IuserDTO>): Promise<IuserDTO> {
     if (data.workspaceId === null) {
       await RoomModel.updateMany(
         { allowedUsers: userId },
@@ -53,6 +51,7 @@ export class UserRepository implements IuserRepository {
       );
     }
     const updated = await UserModel.findByIdAndUpdate(userId, { $set: data }, { new: true }).select("-password");
-    return updated as IuserDocument;
+    return updated as IuserDTO;
   }
 }
+

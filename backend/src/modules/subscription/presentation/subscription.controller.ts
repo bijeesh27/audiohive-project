@@ -1,21 +1,26 @@
 import { NextFunction, Request,Response } from "express";
 import { IuseCase } from "../../../shared/interface/IuseCase";
-import { AllSubscriptionsDTO, createSubscriptionDTO, deleteSubscriptionDTO, updateSubscriptionDTO } from "../application/dto/subcriptionDTOs";
+import {
+    CreateCheckoutSessionDTO,
+    CreateSubscriptionDTO,
+    DeleteSubscriptionDTO,
+    UpdateSubscriptionDTO,
+    VerifyCheckoutSessionDTO,
+    VerifyCheckoutSessionResultDTO,
+} from "../application/dto/subcriptionDTOs";
 import { ISubscriptionDocument } from "../infrastructure/subscriptionSchema";
 import { ApiResposne } from "../../../common/Response/Response";
 import { MESSAGES } from "../../../common/constant/messages";
-import { CheckoutSessionInput } from "../application/usecases/createCheckoutSessionUseCase";
-import { VerifySessionResult } from "../application/usecases/verifyCheckoutSessionUseCase";
 import { AppError } from "../../../common/Errors/AppError";
 
 export class AuthController{
     constructor(
-        private readonly createSubscriptionUseCase:IuseCase<createSubscriptionDTO,void>,
-        private readonly updateSubscriptionUseCase:IuseCase<updateSubscriptionDTO,void>,
-        private readonly deleteSubscriptionUseCase:IuseCase<deleteSubscriptionDTO,void>,
-        private readonly getAllSubscriptionUseCase:IuseCase<AllSubscriptionsDTO,ISubscriptionDocument[]>,
-        private readonly createCheckoutSessionUseCase:IuseCase<CheckoutSessionInput, string>,
-        private readonly verifyCheckoutSessionUseCase:IuseCase<string, VerifySessionResult>
+        private readonly createSubscriptionUseCase:IuseCase<CreateSubscriptionDTO,void>,
+        private readonly updateSubscriptionUseCase:IuseCase<UpdateSubscriptionDTO,void>,
+        private readonly deleteSubscriptionUseCase:IuseCase<DeleteSubscriptionDTO,void>,
+        private readonly getAllSubscriptionUseCase:IuseCase<void,ISubscriptionDocument[]>,
+        private readonly createCheckoutSessionUseCase:IuseCase<CreateCheckoutSessionDTO, string>,
+        private readonly verifyCheckoutSessionUseCase:IuseCase<VerifyCheckoutSessionDTO, VerifyCheckoutSessionResultDTO>
     ){}
 
     async createCheckoutSession(req:Request, res:Response, next:NextFunction) {
@@ -37,7 +42,7 @@ export class AuthController{
             if (!sessionId) {
                 throw new AppError("sessionId is required", 400);
             }
-            const data = await this.verifyCheckoutSessionUseCase.execute(sessionId);
+            const data = await this.verifyCheckoutSessionUseCase.execute({ sessionId });
             return ApiResposne.success(res, MESSAGES.SUCCESS.CHECKOUT_SESSION_VERIFIED, data);
         } catch (error: unknown) {
             next(error)
@@ -55,7 +60,7 @@ export class AuthController{
     }
     async updateSubscription(req:Request,res:Response,next:NextFunction){
         try {
-            const payload: updateSubscriptionDTO = {
+            const payload: UpdateSubscriptionDTO = {
                 id: req.body.subscriptionId,
                 ...req.body.data
             };

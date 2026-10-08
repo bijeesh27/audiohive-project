@@ -16,22 +16,24 @@ import { UserRoles } from "../../../common/constant/userRoles";
 import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository";
 import { UserRepository } from "../../auth/infrastructure/userRepository";
 
-import { ResolveWorkspaceUseCase } from "../../workspace/application/usecases/resolveWorkspaceUseCase";
+import { ResolveWorkspaceUseCase } from "../../workspace/application/usecase/resolveWorkspaceUseCase";
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
 
 const router = express.Router();
 
 const roomRepository = new RoomRepository();
 const workspaceRepository = new WorkspaceReopsitory();
 const userRepository = new UserRepository();
+const activityLogRepository=new ActivityLogRepository()
 
-const createRoomUseCase = new CreateRoomUseCase(roomRepository);
-const updateRoomUseCase = new UpdateRoomUseCase(roomRepository);
-const deleteRoomUseCase = new DeleteRoomUseCase(roomRepository);
+const createRoomUseCase = new CreateRoomUseCase(roomRepository,activityLogRepository);
+const updateRoomUseCase = new UpdateRoomUseCase(roomRepository,activityLogRepository);
+const deleteRoomUseCase = new DeleteRoomUseCase(roomRepository,activityLogRepository);
 const getRoomUseCase = new GetRoomUseCase(roomRepository);
 const getAllRoomsUseCase = new GetAllRoomsUseCase(roomRepository);
-const allocateRoomUsersUseCase = new AllocateRoomUsersUseCase(roomRepository);
+const allocateRoomUsersUseCase = new AllocateRoomUsersUseCase(roomRepository,activityLogRepository);
 const getRoomParticipantsUseCase = new GetRoomParticipantsUseCase(roomRepository);
-const removeRoomUserUseCase = new RemoveRoomUserUseCase(roomRepository);
+const removeRoomUserUseCase = new RemoveRoomUserUseCase(roomRepository,activityLogRepository);
 const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, userRepository);
 
 const controller = new RoomController(

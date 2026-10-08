@@ -1,17 +1,10 @@
 import { stripe } from "../../../../config/stripe";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
+import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
+import { VerifyCheckoutSessionDTO, VerifyCheckoutSessionResultDTO } from "../dto/subcriptionDTOs";
 
-export interface VerifySessionResult {
-  status: string;
-  ownerEmail: string;
-  companyName: string;
-  slug: string;
-  ownerName: string;
-  planId: string;
-}
-
-export class VerifyCheckoutSessionUseCase implements IuseCase<string, VerifySessionResult> {
-  async execute(sessionId: string): Promise<VerifySessionResult> {
+export class VerifyCheckoutSessionUseCase implements IuseCase<VerifyCheckoutSessionDTO, VerifyCheckoutSessionResultDTO> {
+  async execute({ sessionId }: VerifyCheckoutSessionDTO): Promise<VerifyCheckoutSessionResultDTO> {
     try {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       return {
@@ -31,5 +24,19 @@ export class VerifyCheckoutSessionUseCase implements IuseCase<string, VerifySess
         { cause: error }
       );
     }
+
+      await this.activityLogRepository.recordActivity({
+            occurredAt: new Date(),
+            action: "VERIFY_CHECKOUT_SESSION",
+            actorId: sessionId ? (sessionId as any).actorId || (sessionId as any).userId || (sessionId as any).uploaderId || null : null,
+            organizationId: sessionId ? (sessionId as any).organizationId : undefined,
+            workspaceId: sessionId ? (sessionId as any).workspaceId || (sessionId as any).roomId : undefined,
+            targetType: "VERIFY",
+            targetId: undefined,
+            metadata: {}
+          });
   }
+
+    constructor(private readonly activityLogRepository: IactivityLogRepository) {
+    }
 }

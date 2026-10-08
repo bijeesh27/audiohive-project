@@ -2,6 +2,7 @@ import express from 'express'
 import { ActivityLogRepository } from '../infrastructure/activitylogRepository'
 import { RecordActivityLogUseCase } from '../application/usecases/RecordAcivityUseCase'
 import { ActivityLogController } from './activitylog.controller'
+import { API_ROUTES } from '../../../common/constant/ApiRoutes'
 const router=express.Router()
 
 
@@ -11,6 +12,6 @@ const recordActivityLogUseCase=new RecordActivityLogUseCase(activityLogRepositor
 
 const controller=new ActivityLogController(recordActivityLogUseCase)
 
-router.post('/record',controller.recordActivityLog.bind(controller))
+router.post(API_ROUTES.ACTIVITY.RECORD_ACTIVITY,controller.recordActivityLog.bind(controller))
 
 export default router

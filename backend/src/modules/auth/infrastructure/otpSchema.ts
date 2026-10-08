@@ -1,10 +1,10 @@
 import mongoose, { Schema } from "mongoose";
-import { IuserDocument } from "../../../shared/User.utils/userSchema.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 
 export interface IotpDocument extends Document {
   userEmail: string;
   otp: string;
-  userData: IuserDocument;
+  userData: IuserDTO;
   purpose?: string;
 }
 

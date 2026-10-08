@@ -1,4 +1,4 @@
-export interface createSubscriptionDTO {
+export interface CreateSubscriptionDTO {
   subscriptionName: string;
   price: number;
   description: string;
@@ -6,8 +6,9 @@ export interface createSubscriptionDTO {
   features: string[];
   isActive?: boolean;
 }
-export interface updateSubscriptionDTO {
-  id?: string;
+
+export interface UpdateSubscriptionDTO {
+  id: string;
   subscriptionName?: string;
   price?: number;
   description?: string;
@@ -16,16 +17,27 @@ export interface updateSubscriptionDTO {
   isActive?: boolean;
 }
 
-export interface deleteSubscriptionDTO {
+export interface DeleteSubscriptionDTO {
   id: string;
 }
 
-export interface AllSubscriptionsDTO{
-  id: string;
-  subscriptionName: string;
-  price: number;
-  description: string;
-  maxWorkspaces: number;
-  features: string[];
-  isActive?: boolean;
+export interface CreateCheckoutSessionDTO {
+  planId: string;
+  ownerEmail?: string;
+  companyName?: string;
+  slug?: string;
+  ownerName?: string;
+}
+
+export interface VerifyCheckoutSessionDTO {
+  sessionId: string;
+}
+
+export interface VerifyCheckoutSessionResultDTO {
+  status: string;
+  ownerEmail: string;
+  companyName: string;
+  slug: string;
+  ownerName: string;
+  planId: string;
 }

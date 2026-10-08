@@ -12,7 +12,7 @@ export class RoomRepository
   }
 
   async createRoom(data: IRoomDocument): Promise<void> {
-    await this.model.create(data);
+   return await this.model.create(data);
   }
 
   async updateRoom(
@@ -26,7 +26,7 @@ export class RoomRepository
   }
 
   async deleteRoom(roomId: string): Promise<void> {
-    await this.model.deleteOne({
+    return await this.model.deleteOne({
       _id: roomId,
     });
   }

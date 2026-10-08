@@ -1,5 +1,5 @@
 import { BaseRepository } from "../../../shared/common/baseRepository";
-import { createOrganizationDTO } from "../application/dto/organizationDTO";
+import { CreateOrganizationDTO } from "../application/dto/organizationDTO";
 import { IorganizaionRepository } from "../domain/IorganizationRepository";
 import {
   ICreateOrganizationInvitation,
@@ -19,7 +19,7 @@ export class OrganizationRepository
   }
 
   async createOrganization(
-    data: createOrganizationDTO,
+    data: CreateOrganizationDTO,
   ): Promise<IorganizationDocument> {
     return await this.create(data);
   }

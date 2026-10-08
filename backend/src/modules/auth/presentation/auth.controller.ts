@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { IuserDocument, UserModel } from "../../../shared/User.utils/userSchema.ts";
+import { UserModel } from "../../../shared/User.utils/userSchema.ts";
 import jwt from "jsonwebtoken";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
@@ -18,6 +18,7 @@ import {
   RefreshTokenNotFound,
 } from "../../../common/Errors/AuthError.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
+import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
 
 interface RegisterOwnerInput {
   token: string;
@@ -44,15 +45,15 @@ interface InvitationDetails {
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
-    private readonly otpUseCase: IuseCase<OtpDTO, IuserDocument | void>,
-    private readonly loginUserUseCase: IuseCase<LoginDTO, IuserDocument>,
-    private readonly forgetUseCase: IuseCase<ForgetPasswordDTO, IuserDocument>,
+    private readonly otpUseCase: IuseCase<OtpDTO, IuserDTO | void>,
+    private readonly loginUserUseCase: IuseCase<LoginDTO, IuserDTO>,
+    private readonly forgetUseCase: IuseCase<ForgetPasswordDTO, IuserDTO>,
     private readonly changePasswordUseCase: IuseCase<
       ChangePasswordDTO & { email: string },
-      IuserDocument
+      IuserDTO
     >,
     private readonly resendOtpUseCase: IuseCase<{ email: string }, void>,
-    private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDocument>,
+    private readonly resetPasswordUseCase: IuseCase<ResetPasswordDTO, IuserDTO>,
     private readonly registerWorkspaceAdminUseCase: IuseCase<RegisterDTO, void>,
     private readonly registerOwnerUseCase: IuseCase<RegisterOwnerInput, void>,
     private readonly getInvitationDetailsUseCase: IuseCase<string, InvitationDetails>,
@@ -80,7 +81,7 @@ export class AuthController {
       
       if (req.body.purpose === "forget") {
          const resetToken = jwt.sign(
-           { email: (userData as IuserDocument).email, type: "reset" },
+           { email: (userData as IuserDTO).email, type: "reset" },
            process.env.JWT_SECRET!,
            { expiresIn: "15m" }
          );

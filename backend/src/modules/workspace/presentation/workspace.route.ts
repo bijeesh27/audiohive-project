@@ -19,23 +19,25 @@ import { GetWorkspaceUsersUseCase } from "../application/usecase/getWorkspaceUse
 import { UserRepository } from "../../workspaceAdmin/infrastructure/userRepository";
 
 import { RemoveWorkspaceUserUseCase } from "../application/usecase/removeWorkspaceUserUseCase";
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
 
 const router = express.Router();
+const activityLogRepository = new ActivityLogRepository();
 
 const workspaceRepository = new WorkspaceReopsitory();
 const organizationRepository = new OrganizationRepository();
 const subscriptionRepository = new SubscriptionRepository();
 const userRepository = new UserRepository();
 
-const createWorkspaceUseCase = new CreateWorkspaceUseCase(workspaceRepository, organizationRepository, subscriptionRepository);
-const updateWorkspaceUseCase = new updateWorkspaceUsecase(workspaceRepository);
-const deleteWorkspaceUseCase = new DeleteWorkspaceUseCase(workspaceRepository);
+const createWorkspaceUseCase = new CreateWorkspaceUseCase(workspaceRepository, organizationRepository, subscriptionRepository, activityLogRepository);
+const updateWorkspaceUseCase = new updateWorkspaceUsecase(workspaceRepository,activityLogRepository);
+const deleteWorkspaceUseCase = new DeleteWorkspaceUseCase(workspaceRepository,activityLogRepository);
 const getAllWorkspacesUseCase = new GetAllWorkspacesUseCase(workspaceRepository);
 const getWorkspacesByOrgUseCase = new GetWorkspacesByOrgUseCase(workspaceRepository, organizationRepository);
-const sendWorkspaceInvitationUseCase = new SendWorkspaceInvitationUseCase(workspaceRepository, organizationRepository);
+const sendWorkspaceInvitationUseCase = new SendWorkspaceInvitationUseCase(workspaceRepository, organizationRepository,activityLogRepository);
 const getWorkspaceUseCase = new GetWorkspaceUseCase(workspaceRepository);
 const getWorkspaceUsersUseCase = new GetWorkspaceUsersUseCase(userRepository);
-const removeWorkspaceUserUseCase = new RemoveWorkspaceUserUseCase(userRepository);
+const removeWorkspaceUserUseCase = new RemoveWorkspaceUserUseCase(userRepository,activityLogRepository);
 
 const controller = new WorkspaceController(
   createWorkspaceUseCase,

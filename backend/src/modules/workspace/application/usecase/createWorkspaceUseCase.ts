@@ -6,19 +6,20 @@ import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../../organization/domain/IorganizationRepository";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
 import { IWorkspaceDocument } from "../../infrastructure/workspaceSchema";
-import { createWorkspaceDTO } from "../dto/workspaceDTOs";
+import { CreateWorkspaceDTO } from "../dto/workspaceDTOs";
 
 import { IsubscriptionRepository } from "../../../subscription/domain/IsubscriptionRepository";
 import { OrganizationNotFound } from "../../../../common/Errors/OrganizationError";
+import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
 
-export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void> {
+export class CreateWorkspaceUseCase implements IuseCase<CreateWorkspaceDTO, void> {
     constructor(
         private readonly workspaceRepository: IworkspaceRepository,
         private readonly organizationRepository: IorganizaionRepository,
-        private readonly subscriptionRepository: IsubscriptionRepository,
+        private readonly subscriptionRepository: IsubscriptionRepository, private readonly activityLogRepository: IactivityLogRepository
     ) {}
 
-    async execute(data?: createWorkspaceDTO): Promise<void> {
+    async execute(data?: CreateWorkspaceDTO): Promise<void> {
         if (!data) {
             throw new CreateWorkspaceError(MESSAGES.ERRORS.WORKSPACE_INVALID_DATA);
         }
@@ -78,5 +79,16 @@ export class CreateWorkspaceUseCase implements IuseCase<createWorkspaceDTO, void
 
             throw error;
         }
+
+        await this.activityLogRepository.recordActivity({
+              occurredAt: new Date(),
+              action: "CREATE_WORKSPACE",
+              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
+              organizationId: data ? (data as any).organizationId : undefined,
+              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
+              targetType: "CREATE",
+              targetId: undefined,
+              metadata: {}
+            });
     }
 }

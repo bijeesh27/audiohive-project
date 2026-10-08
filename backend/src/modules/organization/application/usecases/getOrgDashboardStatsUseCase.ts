@@ -1,12 +1,13 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase.ts";
 import { IorganizaionRepository } from "../../domain/IorganizationRepository.ts";
+import { GetOrgDashboardStatsDTO, OrgDashboardStatsDTO } from "../dto/organizationDTO";
 
 export class GetOrgDashboardStatsUseCase
-  implements IuseCase<string, { totalWorkspaces: number; totalUsers: number }>
+  implements IuseCase<GetOrgDashboardStatsDTO, OrgDashboardStatsDTO>
 {
   constructor(private readonly organizationRepository: IorganizaionRepository) {}
 
-  async execute(ownerEmail: string) {
+  async execute({ ownerEmail }: GetOrgDashboardStatsDTO): Promise<OrgDashboardStatsDTO> {
     const org = await this.organizationRepository.findByOwnerEmail(ownerEmail);
     if (!org) return { totalWorkspaces: 0, totalUsers: 0 };
 

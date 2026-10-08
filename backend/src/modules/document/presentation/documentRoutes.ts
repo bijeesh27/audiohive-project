@@ -1,3 +1,5 @@
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
+const activityLogRepository = new ActivityLogRepository();
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
@@ -35,9 +37,9 @@ const upload = multer({
 });
 
 const documentRepository = new DocumentRepository();
-const uploadDocumentUseCase = new UploadDocumentUseCase(documentRepository);
+const uploadDocumentUseCase = new UploadDocumentUseCase(documentRepository,activityLogRepository);
 const getRoomDocumentsUseCase = new GetRoomDocumentsUseCase(documentRepository);
-const deleteDocumentUseCase = new DeleteDocumentUseCase(documentRepository);
+const deleteDocumentUseCase = new DeleteDocumentUseCase(documentRepository,activityLogRepository);
 
 const controller = new DocumentController(
   uploadDocumentUseCase,

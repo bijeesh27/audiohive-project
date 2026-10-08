@@ -3,25 +3,15 @@ import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
 import { IuserRepository } from "../../../auth/domain/IuserRepository";
 import { UserRoles } from "../../../../common/constant/userRoles";
 import { MESSAGES } from "../../../../common/constant/messages";
+import { ResolveWorkspaceDTO, ResolvedWorkspaceDTO } from "../dto/workspaceDTOs";
 
-export interface ResolveWorkspaceDTO {
-  userId?: string;
-  userEmail?: string;
-  role?: string;
-}
-
-export interface ResolvedWorkspaceResult {
-  workspaceId: string;
-  organizationId: string;
-}
-
-export class ResolveWorkspaceUseCase implements IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceResult> {
+export class ResolveWorkspaceUseCase implements IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO> {
   constructor(
     private readonly workspaceRepository: IworkspaceRepository,
     private readonly userRepository: IuserRepository
   ) {}
 
-  async execute(reqUser: ResolveWorkspaceDTO): Promise<ResolvedWorkspaceResult> {
+  async execute(reqUser: ResolveWorkspaceDTO): Promise<ResolvedWorkspaceDTO> {
     if (reqUser.role === UserRoles.WORKSPACE_ADMIN) {
       const workspace = reqUser.userEmail
         ? await this.workspaceRepository.findByAdminEmail(reqUser.userEmail)
