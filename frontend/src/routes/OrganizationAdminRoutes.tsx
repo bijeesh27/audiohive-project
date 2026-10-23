@@ -6,9 +6,9 @@ import OrganizationLayout from '../components/organizationAdmin/layout/Organizat
 import Workspaces from '../pages/organizationAdmin/Workspaces'
 import CreateWorkspace from '../pages/organizationAdmin/CreateWorkspace'
 import SubscriptionDetails from '../pages/organizationAdmin/SubscriptionDetails'
-
 import Users from '../pages/organizationAdmin/Users'
 import WorkspaceDetailsPage from '../pages/organizationAdmin/WorkspaceDetailsPage'
+import ActivityLog from '../pages/organizationAdmin/ActivityLog'
 
 const OrganizationRoutes = () => {
   return (
@@ -21,6 +21,7 @@ const OrganizationRoutes = () => {
             <Route path='subscription' element={<SubscriptionDetails/>}/>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.USERS} element={<Users/>}/>
             <Route path='/getworkspace/:workspaceId' element={<WorkspaceDetailsPage/>}/>
+            <Route path={API_ROUTES.ORGANIZATION_ADMIN.ACTIVITY_LOGS} element={<ActivityLog/>}/>
         </Route>
       </Routes>
     </div>

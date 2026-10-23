@@ -16,7 +16,7 @@ export class UpdateRoomUseCase implements IuseCase<UpdateRoomRequestDTO, void> {
     } else if (data.type === "public") {
       data.isPrivate = false;
     }
-    await this.roomRepository.updateRoom(roomId, data as Partial<IRoomDocument>);
+    await this.roomRepository.updateRoom(roomId, data.workspaceId, data as Partial<IRoomDocument>);
     
     await this.activityLogRepository.recordActivity({ 
       occurredAt: new Date(), 

@@ -10,4 +10,5 @@ export interface IuserRepository {
     userId: string,
     data: Partial<IuserDTO>,
   ): Promise<IuserDTO>;
+  setWorkspaceIds(userId: string, workspaceIds: string[]): Promise<IuserDTO | null>;
 }

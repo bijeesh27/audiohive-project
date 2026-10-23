@@ -1,7 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DoorOpen, Users } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const Dashboard = () => {
+  const { username } = useAuth();
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -10,7 +12,7 @@ const Dashboard = () => {
 
       <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
         <div className="max-w-3xl">
-          <h2 className="text-xl font-medium text-gray-800 mb-3">Welcome, Member!</h2>
+          <h2 className="text-xl font-medium text-gray-800 mb-3">Welcome, {username || "there"}!</h2>
           <p className="text-gray-500 text-sm leading-relaxed">
             Welcome to AudioHive. Use the sidebar to navigate to your available rooms.
             You can access all public rooms and any private rooms you have been granted access to.

@@ -53,6 +53,13 @@ export interface GetOrganizationUsersResultDTO {
   total: number;
 }
 
+export interface SetUserWorkspacesDTO {
+  ownerEmail: string;
+  userId: string;
+  workspaceIds: string[];
+  actorId: string;
+}
+
 export interface GetOrgDashboardStatsDTO {
   ownerEmail: string;
 }

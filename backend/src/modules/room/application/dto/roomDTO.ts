@@ -18,8 +18,8 @@ export interface UpdateRoomDTO {
   status?: "active" | "blocked";
   allowedUsers?: string[];
   actorId?: string;
-  workspaceId?: string;
-  organizationId?: string;
+  workspaceId: string;
+  organizationId: string;
 }
 
 export interface UpdateRoomRequestDTO {
@@ -29,6 +29,9 @@ export interface UpdateRoomRequestDTO {
 
 export interface DeleteRoomDTO {
   roomId: string;
+  workspaceId: string;
+  organizationId: string;
+  actorId?: string;
 }
 
 export interface GetRoomDTO {
@@ -51,6 +54,7 @@ export interface GetAllRoomsResultDTO {
 
 export interface GetRoomParticipantsDTO {
   roomId: string;
+  workspaceId: string;
   page?: number;
   limit?: number;
   search?: string;
@@ -80,7 +84,7 @@ export interface AllocateRoomUsersDTO {
 export interface RemoveRoomUserDTO {
   roomId: string;
   userId: string;
+  workspaceId: string;
+  organizationId: string;
   actorId?: string;
-  workspaceId?: string;
-  organizationId?: string;
 }

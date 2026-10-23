@@ -32,6 +32,7 @@ export interface PinAnnouncementDTO {
 export interface MarkReadDTO {
   announcementId: string;
   userId: string;
+  workspaceId: string;
 }
 
 export interface AnnouncementResponseDTO {

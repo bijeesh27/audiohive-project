@@ -7,6 +7,8 @@ export interface IuserDocument {
   password: string;
   role?: string;
   status?: boolean;
+  workspaceIds?: Array<string | mongoose.Types.ObjectId>;
+  /** @deprecated Read only during migration from the single-workspace model. */
   workspaceId?: string | mongoose.Types.ObjectId;
 }
 
@@ -32,6 +34,12 @@ const userSchema = new Schema<IuserDocument>(
       type: Boolean,
       default: true,
     },
+    workspaceIds: {
+      type: [{ type: Schema.Types.ObjectId, ref: "Workspace" }],
+      default: [],
+    },
+    // Retained temporarily so existing Mongo documents remain readable while
+    // workspaceIds is backfilled. New writes should use workspaceIds only.
     workspaceId: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
@@ -39,5 +47,7 @@ const userSchema = new Schema<IuserDocument>(
   },
   { timestamps: true },
 );
+
+userSchema.index({ workspaceIds: 1, role: 1 });
 
 export const UserModel = mongoose.model<IuserDocument>("User", userSchema);

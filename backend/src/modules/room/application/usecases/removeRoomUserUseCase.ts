@@ -10,7 +10,7 @@ export class RemoveRoomUserUseCase implements IuseCase<RemoveRoomUserDTO, void> 
   ) {}
 
   async execute(data: RemoveRoomUserDTO): Promise<void> {
-    await this.roomRepository.removeRoomUser(data.roomId, data.userId);
+    await this.roomRepository.removeRoomUser(data.roomId, data.workspaceId, data.userId);
     
     await this.activityLogRepository.recordActivity({ 
       occurredAt: new Date(), 

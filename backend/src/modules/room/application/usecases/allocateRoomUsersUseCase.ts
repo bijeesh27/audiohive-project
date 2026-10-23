@@ -15,6 +15,7 @@ export class AllocateRoomUsersUseCase
     // Update allowed users in the room
     await this.roomRepository.updateAllowedUsers(
       data.roomId,
+      data.workspaceId,
       data.userIds
     );
 

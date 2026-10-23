@@ -16,7 +16,7 @@ interface CreateWorkspaceAdminData {
     email: string;
     password: string;
     role: UserRoles.WORKSPACE_ADMIN;
-    workspaceId: string;
+    workspaceIds: string[];
 }
 
 export class RegisterWorkspaceAdminUseCase
@@ -48,7 +48,7 @@ export class RegisterWorkspaceAdminUseCase
             email: invitation.email,
             password: hashedPassword,
             role: UserRoles.WORKSPACE_ADMIN,
-            workspaceId: invitation.workspaceId,
+            workspaceIds: [invitation.workspaceId],
         };
 
         await this.userRepository.createUser(newWorkspaceAdmin);

@@ -14,7 +14,7 @@ export class DeleteAnnouncementUseCase
   ) {}
 
   async execute(input: DeleteAnnouncementDTO): Promise<void> {
-    await this.announcementRepository.deleteAnnouncement(input.id);
+    await this.announcementRepository.deleteAnnouncement(input.id, input.workspaceId);
 
     // Emit directly — guaranteed to fire as long as DB delete succeeds
     socketService.emitToWorkspace(

@@ -12,7 +12,11 @@ export class UpdateAnnouncementUseCase
   ) {}
 
   async execute(input: { id: string; data: UpdateAnnouncementDTO }): Promise<void> {
-    await this.announcementRepository.updateAnnouncement(input.id, input.data as Partial<AnnouncementResponseDTO>);
+    await this.announcementRepository.updateAnnouncement(
+      input.id,
+      input.data.workspaceId ?? "",
+      input.data as Partial<AnnouncementResponseDTO>,
+    );
     
     await this.activityLogRepository.recordActivity({ 
       occurredAt: new Date(), 

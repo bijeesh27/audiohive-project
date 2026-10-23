@@ -9,7 +9,7 @@ import { useUnreadCount } from "../../../hooks/useUnreadCount";
 export default function MemberSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setAccessToken, setUserRole } = useAuth();
+  const { setAccessToken, setUserRole, setWorkspaceId, setWorkspaceOptions } = useAuth();
   const { unreadCount } = useUnreadCount();
 
   const navItems = [
@@ -27,6 +27,8 @@ export default function MemberSidebar() {
       setToken(null);
       setAccessToken(null);
       setUserRole(null);
+      setWorkspaceId(null);
+      setWorkspaceOptions([]);
       localStorage.setItem("logout", Date.now().toString());
       navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
     }

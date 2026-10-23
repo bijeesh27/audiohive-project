@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Building2, Users } from "lucide-react";
 import { getSuperAdminDashboardStats } from "../../services/superAdminServices";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Dashboard() {
+  const { username } = useAuth();
   const [stats, setStats] = useState({ totalOrganizations: 0, totalUsers: 0 });
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export default function Dashboard() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
         <div className="max-w-3xl">
-          <h2 className="text-xl font-medium text-gray-800 mb-3">Welcome back, Super Admin!</h2>
+          <h2 className="text-xl font-medium text-gray-800 mb-3">Welcome back, {username || "there"}!</h2>
           <p className="text-gray-500 text-sm leading-relaxed">
             This is your centralized dashboard to oversee and manage the AudioHive platform.
             From here, you will be able to monitor system health, manage users, workspaces,

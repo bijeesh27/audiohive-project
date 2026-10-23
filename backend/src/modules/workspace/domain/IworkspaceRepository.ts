@@ -8,6 +8,7 @@ export interface IworkspaceRepository{
     deleteWorkspace(workspaceId:string):Promise<void>
     getAllWorkspaces(page: number, limit: number, search?: string): Promise<{ workspaces: IWorkspaceDocument[]; total: number }>
     getWorkspacesByOrg(organizationId: string, page: number, limit: number, search?: string): Promise<{ workspaces: IWorkspaceDocument[]; total: number }>
+    getWorkspacesByIds(workspaceIds: string[], activeOnly?: boolean): Promise<IWorkspaceDocument[]>
     createInvitation(data:IInvitationDocument):Promise<void>
     findInvitationByToken(token: string): Promise<IInvitationDocument | null>
     updateInvitation(token: string, data: Partial<IInvitationDocument>): Promise<void>

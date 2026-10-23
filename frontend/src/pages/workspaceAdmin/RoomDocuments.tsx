@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { uploadRoomDocument, getRoomDocuments, deleteRoomDocument } from "../../services/documentServices";
+import { uploadRoomDocument, getRoomDocuments, getRoomDocumentFile, deleteRoomDocument } from "../../services/documentServices";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { FileText, Download, UploadCloud, Loader2, Eye, Trash2 } from "lucide-react";
@@ -8,10 +8,16 @@ interface Document {
   _id: string;
   originalName: string;
   url: string;
+  mimeType: string;
   size: number;
   uploaderId: { _id: string; username: string };
   createdAt: string;
 }
+
+const canPreviewDocument = (mimeType?: string) =>
+  mimeType === "application/pdf" ||
+  mimeType === "text/plain" ||
+  Boolean(mimeType?.startsWith("image/"));
 
 export const RoomDocuments = ({ roomId }: { roomId: string }) => {
   const { socket } = useSocket();
@@ -22,6 +28,11 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const [documentToView, setDocumentToView] = useState<Document | null>(null);
+  const [viewFile, setViewFile] = useState<{
+    documentId: string;
+    status: "loading" | "ready" | "error" | "unsupported";
+    url?: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentUserId = useMemo(() => {
@@ -59,6 +70,36 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
     };
   }, [roomId, socket]);
 
+  const viewDocumentId = documentToView?._id;
+  const viewDocumentMimeType = documentToView?.mimeType;
+
+  useEffect(() => {
+    if (!viewDocumentId || !viewDocumentMimeType || !canPreviewDocument(viewDocumentMimeType)) return;
+
+    let active = true;
+    let objectUrl: string | null = null;
+
+    getRoomDocumentFile(roomId, viewDocumentId)
+      .then((response) => {
+        objectUrl = URL.createObjectURL(response.data);
+        if (active) {
+          setViewFile({ documentId: viewDocumentId, status: "ready", url: objectUrl });
+        } else {
+          URL.revokeObjectURL(objectUrl);
+        }
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error("Document preview failed", error);
+        if (active) setViewFile({ documentId: viewDocumentId, status: "error" });
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [roomId, viewDocumentId, viewDocumentMimeType]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -92,11 +133,31 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
     }
   };
 
+  const handleDownload = async (doc: Document) => {
+    try {
+      const response = await getRoomDocumentFile(roomId, doc._id);
+      const objectUrl = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = doc.originalName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Document download failed", error);
+      alert("Failed to download document");
+    }
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024, sizes = ["B", "KB", "MB", "GB"], i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
+
+  const activeViewFile = viewFile?.documentId === documentToView?._id ? viewFile : null;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mt-6">
@@ -148,22 +209,26 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
               </div>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setDocumentToView(doc)}
+                  onClick={() => {
+                    setViewFile({
+                      documentId: doc._id,
+                      status: canPreviewDocument(doc.mimeType) ? "loading" : "unsupported",
+                    });
+                    setDocumentToView(doc);
+                  }}
                   className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center"
                   title="View Document"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
                 
-                <a 
-                  href={`http://localhost:3000${doc.url}`} // Adjust base URL as needed
-                  target="_blank" 
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handleDownload(doc)}
                   className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors flex items-center justify-center"
                   title="Download Document"
                 >
                   <Download className="w-4 h-4" />
-                </a>
+                </button>
                 
                 {currentUserId === doc.uploaderId._id && (
                   <button
@@ -235,15 +300,13 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={`http://localhost:3000${documentToView.url}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handleDownload(documentToView)}
                   className="px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
                   <span className="hidden sm:inline">Download</span>
-                </a>
+                </button>
                 <button
                   onClick={() => setDocumentToView(null)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
@@ -254,11 +317,25 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
             </div>
             
             <div className="flex-1 bg-gray-100 w-full h-full relative">
-              <iframe
-                src={`http://localhost:3000${documentToView.url}`}
-                className="w-full h-full border-0 absolute inset-0"
-                title={documentToView.originalName}
-              />
+              {!activeViewFile || activeViewFile.status === "loading" ? (
+                <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading document...
+                </div>
+              ) : activeViewFile.status === "unsupported" ? (
+                <div className="flex h-full items-center justify-center text-center text-sm text-gray-600">
+                  Preview is not available for this file type. Download it to open the document.
+                </div>
+              ) : activeViewFile.status === "error" ? (
+                <div className="flex h-full items-center justify-center text-sm text-red-600">
+                  Could not open this document. Try downloading it.
+                </div>
+              ) : (
+                <iframe
+                  src={activeViewFile.url}
+                  className="w-full h-full border-0 absolute inset-0"
+                  title={documentToView.originalName}
+                />
+              )}
             </div>
           </div>
         </div>

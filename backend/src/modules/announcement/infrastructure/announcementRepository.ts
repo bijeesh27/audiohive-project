@@ -20,17 +20,18 @@ export class AnnouncementRepository
 
   async updateAnnouncement(
     id: string,
+    workspaceId: string,
     data: Partial<AnnouncementResponseDTO>
   ): Promise<void> {
-    await this.model.updateOne({ _id: id }, { $set: data });
+    await this.model.updateOne({ _id: id, workspaceId }, { $set: data });
   }
 
-  async deleteAnnouncement(id: string): Promise<void> {
-    await this.model.deleteOne({ _id: id });
+  async deleteAnnouncement(id: string, workspaceId: string): Promise<void> {
+    await this.model.deleteOne({ _id: id, workspaceId });
   }
 
-  async findAnnouncement(id: string): Promise<AnnouncementResponseDTO | null> {
-    return await this.model.findById(id).lean<AnnouncementResponseDTO>();
+  async findAnnouncement(id: string, workspaceId: string): Promise<AnnouncementResponseDTO | null> {
+    return await this.model.findOne({ _id: id, workspaceId }).lean<AnnouncementResponseDTO>();
   }
 
   async getAllAnnouncements(
@@ -69,13 +70,13 @@ export class AnnouncementRepository
     return { announcements, total };
   }
 
-  async pinAnnouncement(id: string, isPinned: boolean): Promise<void> {
-    await this.model.updateOne({ _id: id }, { $set: { isPinned } });
+  async pinAnnouncement(id: string, workspaceId: string, isPinned: boolean): Promise<void> {
+    await this.model.updateOne({ _id: id, workspaceId }, { $set: { isPinned } });
   }
 
-  async markAsRead(id: string, userId: string): Promise<void> {
+  async markAsRead(id: string, workspaceId: string, userId: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, workspaceId },
       { $addToSet: { readBy: userId } }
     );
   }
@@ -89,9 +90,9 @@ export class AnnouncementRepository
     });
   }
 
-  async getByRoom(roomId: string): Promise<AnnouncementResponseDTO[]> {
+  async getByRoom(roomId: string, workspaceId: string): Promise<AnnouncementResponseDTO[]> {
     return await this.model
-      .find({ roomId, status: "published" })
+      .find({ roomId, workspaceId, status: "published" })
       .sort({ isPinned: -1, createdAt: -1 })
       .lean<AnnouncementResponseDTO[]>();
   }

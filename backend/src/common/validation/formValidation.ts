@@ -47,3 +47,7 @@ export const inviteWorkspaceAdminSchema = z.object({
   workspaceAdminName: z.string().min(2, "Admin name is required"),
   email: z.string().email("Invalid email"),
 });
+
+export const setUserWorkspacesSchema = z.object({
+  workspaceIds: z.array(z.string().min(1, "Workspace ID is required")).min(1, "Select at least one workspace"),
+});

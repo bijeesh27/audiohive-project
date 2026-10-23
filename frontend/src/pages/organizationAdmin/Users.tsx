@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { organizationOwnerGetUsers, updateUser } from "../../services/authServices";
+import { organizationOwnerGetUsers, updateUser, updateUserWorkspaces } from "../../services/authServices";
+import { getMyWorkspaces } from "../../services/workspaceServices";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import ActionButton from "../../components/common/ActionButton";
-import { ShieldBan, ShieldCheck } from "lucide-react";
+import { Layers, ShieldBan, ShieldCheck } from "lucide-react";
 
 interface User {
   _id: string;
@@ -12,10 +13,17 @@ interface User {
   email: string;
   role: string;
   status: boolean;
-  workspaceId?: {
+  workspaceIds?: Array<string | {
     _id: string;
     workspaceName: string;
-  };
+  }>;
+  workspaceId?: string | { _id: string; workspaceName: string };
+}
+
+interface WorkspaceOption {
+  _id: string;
+  workspaceName: string;
+  status: "active" | "suspended" | "archived";
 }
 
 const Users = () => {
@@ -34,7 +42,54 @@ const Users = () => {
     newStatus: boolean;
   }>({ isOpen: false, userId: "", username: "", newStatus: false });
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
+  const [workspaceModalUser, setWorkspaceModalUser] = useState<User | null>(null);
+  const [selectedWorkspaceIds, setSelectedWorkspaceIds] = useState<string[]>([]);
+  const [savingWorkspaces, setSavingWorkspaces] = useState(false);
   const limit = 10;
+
+  useEffect(() => {
+    getMyWorkspaces(1, 1000)
+      .then((res) => setWorkspaces(res.data?.workspaces ?? []))
+      .catch(() => setWorkspaces([]));
+  }, []);
+
+  const openWorkspaceManager = (user: User) => {
+    const currentIds = user.workspaceIds?.map((workspace) =>
+      typeof workspace === "string" ? workspace : workspace._id,
+    ) ?? [];
+    const legacyWorkspace = user.workspaceId;
+    if (currentIds.length === 0 && legacyWorkspace) {
+      currentIds.push(typeof legacyWorkspace === "string" ? legacyWorkspace : legacyWorkspace._id);
+    }
+    setSelectedWorkspaceIds(currentIds.filter((id) =>
+      workspaces.some((workspace) => workspace._id === id && workspace.status === "active"),
+    ));
+    setWorkspaceModalUser(user);
+  };
+
+  const saveWorkspaceAssignments = async () => {
+    if (!workspaceModalUser) return;
+    setSavingWorkspaces(true);
+    setError(null);
+    try {
+      await updateUserWorkspaces(workspaceModalUser._id, selectedWorkspaceIds);
+      const populated = workspaces
+        .filter((workspace) => selectedWorkspaceIds.includes(workspace._id))
+        .map(({ _id, workspaceName }) => ({ _id, workspaceName }));
+      setUsers((previous) => previous.map((user) =>
+        user._id === workspaceModalUser._id
+          ? { ...user, workspaceIds: populated, workspaceId: undefined }
+          : user,
+      ));
+      setWorkspaceModalUser(null);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      setError(err.response?.data?.message || err.message || "Failed to update workspace assignments");
+    } finally {
+      setSavingWorkspaces(false);
+    }
+  };
 
   const fetchUsers = useCallback(() => {
     let cancelled = false;
@@ -110,11 +165,19 @@ const Users = () => {
     },
     {
       header: "Workspace",
-      render: (user) => (
+      render: (user) => {
+        const names = user.workspaceIds?.map((workspace) =>
+          typeof workspace === "string" ? workspaces.find((item) => item._id === workspace)?.workspaceName : workspace.workspaceName,
+        ).filter(Boolean);
+        const legacyName = typeof user.workspaceId === "string"
+          ? workspaces.find((item) => item._id === user.workspaceId)?.workspaceName
+          : user.workspaceId?.workspaceName;
+        return (
         <span className="text-sm font-medium text-indigo-600">
-          {user.workspaceId?.workspaceName || "Unknown"}
+          {(names?.length ? names : legacyName ? [legacyName] : []).join(", ") || "Unassigned"}
         </span>
-      ),
+        );
+      },
     },
     {
       header: "Role",
@@ -138,6 +201,14 @@ const Users = () => {
       header: "Actions",
       render: (user) => (
         <div className="flex items-center gap-2">
+          {user.role === "member" && (
+            <ActionButton
+              icon={Layers}
+              label="Manage workspaces"
+              onClick={() => openWorkspaceManager(user)}
+              colorClasses="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-300"
+            />
+          )}
           <ActionButton
             icon={user.status ? ShieldBan : ShieldCheck}
             label={user.status ? "Block" : "Unblock"}
@@ -192,6 +263,50 @@ const Users = () => {
         totalPages={totalPages}
         onPageChange={setPage}
       />
+
+      {workspaceModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="text-lg font-semibold text-gray-900">Manage workspaces</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Choose the workspaces {workspaceModalUser.username} can access.
+            </p>
+            <div className="mt-4 max-h-72 space-y-2 overflow-y-auto">
+              {workspaces.filter((workspace) => workspace.status === "active").map((workspace) => (
+                <label key={workspace._id} className="flex items-center gap-3 rounded-md border border-gray-200 px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedWorkspaceIds.includes(workspace._id)}
+                    onChange={(event) => setSelectedWorkspaceIds((previous) =>
+                      event.target.checked
+                        ? Array.from(new Set([...previous, workspace._id]))
+                        : previous.filter((id) => id !== workspace._id),
+                    )}
+                  />
+                  <span>{workspace.workspaceName}</span>
+                </label>
+              ))}
+              {workspaces.filter((workspace) => workspace.status === "active").length === 0 && (
+                <p className="text-sm text-gray-500">No active workspaces are available.</p>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setWorkspaceModalUser(null)}
+                disabled={savingWorkspaces || selectedWorkspaceIds.length === 0}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
+              >Cancel</button>
+              <button
+                type="button"
+                onClick={() => void saveWorkspaceAssignments()}
+                disabled={savingWorkspaces}
+                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >{savingWorkspaces ? "Saving..." : "Save assignments"}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

@@ -8,11 +8,8 @@ const socket: Socket = io(
   }
 );
 
-export const connectSocket = (token: string, workspaceId?: string) => {
+export const connectSocket = (token: string) => {
   socket.auth = { token };
-  if (workspaceId) {
-    socket.io.opts.query = { workspaceId };
-  }
   if (socket.connected) {
     socket.disconnect();
   }

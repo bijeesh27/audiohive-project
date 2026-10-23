@@ -20,7 +20,7 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [svalue,setSvalue]=useState()
+
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -96,7 +96,9 @@ const Users = () => {
       setUpdatingUserId(null);
     }
   };
+  
 
+ 
   const columns: Column<User>[] = [
     {
       header: "Username",
@@ -202,7 +204,7 @@ const Users = () => {
             Assign User
           </button>
 
-
+        
           
 
 

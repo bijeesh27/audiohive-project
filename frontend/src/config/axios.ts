@@ -1,4 +1,5 @@
 import axios from "axios";
+import { HttpStatus } from "../constants/httpStatus";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
@@ -16,6 +17,8 @@ export const setToken = (token: string | null) => {
 
 export const getToken = () => accessToken;
 
+
+
 axiosInstance.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -28,13 +31,17 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const hasAccessToken = Boolean(
+      originalRequest?.headers?.Authorization ?? accessToken,
+    );
 
     if (
+      originalRequest &&
       error.response &&
-      error.response.status === 401 &&
+      error.response.status === HttpStatus.UNAUTHORIZED &&
+      hasAccessToken &&
       !originalRequest._retry &&
-      originalRequest.url !== "/api/auth/refresh" &&
-      originalRequest.url !== "/api/auth/forget-password"
+      originalRequest.url !== "/api/auth/refresh" 
     ) {
       originalRequest._retry = true;
       try {

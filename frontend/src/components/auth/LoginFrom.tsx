@@ -17,7 +17,7 @@ const LoginFrom = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { setAccessToken, setUserRole } = useAuth();
+  const { setAccessToken, setUserRole, setWorkspaceId, setWorkspaceOptions, loadMemberWorkspaces } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -44,6 +44,16 @@ const LoginFrom = () => {
         setToken(res.data.accessToken);
         setAccessToken(res.data.accessToken);
         setUserRole(res.data.userRole);
+        setWorkspaceId(res.data.workspaceId ?? null);
+        if (res.data.userRole === UserRoles.MEMBER) {
+          try {
+            await loadMemberWorkspaces();
+          } catch {
+            setWorkspaceOptions([]);
+          }
+        } else {
+          setWorkspaceOptions([]);
+        }
          try {
           await recordActivityLog({
             action: "LOGIN",

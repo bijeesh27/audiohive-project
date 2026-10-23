@@ -7,4 +7,19 @@ export const SOCKET_EVENTS = {
   ROOM_LEAVE: "room:leave",
   ROOM_PRESENCE_UPDATE: "room:presence-update",
   ROOM_GET_PRESENCE: "room:get-presence",
+  // ── Room Chat ───────────────────────────────────────────────
+  CHAT_SEND_MESSAGE: "chat:send-message",
+  CHAT_NEW_MESSAGE: "chat:new-message",
+  CHAT_MESSAGE_DELETED: "chat:message-deleted",
+  CHAT_TYPING: "chat:typing",
+  CHAT_STOP_TYPING: "chat:stop-typing",
+  // ── Voice / WebRTC ──────────────────────────────────────────
+  VOICE_JOIN: "voice:join",
+  VOICE_LEAVE: "voice:leave",
+  VOICE_USER_JOINED: "voice:user-joined",
+  VOICE_USER_LEFT: "voice:user-left",
+  VOICE_OFFER: "voice:offer",
+  VOICE_ANSWER: "voice:answer",
+  VOICE_ICE_CANDIDATE: "voice:ice-candidate",
+  VOICE_PARTICIPANTS: "voice:participants",
 } as const;

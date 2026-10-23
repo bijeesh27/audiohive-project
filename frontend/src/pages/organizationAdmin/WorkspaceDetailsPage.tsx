@@ -11,6 +11,7 @@ import {
 } from "../../services/workspaceServices";
 import Table from "../../components/common/Table";
 import ActionButton from "../../components/common/ActionButton";
+import { API_ROUTES } from "../../constants/Api_Routes";
 import { Pencil, UserCheck, UserPlus, ShieldBan, ShieldCheck, Trash2, ArrowLeft, UserMinus } from "lucide-react";
 
 interface IWorkspace {
@@ -253,7 +254,7 @@ const WorkspaceDetailsPage = () => {
     setDeleteError(null);
     try {
       await deleteWorkspace(workspace._id);
-      navigate("/organization-owner/workspace");
+      navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.WORKSPACES);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       setDeleteError(err?.response?.data?.message || "Failed to delete workspace");
@@ -274,7 +275,7 @@ const WorkspaceDetailsPage = () => {
       <div className="flex flex-col items-center justify-center gap-4 py-24">
         <p className="text-sm text-red-600">{error || "Workspace not found"}</p>
         <button
-          onClick={() => navigate("/organization-owner/workspaces")}
+          onClick={() => navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.WORKSPACES)}
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
         >
           Back to Workspaces
@@ -289,7 +290,7 @@ const WorkspaceDetailsPage = () => {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <button
-            onClick={() => navigate("/organization-owner/workspaces")}
+            onClick={() => navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.WORKSPACES)}
             className="mb-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
             <ArrowLeft className="w-3 h-3" /> Back to Workspaces

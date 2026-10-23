@@ -11,8 +11,8 @@ import { GetWorkspaceDashboardStatsUseCase } from "../application/usecase/getWor
 import { GetActiveUserUseCase } from "../application/usecase/getActiveUserUseCase.ts";
 
 import { ResolveWorkspaceUseCase } from "../../workspace/application/usecase/resolveWorkspaceUseCase.ts";
-import { UpdateUserUseCase } from "../../superAdmin/application/usecases/updateUserUseCase.ts";
-
+import { UpdateWorkspaceMemberUseCase } from "../application/usecase/updateWorkspaceMemberUseCase.ts";
+import { RemoveWorkspaceMemberUseCase } from "../application/usecase/removeWorkspaceMemberUseCase.ts";
 import { UserRepository as AuthUserRepository } from "../../auth/infrastructure/userRepository.ts";
 import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
 
@@ -28,7 +28,8 @@ const getWorkspaceDashboardStatsUseCase = new GetWorkspaceDashboardStatsUseCase(
 const getActiveUserUseCase=new GetActiveUserUseCase(userRepository)
 
 const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, authUserRepository);
-const updateUserUseCase = new UpdateUserUseCase(authUserRepository,activityLogRepository);
+const updateWorkspaceMemberUseCase = new UpdateWorkspaceMemberUseCase(userRepository);
+const removeWorkspaceMemberUseCase = new RemoveWorkspaceMemberUseCase(userRepository);
 
 const controller = new WorkspaceAdminController(
   getAllUserUseCase,
@@ -36,7 +37,8 @@ const controller = new WorkspaceAdminController(
   getWorkspaceDashboardStatsUseCase,
   resolveWorkspaceUseCase,
   getActiveUserUseCase,
-  updateUserUseCase
+  updateWorkspaceMemberUseCase,
+  removeWorkspaceMemberUseCase
 );
 
 router.get(
@@ -74,6 +76,11 @@ router.patch(
   controller.updateUser.bind(controller),
 );
 
-router.get(API_ROUTES.WORKSPACE_ADMIN.GET_ACTIVE_USERS, controller.getActiveUsers.bind(controller))
+router.get(
+  API_ROUTES.WORKSPACE_ADMIN.GET_ACTIVE_USERS,
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  controller.getActiveUsers.bind(controller),
+)
 
 export default router;

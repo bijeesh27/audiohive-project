@@ -33,6 +33,7 @@ import {
 import { updateWorkspaceUser } from "../../services/authServices";
 import { useSocket } from "../../context/SocketContext";
 import { RoomDocuments } from "./RoomDocuments";
+import { RoomChatPanel } from "../../components/room/RoomChatPanel";
 
 interface Room {
   _id: string;
@@ -498,20 +499,22 @@ const AdminRoomDetail = () => {
             }
             disabled={userActionLoading}
           />
-          <ActionButton
-            icon={UserMinus}
-            label="Remove User"
-            onClick={() =>
-              setConfirmModal({
-                isOpen: true,
-                kind: "removeUser",
-                userId: user._id,
-                username: user.username,
-              })
-            }
-            colorClasses="bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-300"
-            disabled={removingId === user._id || actionLoading || userActionLoading}
-          />
+          {room.type === "private" && (
+            <ActionButton
+              icon={UserMinus}
+              label="Remove User"
+              onClick={() =>
+                setConfirmModal({
+                  isOpen: true,
+                  kind: "removeUser",
+                  userId: user._id,
+                  username: user.username,
+                })
+              }
+              colorClasses="bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-300"
+              disabled={removingId === user._id || actionLoading || userActionLoading}
+            />
+          )}
         </div>
       ),
     },
@@ -705,6 +708,10 @@ const AdminRoomDetail = () => {
       </div>
 
       <RoomDocuments roomId={room._id} />
+
+      <div className="mt-6">
+        <RoomChatPanel roomId={room._id} roomName={room.name} />
+      </div>
 
       <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">

@@ -12,6 +12,8 @@ interface InvitationDetails {
     workspaceId?: string;
     organizationId?: string;
     type: InvitationType;
+    workspaceAdminName?: string;
+    invitedName?: string;
     ownerName?: string;
     ownerEmail?: string;
 }
@@ -36,6 +38,8 @@ export class GetInvitationDetailsUseCase
                 email: workspaceInvitation.email,
                 role: workspaceInvitation.role,
                 workspaceId: workspaceInvitation.workspaceId,
+                workspaceAdminName: workspaceInvitation.workspaceAdminName,
+                invitedName: workspaceInvitation.invitedName,
                 type: isUserInvite ? "workspace-user" : "workspace",
             };
         }

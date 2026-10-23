@@ -29,6 +29,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const switchWorkspaceSchema = z.object({
+  workspaceId: z.string().min(1, "Workspace ID is required"),
+});
+
 export const otpSchema = z.object({
   email: z.string().trim().email("Invalid email address"),
   otp: z.string().length(6, "OTP must be exactly 6 digits"),

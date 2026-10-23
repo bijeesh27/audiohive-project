@@ -88,7 +88,7 @@ const CreateOrganization = () => {
         // Router state still carries the data through normal navigation.
       }
 
-      navigate("/choose-plan", {
+      navigate(API_ROUTES.PUBLIC.NAV.CHOOSE_PLAN, {
         state: pendingOrganization,
       });
     } catch (err: unknown) {

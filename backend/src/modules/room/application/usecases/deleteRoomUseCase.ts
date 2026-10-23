@@ -10,13 +10,15 @@ export class DeleteRoomUseCase implements IuseCase<DeleteRoomDTO, void> {
     
   ) {}
 
-  async execute({ roomId }: DeleteRoomDTO): Promise<void> {
-    await this.roomRepository.deleteRoom(roomId);
+  async execute({ roomId, workspaceId, organizationId, actorId }: DeleteRoomDTO): Promise<void> {
+    await this.roomRepository.deleteRoom(roomId, workspaceId);
 
     await this.activityLogRepository.recordActivity({
       occurredAt: new Date(),
       action: "ROOM_DELETED",
-      actorId: null,
+      actorId: actorId || null,
+      organizationId,
+      workspaceId,
       targetType: "ROOM",
       targetId: roomId,
     });

@@ -33,11 +33,14 @@ export interface GetWorkspacesByOrgDTO extends WorkspacePaginationDTO {
 
 export interface GetWorkspaceUsersDTO extends WorkspacePaginationDTO {
   workspaceId: string;
+  ownerEmail: string;
 }
 
 export interface RemoveWorkspaceUserDTO {
   workspaceId: string;
   userId: string;
+  ownerEmail: string;
+  actorId: string;
 }
 
 export interface SendWorkspaceInvitationDTO {
@@ -51,6 +54,7 @@ export interface ResolveWorkspaceDTO {
   userId?: string;
   userEmail?: string;
   role?: string;
+  activeWorkspaceId?: string;
 }
 
 export interface ResolvedWorkspaceDTO {

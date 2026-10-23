@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import axiosInstance from "../config/axios";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -47,7 +48,7 @@ const SubscriptionSuccess = () => {
 
           setStatus("success");
           setTimeout(() => {
-            navigate("/invitation-sent", { state: { ownerEmail, companyName, slug, ownerName } });
+            navigate(API_ROUTES.PUBLIC.NAV.INVITATION_SENT, { state: { ownerEmail, companyName, slug, ownerName } });
           }, 2000);
         } else {
           setStatus("error");
@@ -93,7 +94,7 @@ const SubscriptionSuccess = () => {
             <h2 className="text-2xl font-bold text-gray-900">Verification Failed</h2>
             <p className="text-sm text-red-500 mt-2">{errorMessage}</p>
             <button
-              onClick={() => navigate("/choose-plan")}
+              onClick={() => navigate(API_ROUTES.PUBLIC.NAV.CHOOSE_PLAN)}
               className="mt-6 w-full rounded-md bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
             >
               Back to Plans

@@ -9,6 +9,7 @@ import { IorganizationDocument, OrganizationModel } from "./organizationSchema";
 import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema";
 import { UserModel } from "../../../shared/User.utils/userSchema";
 import { FilterQuery } from "mongoose";
+import { UserRoles } from "../../../common/constant/userRoles";
 
 export class OrganizationRepository
   extends BaseRepository<IorganizationDocument>
@@ -121,14 +122,19 @@ export class OrganizationRepository
     const workspaceIds = workspaces.map((w) => w._id);
 
     const query: FilterQuery<typeof UserModel> = {
-      workspaceId: { $in: workspaceIds },
-      role: {
-        $in: ["workspace-admin", "member"],
-      },
+      role: { $in: [UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER, "workspace-admin"] },
+      $and: [
+        {
+          $or: [
+            { workspaceIds: { $in: workspaceIds } },
+            { workspaceId: { $in: workspaceIds } },
+          ],
+        },
+      ],
     };
 
     if (searchQuery) {
-      query.$or = [
+      query.$and?.push({ $or: [
         {
           username: {
             $regex: searchQuery,
@@ -141,7 +147,7 @@ export class OrganizationRepository
             $options: "i",
           },
         },
-      ];
+      ] });
     }
 
     const skip = (page - 1) * limit;
@@ -149,7 +155,16 @@ export class OrganizationRepository
     const [users, total] = await Promise.all([
       UserModel.find(query)
         .select("-password")
-        .populate("workspaceId", "workspaceName")
+        .populate({
+          path: "workspaceIds",
+          select: "workspaceName",
+          match: { organizationId },
+        })
+        .populate({
+          path: "workspaceId",
+          select: "workspaceName",
+          match: { organizationId },
+        })
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 }),
@@ -177,8 +192,11 @@ export class OrganizationRepository
     const workspaceIds = workspaces.map((w) => w._id);
 
     return await UserModel.countDocuments({
-      workspaceId: { $in: workspaceIds },
-      role: { $in: ["workspace-admin", "member"] },
+      role: { $in: [UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER, "workspace-admin"] },
+      $or: [
+        { workspaceIds: { $in: workspaceIds } },
+        { workspaceId: { $in: workspaceIds } },
+      ],
     });
   }
 }

@@ -5,6 +5,7 @@ import Users from "../pages/workspaceAdmin/Users";
 import Rooms from "../pages/workspaceAdmin/Rooms";
 import AdminRoomDetail from "../pages/workspaceAdmin/AdminRoomDetail";
 import Announcements from "../pages/workspaceAdmin/Announcements";
+import ActivityLog from "../pages/workspaceAdmin/ActivityLog";
 import WorkspaceAdminLayout from "../components/workspaceAdmin/layout/WorkspaceAdminLayout";
 
 const WorkspaceAdminRoutes = () => {
@@ -31,6 +32,10 @@ const WorkspaceAdminRoutes = () => {
           <Route
             path={API_ROUTES.WORKSPACE_ADMIN.ANNOUNCEMENTS}
             element={<Announcements />}
+          />
+          <Route
+            path={API_ROUTES.WORKSPACE_ADMIN.ACTIVITY_LOGS}
+            element={<ActivityLog />}
           />
         </Route>
       </Routes>

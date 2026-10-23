@@ -13,7 +13,9 @@ import {
 import { ResolveWorkspaceDTO, ResolvedWorkspaceDTO } from "../../workspace/application/dto/workspaceDTOs.js";
 import { ApiResposne } from "../../../common/Response/Response.js";
 import { MESSAGES } from "../../../common/constant/messages.js";
+import { HttpStatus } from "../../../common/constant/httpStatus.js";
 import { AppError } from "../../../common/Errors/AppError.js";
+import { GetAnnouncementInput } from "../application/usecases/getAnnouncementUseCase.js";
 
 export class AnnouncementController {
   constructor(
@@ -21,11 +23,11 @@ export class AnnouncementController {
     private readonly updateAnnouncementUseCase: IuseCase<{ id: string; data: UpdateAnnouncementDTO }, void>,
     private readonly deleteAnnouncementUseCase: IuseCase<DeleteAnnouncementDTO, void>,
     private readonly getAllAnnouncementsUseCase: IuseCase<GetAnnouncementsQueryDTO, { announcements: AnnouncementResponseDTO[]; total: number }>,
-    private readonly getAnnouncementUseCase: IuseCase<string, AnnouncementResponseDTO | null>,
+    private readonly getAnnouncementUseCase: IuseCase<GetAnnouncementInput, AnnouncementResponseDTO | null>,
     private readonly pinAnnouncementUseCase: IuseCase<PinAnnouncementInputDTO, void>,
     private readonly markAsReadUseCase: IuseCase<MarkReadDTO, void>,
     private readonly getUnreadCountFn: (workspaceId: string, userId: string) => Promise<number>,
-    private readonly getByRoomFn: (roomId: string) => Promise<AnnouncementResponseDTO[]>,
+    private readonly getByRoomFn: (roomId: string, workspaceId: string) => Promise<AnnouncementResponseDTO[]>,
     private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>
   ) {}
 
@@ -33,7 +35,8 @@ export class AnnouncementController {
     return this.resolveWorkspaceUseCase.execute({
       userId: req.user?.id,
       userEmail: req.user?.userEmail,
-      role: req.user?.role
+      role: req.user?.role,
+      activeWorkspaceId: req.user?.workspaceId,
     });
   }
 
@@ -47,7 +50,7 @@ export class AnnouncementController {
         createdBy: req.user?.id as string,
       };
       const created = await this.createAnnouncementUseCase.execute(dto);
-      return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_CREATED, created);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_CREATED, created, HttpStatus.CREATED);
     } catch (error) {
       next(error);
     }
@@ -100,9 +103,10 @@ export class AnnouncementController {
   getAnnouncement = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
-      const announcement = await this.getAnnouncementUseCase.execute(id);
+      const { workspaceId } = await this.resolveWorkspace(req);
+      const announcement = await this.getAnnouncementUseCase.execute({ id, workspaceId });
       if (!announcement) {
-        throw new AppError(MESSAGES.ERRORS.ANNOUNCEMENT_NOT_FOUND, 404);
+        throw new AppError(MESSAGES.ERRORS.ANNOUNCEMENT_NOT_FOUND, HttpStatus.NOT_FOUND);
       }
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_FETCHED, announcement);
     } catch (error) {
@@ -126,7 +130,8 @@ export class AnnouncementController {
     try {
       const userId = req.user?.id as string;
       const announcementId = req.params.id as string;
-      await this.markAsReadUseCase.execute({ announcementId, userId });
+      const { workspaceId } = await this.resolveWorkspace(req);
+      await this.markAsReadUseCase.execute({ announcementId, userId, workspaceId });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_READ);
     } catch (error) {
       next(error);
@@ -147,7 +152,8 @@ export class AnnouncementController {
   getByRoom = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const roomId = req.params.roomId as string;
-      const announcements = await this.getByRoomFn(roomId);
+      const { workspaceId } = await this.resolveWorkspace(req);
+      const announcements = await this.getByRoomFn(roomId, workspaceId);
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENTS_FETCHED, { announcements });
     } catch (error) {
       next(error);

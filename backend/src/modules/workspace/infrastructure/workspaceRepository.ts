@@ -49,6 +49,15 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
 
   return { workspaces, total };
 }
+
+ async getWorkspacesByIds(workspaceIds: string[], activeOnly = false): Promise<IWorkspaceDocument[]> {
+  if (workspaceIds.length === 0) return [];
+
+  const query: Record<string, unknown> = { _id: { $in: workspaceIds } };
+  if (activeOnly) query.status = "active";
+
+  return await this.model.find(query).sort({ workspaceName: 1 });
+ }
  async createInvitation(data: IInvitationDocument): Promise<void> {
      await InvitationModel.create(data)
    }

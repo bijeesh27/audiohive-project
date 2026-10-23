@@ -3,6 +3,8 @@ import { IuserRepository } from "../../domain/IuserRepository.ts";
 import { IworkspaceRepository } from "../../../workspace/domain/IworkspaceRepository.ts";
 import { RegisterDTO } from "../dtos/AuthDTO.ts";
 import { InvalidOtpError } from "../../../../common/Errors/AuthError.ts";
+import { UserRoles } from "../../../../common/constant/userRoles.ts";
+import { getUserWorkspaceIds } from "../../../../shared/User.utils/workspaceMembership.ts";
 import bcrypt from "bcrypt";
 
 interface RegisterWorkspaceUserInput {
@@ -12,7 +14,7 @@ interface RegisterWorkspaceUserInput {
 }
 
 interface RegisterWorkspaceUserData extends RegisterDTO {
-    workspaceId: string;
+    workspaceIds: string[];
 }
 
 export class RegisterWorkspaceUserUseCase
@@ -33,9 +35,29 @@ export class RegisterWorkspaceUserUseCase
             !invitation ||
             invitation.isUsed ||
             invitation.expiresAt < new Date() ||
-            !invitation.role
+            invitation.role !== UserRoles.MEMBER
         ) {
             throw new InvalidOtpError();
+        }
+
+        const existingUser = await this.userRepository.findByEmail(invitation.email);
+        if (existingUser) {
+            if (existingUser.role !== UserRoles.MEMBER || !existingUser.status) {
+                throw new InvalidOtpError("This invitation cannot be applied to this account");
+            }
+
+            const workspaceIds = getUserWorkspaceIds(existingUser);
+            if (!workspaceIds.includes(invitation.workspaceId)) {
+                workspaceIds.push(invitation.workspaceId);
+                const updated = await this.userRepository.setWorkspaceIds(
+                    existingUser._id,
+                    workspaceIds,
+                );
+                if (!updated) throw new InvalidOtpError();
+            }
+
+            await this.workspaceRepository.updateInvitation(token, { isUsed: true });
+            return;
         }
 
         const hashedPassword = await bcrypt.hash(password, 12);
@@ -45,7 +67,7 @@ export class RegisterWorkspaceUserUseCase
             email: invitation.email,
             password: hashedPassword,
             role: invitation.role,
-            workspaceId: invitation.workspaceId,
+            workspaceIds: [invitation.workspaceId],
         };
 
         await this.userRepository.createUser(newUser);

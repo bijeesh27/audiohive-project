@@ -29,12 +29,21 @@ export const MESSAGES = {
     WORKSPACE_NOT_FOUND: "Workspace not found",
 
     ORANIZATION_NOT_FOUND: "Organization not found",
+    REQUIRED_ORG_FIELDS: "ownerEmail, companyName, slug, and ownerName are required",
     ROOM_NOT_FOUND: "Room not found",
     PRIVATE_ROOM_ACCESS_DENIED: "You do not have access to this private room. Please ask your Workspace Admin to grant you access.",
     WORKSPACE_ADMIN_NOT_FOUND: "Workspace not found for this admin",
     USER_NOT_IN_WORKSPACE: "User does not belong to a workspace",
     UNAUTHORIZED: "Unauthorized",
     ANNOUNCEMENT_NOT_FOUND: "Announcement not found",
+    ONLY_MEMBER_STATUS_CAN_BE_CHANGED: "Only member status can be changed here",
+
+    NO_FILE_UPLOADED: "No file uploaded",
+    DOCUMENT_NOT_FOUND: "Document not found",
+    UNABLE_TO_RETRIEVE_DOCUMENT: "Unable to retrieve document file",
+
+    PLAN_ID_REQUIRED: "planId is required",
+    SESSION_ID_REQUIRED: "sessionId is required",
   },
 
   SUCCESS: {
