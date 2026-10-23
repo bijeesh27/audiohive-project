@@ -55,6 +55,12 @@ export const organizationOwnerGetUsers = (page: number = 1, limit: number = 10, 
   return axiosInstance.get(url).then((res) => res.data);
 };
 
+export const updateUserWorkspaces = (userId: string, workspaceIds: string[]) => {
+  return axiosInstance
+    .put(API_ENDPOINTS.ORGANIZATION_ADMIN.SET_USER_WORKSPACES(userId), { workspaceIds })
+    .then((res) => res.data);
+};
+
 
 export const resendOtp = (email: string) => {
   return axiosInstance
@@ -98,6 +104,6 @@ export const updateUser = (userId: string, data: Record<string, unknown>) => {
 // Used by workspace admin to block/unblock users (dedicated workspace-admin route)
 export const updateWorkspaceUser = (userId: string, data: Record<string, unknown>) => {
   return axiosInstance
-    .patch(`/api/workspaceadmin/users/${userId}`, data)
+    .patch(API_ENDPOINTS.WORKSPACE_ADMIN.UPDATE_USER(userId), data)
     .then((res) => res.data);
 };

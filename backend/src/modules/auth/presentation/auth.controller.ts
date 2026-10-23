@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { UserModel } from "../../../shared/User.utils/userSchema.ts";
+import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema.ts";
+import { getUserWorkspaceIds } from "../../../shared/User.utils/workspaceMembership.ts";
 import jwt from "jsonwebtoken";
 import { ApiResposne } from "../../../common/Response/Response.ts";
 import { IuseCase } from "../../../shared/interface/IuseCase.ts";
@@ -19,6 +21,8 @@ import {
 } from "../../../common/Errors/AuthError.ts";
 import { AuthRequest } from "../../../middleware/authMiddleware.ts";
 import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
+import { SwitchWorkspaceInput, SwitchWorkspaceResult } from "../application/usecases/switchWorkspaceUseCase.ts";
+import { UserRoles } from "../../../common/constant/userRoles.ts";
 
 interface RegisterOwnerInput {
   token: string;
@@ -60,7 +64,8 @@ export class AuthController {
     private readonly registerWorkspaceUserUseCase: IuseCase<
       RegisterWorkspaceUserInput,
       void
-    >
+    >,
+    private readonly switchWorkspaceUseCase: IuseCase<SwitchWorkspaceInput, SwitchWorkspaceResult>
   ) {}
 
   async register(req: Request, res: Response, next: NextFunction) {
@@ -110,7 +115,18 @@ export class AuthController {
     try {
       const user = await this.loginUserUseCase.execute(req.body);
       const userRole = user?.role;
-      const workspaceId = user?.workspaceId?.toString() ?? undefined;
+      const memberWorkspaceIds = getUserWorkspaceIds(user);
+      let workspaceId = memberWorkspaceIds[0];
+      if (userRole === UserRoles.MEMBER || userRole === UserRoles.WORKSPACE_ADMIN) {
+        const workspaceQuery = userRole === UserRoles.WORKSPACE_ADMIN
+          ? { _id: { $in: memberWorkspaceIds }, status: "active", workspaceAdminEmail: user.email }
+          : { _id: { $in: memberWorkspaceIds }, status: "active" };
+        const activeWorkspace = await WorkspaceModel.findOne(workspaceQuery)
+          .sort({ createdAt: 1 })
+          .select("_id");
+        workspaceId = activeWorkspace?._id.toString();
+        if (!workspaceId) throw new InvalidToken();
+      }
 
       const accessToken = jwt.sign(
         {
@@ -146,6 +162,8 @@ export class AuthController {
       return ApiResposne.success(res, MESSAGES.SUCCESS.LOGIN_SUCCESS, {
         accessToken,
         userRole,
+        userId: user._id,
+        workspaceId,
       });
     } catch (error) {
       next(error);
@@ -221,22 +239,41 @@ export class AuthController {
         throw new InvalidRefreshToken();
       }
 
+      const user = decoded.id ? await UserModel.findById(decoded.id) : null;
+      if (!user || !user.status) throw new InvalidRefreshToken();
+
+      const role = user.role ?? decoded.role;
       let workspaceId = decoded.workspaceId;
-
-      if (!workspaceId && decoded.id) {
-        const user = await UserModel.findById(decoded.id);
-
-        if (user?.workspaceId) {
-          workspaceId = user.workspaceId.toString();
+      if (role === UserRoles.MEMBER || role === UserRoles.WORKSPACE_ADMIN) {
+        const workspaceIds = getUserWorkspaceIds(user);
+        const currentIsAssigned = Boolean(workspaceId && workspaceIds.includes(workspaceId));
+        const currentWorkspace = currentIsAssigned
+          ? await WorkspaceModel.findOne(
+              role === UserRoles.WORKSPACE_ADMIN
+                ? { _id: workspaceId, status: "active", workspaceAdminEmail: user.email }
+                : { _id: workspaceId, status: "active" },
+            ).select("_id")
+          : null;
+        if (currentWorkspace) {
+          workspaceId = currentWorkspace._id.toString();
+        } else {
+          const fallbackQuery = role === UserRoles.WORKSPACE_ADMIN
+            ? { _id: { $in: workspaceIds }, status: "active", workspaceAdminEmail: user.email }
+            : { _id: { $in: workspaceIds }, status: "active" };
+          const fallbackWorkspace = await WorkspaceModel.findOne(fallbackQuery)
+            .sort({ createdAt: 1 })
+            .select("_id");
+          workspaceId = fallbackWorkspace?._id.toString();
         }
+        if (!workspaceId) throw new InvalidRefreshToken();
       }
 
       const newAccessToken = jwt.sign(
         {
-          id: decoded.id,
-          username: decoded.username,
-          userEmail: decoded.userEmail,
-          role: decoded.role,
+          id: user._id.toString(),
+          username: user.username,
+          userEmail: user.email,
+          role,
           workspaceId,
         },
         process.env.JWT_SECRET!,
@@ -248,7 +285,8 @@ export class AuthController {
         MESSAGES.SUCCESS.TOKEN_REFRESHED,
         {
           accessToken: newAccessToken,
-          userRole: decoded.role,
+          userRole: role,
+          workspaceId,
         }
       );
     } catch (error) {
@@ -268,6 +306,42 @@ export class AuthController {
         res,
         MESSAGES.SUCCESS.LOGOUT_SUCCESSFULLY
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async switchWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) throw new InvalidToken();
+
+      const { user, workspaceId } = await this.switchWorkspaceUseCase.execute({
+        userId,
+        workspaceId: req.body.workspaceId,
+      });
+      const tokenPayload = {
+        id: user._id,
+        username: user.username,
+        userEmail: user.email,
+        role: user.role,
+        workspaceId,
+      };
+      const accessToken = jwt.sign(tokenPayload, process.env.JWT_SECRET!, { expiresIn: "15m" });
+      const refreshToken = jwt.sign(tokenPayload, process.env.JWT_REFRESH_SECRET!, { expiresIn: "7d" });
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: parseInt(process.env.MAX_AGE!),
+      });
+
+      return ApiResposne.success(res, "Workspace switched", {
+        accessToken,
+        userRole: user.role,
+        workspaceId,
+      });
     } catch (error) {
       next(error);
     }

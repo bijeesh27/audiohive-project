@@ -11,6 +11,7 @@ export class MarkAsReadUseCase implements IuseCase<MarkReadDTO, void> {
   async execute(input: MarkReadDTO): Promise<void> {
     await this.announcementRepository.markAsRead(
       input.announcementId,
+      input.workspaceId,
       input.userId
     );
 

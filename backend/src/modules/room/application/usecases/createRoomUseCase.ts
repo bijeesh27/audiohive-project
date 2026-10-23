@@ -13,16 +13,15 @@ export class CreateRoomUseCase
   ) {}
 
   async execute(data: CreateRoomDTO): Promise<void> {
-    // Set private status based on room type
+   
     data.isPrivate = data.type === "private";
 
-    // Create room
+    
     const room = await this.roomRepository.createRoom(
       data as unknown as IRoomDocument
     );
     console.log(room)
 
-    // Record activity
     await this.activityLogRepository.recordActivity({
       occurredAt: new Date(),
 

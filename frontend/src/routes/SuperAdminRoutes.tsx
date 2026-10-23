@@ -6,6 +6,7 @@ import SuperAdminLayout  from '../components/superAdmin/layout/SuperAdminLayout'
 import SubscriptionPlan from "../pages/superAdmin/SubscriptionPlan"
 import Workspaces from "../pages/organizationAdmin/Workspaces"
 import Organization from "../pages/superAdmin/Organization"
+import ActivityLog from "../pages/superAdmin/ActivityLog"
 
 const SuperAdminRoutes = () => {
   return (
@@ -14,9 +15,9 @@ const SuperAdminRoutes = () => {
         <Route path={API_ROUTES.SUPER_ADMIN.DASHBOARD} element={<Dashboard/>}/>
         <Route path={API_ROUTES.SUPER_ADMIN.GET_USERS} element={<Users/>}/>
         <Route path={API_ROUTES.SUPER_ADMIN.GET_SUBSCRIPTIONS} element={<SubscriptionPlan/>}/>
-
         <Route path={API_ROUTES.SUPER_ADMIN.GET_ORGANIZATIONS} element={<Organization/>}/>
         <Route path={API_ROUTES.SUPER_ADMIN.GET_WORKSPACES} element={<Workspaces/>}/>
+        <Route path={API_ROUTES.SUPER_ADMIN.ACTIVITY_LOGS} element={<ActivityLog/>}/>
       </Route>
     </Routes>
   )

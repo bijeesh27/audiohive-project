@@ -6,7 +6,7 @@ export class GetRoomParticipantsUseCase implements IuseCase<GetRoomParticipantsD
   constructor(private readonly roomRepository: IroomRepository) {}
 
   async execute(input: GetRoomParticipantsDTO): Promise<GetRoomParticipantsResultDTO> {
-    const { roomId, page, limit, search } = input;
-    return await this.roomRepository.getRoomParticipants(roomId, page, limit, search);
+    const { roomId, workspaceId, page, limit, search } = input;
+    return await this.roomRepository.getRoomParticipants(roomId, workspaceId, page, limit, search);
   }
 }

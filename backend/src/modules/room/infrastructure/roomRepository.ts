@@ -2,6 +2,8 @@ import { BaseRepository } from "../../../shared/common/baseRepository";
 import { IroomRepository } from "../domain/IroomRepository";
 import { IRoomDocument, RoomModel } from "./roomSchema";
 import { FilterQuery } from "mongoose";
+import { UserRoles } from "../../../common/constant/userRoles";
+import { UserModel } from "../../../shared/User.utils/userSchema";
 
 export class RoomRepository
   extends BaseRepository<IRoomDocument>
@@ -11,23 +13,25 @@ export class RoomRepository
     super(RoomModel);
   }
 
-  async createRoom(data: IRoomDocument): Promise<void> {
+  async createRoom(data: IRoomDocument): Promise<IRoomDocument> {
    return await this.model.create(data);
   }
 
   async updateRoom(
     roomId: string,
+    workspaceId: string,
     data: Partial<IRoomDocument>
   ): Promise<void> {
     await this.model.updateOne(
-      { _id: roomId },
+      { _id: roomId, workspaceId },
       { $set: data }
     );
   }
 
-  async deleteRoom(roomId: string): Promise<void> {
-    return await this.model.deleteOne({
+  async deleteRoom(roomId: string, workspaceId: string): Promise<void> {
+    await this.model.deleteOne({
       _id: roomId,
+      workspaceId,
     });
   }
   async findRoom(roomId: string): Promise<IRoomDocument | null> {
@@ -42,7 +46,7 @@ export class RoomRepository
       query.name = { $regex: search, $options: "i" };
     }
 
-    if (role === "Member" && userId) {
+    if (role === UserRoles.MEMBER && userId) {
       query.$or = [
         { type: "public" },
         { type: "private", allowedUsers: userId }
@@ -57,24 +61,52 @@ export class RoomRepository
     return { rooms, total };
   }
 
-  async updateAllowedUsers(roomId: string, userIds: string[]): Promise<void> {
+  async updateAllowedUsers(roomId: string, workspaceId: string, userIds: string[]): Promise<void> {
     await this.model.updateOne(
-      { _id: roomId },
+      { _id: roomId, workspaceId },
       { $set: { allowedUsers: userIds } }
     );
   }
 
   async getRoomParticipants(
     roomId: string,
+    workspaceId: string,
     page: number = 1,
     limit: number = 10,
     search?: string
   ): Promise<{ participants: { _id: string; username: string; email: string; role: string; status: boolean }[]; total: number }> {
-    const room = await this.model.findById(roomId).populate<{
+    const room = await this.model.findOne({ _id: roomId, workspaceId }).populate<{
       allowedUsers: { _id: string; username: string; email: string; role: string; status: boolean }[];
     }>("allowedUsers", "username email role status");
 
-    let users = room?.allowedUsers ?? [];
+    type Participant = { _id: string; username: string; email: string; role: string; status: boolean };
+    let users: Participant[] = [];
+
+    if (room?.type === "public") {
+      const workspaceMembers = await UserModel.find({
+        role: UserRoles.MEMBER,
+        $or: [{ workspaceIds: workspaceId }, { workspaceId }],
+      })
+        .select("_id username email role status")
+        .sort({ username: 1 })
+        .lean();
+
+      users = workspaceMembers.map((user) => ({
+        _id: user._id?.toString() ?? "",
+        username: user.username,
+        email: user.email,
+        role: user.role ?? UserRoles.MEMBER,
+        status: user.status ?? true,
+      }));
+    } else {
+      users = (room?.allowedUsers ?? []).map((user) => ({
+        _id: user._id.toString(),
+        username: user.username,
+        email: user.email,
+        role: user.role ?? UserRoles.MEMBER,
+        status: user.status ?? true,
+      }));
+    }
 
     if (search) {
       const lower = search.toLowerCase();
@@ -92,9 +124,9 @@ export class RoomRepository
     return { participants, total };
   }
 
-  async removeRoomUser(roomId: string, userId: string): Promise<void> {
+  async removeRoomUser(roomId: string, workspaceId: string, userId: string): Promise<void> {
     await this.model.updateOne(
-      { _id: roomId },
+      { _id: roomId, workspaceId },
       { $pull: { allowedUsers: userId } }
     );
   }

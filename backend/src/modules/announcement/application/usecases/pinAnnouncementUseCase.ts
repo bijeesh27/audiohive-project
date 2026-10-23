@@ -14,7 +14,7 @@ export class PinAnnouncementUseCase
   ) {}
 
   async execute(input: PinAnnouncementInputDTO): Promise<void> {
-    await this.announcementRepository.pinAnnouncement(input.id, input.isPinned);
+    await this.announcementRepository.pinAnnouncement(input.id, input.workspaceId, input.isPinned);
 
     // Emit directly — guaranteed to fire as long as DB update succeeds
     socketService.emitToWorkspace(input.workspaceId, SOCKET_EVENTS.PIN_ANNOUNCEMENT, {

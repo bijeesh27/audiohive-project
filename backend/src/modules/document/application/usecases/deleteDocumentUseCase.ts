@@ -29,9 +29,8 @@ export class DeleteDocumentUseCase implements IuseCase<DeleteDocumentDTO, void> 
       await this.activityLogRepository.recordActivity({
             occurredAt: new Date(),
             action: "DELETE_DOCUMENT",
-            actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-            organizationId: data ? (data as any).organizationId : undefined,
-            workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
+            actorId: data.userId,
+            workspaceId: data.workspaceId,
             targetType: "DELETE",
             targetId: undefined,
             metadata: {}

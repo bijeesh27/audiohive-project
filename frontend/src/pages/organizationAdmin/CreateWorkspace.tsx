@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import Button from "../../components/common/Button";
 import { createWorkspace } from "../../services/workspaceServices";
+import { API_ROUTES } from "../../constants/Api_Routes";
 
 interface IFormData {
   workspaceName: string;
@@ -53,7 +54,7 @@ const CreateWorkspace = () => {
         workspaceName: formData.workspaceName.trim(),
         slug: formData.slug.trim().toLowerCase(),
       });
-      navigate("/organization-owner/workspace");
+      navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.WORKSPACES);
     } catch (err: unknown) {
       if (isAxiosError(err)) {
         setError(err.response?.data?.message || "Failed to create workspace.");
@@ -131,7 +132,7 @@ const CreateWorkspace = () => {
         <div className="flex items-center justify-end gap-3">
           <button
             type="button"
-            onClick={() => navigate("/organization-owner/workspace")}
+            onClick={() => navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.WORKSPACES)}
             className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel

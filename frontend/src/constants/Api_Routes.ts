@@ -13,7 +13,10 @@ export const API_ROUTES = {
       RESET_PASSWORD:"/reset-password",
       OTP:"/otp",
       PENDING_APPROVAL:"/pendingapproval",
-      PAYMENT:"/payment"
+      PAYMENT:"/payment",
+      CHOOSE_PLAN: "/choose-plan",
+      INVITATION_SENT: "/invitation-sent",
+      PRICING: "/pricing"
     }
 
   },
@@ -24,12 +27,14 @@ export const API_ROUTES = {
     GET_SUBSCRIPTIONS:"subscriptions",
     GET_WORKSPACES:'workspaces',
     GET_ORGANIZATIONS:'organizations',
+    ACTIVITY_LOGS: "activity-logs",
     NAV: {
       DASHBOARD: "/superadmin/dashboard",
       GET_USERS: "/superadmin/get-users",
       SUBSCRIPTIONS:"/superadmin/subscriptions",
       WORKSPACES:"/superadmin/workspaces",
-      ORGANIZATIONS:"/superadmin/organizations"
+      ORGANIZATIONS:"/superadmin/organizations",
+      ACTIVITY_LOGS: "/superadmin/activity-logs",
     },
   },
   WORKSPACE_ADMIN: {
@@ -39,12 +44,14 @@ export const API_ROUTES = {
     ROOMS: "rooms",
     ROOM_DETAIL: "rooms/:id",
     ANNOUNCEMENTS: "announcements",
+    ACTIVITY_LOGS: "activity-logs",
     NAV: {
       DASHBOARD: "/workspaceadmin/dashboard",
       GET_USERS: "/workspaceadmin/get-users",
       ROOMS: "/workspaceadmin/rooms",
       ROOM_DETAIL: (id: string) => `/workspaceadmin/rooms/${id}`,
       ANNOUNCEMENTS: "/workspaceadmin/announcements",
+      ACTIVITY_LOGS: "/workspaceadmin/activity-logs",
     },
   },
   ORGANIZATION_ADMIN: {
@@ -53,11 +60,15 @@ export const API_ROUTES = {
     WORKSPACES:"workspace",
     SUBSCRIPTION:"subscription",
     USERS:"users",
+    ACTIVITY_LOGS: "activity-logs",
     NAV: {
        DASHBOARD: "/organization-owner/dashboard",
        WORKSPACES:"/organization-owner/workspace",
        SUBSCRIPTION:"/organization-owner/subscription",
-       USERS:"/organization-owner/users"
+       USERS:"/organization-owner/users",
+       CREATE_WORKSPACE: "/organization-owner/create-workspace",
+       WORKSPACE_DETAIL: (id: string) => `/organization-owner/getworkspace/${id}`,
+       ACTIVITY_LOGS: "/organization-owner/activity-logs",
     },
   },
   MEMBER: {
@@ -92,6 +103,7 @@ export const API_ROUTES = {
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: "/api/auth/login",
+    SWITCH_WORKSPACE: "/api/auth/switch-workspace",
     REGISTER: "/api/auth/register",
     VERIFY_OTP: "/api/auth/verify-otp",
     RESEND_OTP: "/api/auth/resend-otp",
@@ -113,10 +125,18 @@ export const API_ENDPOINTS = {
     GET_USERS: "/api/workspaceadmin/get-users",
     DASHBOARD_STATS: "/api/workspaceadmin/dashboard-stats",
     PROFILE: "/api/workspaceadmin/profile",
+    UPDATE_USER: (userId: string) => `/api/workspaceadmin/users/${userId}`,
+    INVITE_USER: "/api/workspaceadmin/invite-user",
+    ACTIVE_USERS: (workspaceId: string) => `/api/workspaceadmin/activeusers/${workspaceId}`,
   },
   ORGANIZATION_ADMIN: {
     GET_USERS: "/api/organization/get-users",
+    SET_USER_WORKSPACES: (userId: string) => `/api/organization/users/${userId}/workspaces`,
     DASHBOARD_STATS: "/api/organization/dashboard-stats",
+    CREATE: "/api/organization/create-organization",
+    GET_ALL: "/api/organization/getall-organizations",
+    UPDATE: (id: string) => `/api/organization/update-organization/${id}`,
+    MY_ORGANIZATION: "/api/organization/my-organization",
   },
   SUBSCRIPTION: {
     GET_ALL: "/api/subscription/getallsubscriptions",
@@ -127,8 +147,14 @@ export const API_ENDPOINTS = {
   WORKSPACE: {
     GET_ALL: "/api/workspace/getallworkspaces",
     GET_MY: "/api/workspace/my-workspaces",
+    GET_MEMBER_WORKSPACES: "/api/workspace/available-to-me",
     CREATE: "/api/workspace/createworkspace",
     UPDATE: (workspaceId: string) => `/api/workspace/updateworkspace/${workspaceId}`,
+    GET_ONE: (workspaceId: string) => `/api/workspace/getworkspace/${workspaceId}`,
+    DELETE: (workspaceId: string) => `/api/workspace/deleteworkspace/${workspaceId}`,
+    INVITE: (workspaceId: string) => `/api/workspace/${workspaceId}/invite`,
+    GET_USERS: (workspaceId: string) => `/api/workspace/${workspaceId}/users`,
+    REMOVE_USER: (workspaceId: string, userId: string) => `/api/workspace/${workspaceId}/users/${userId}`,
   },
   ROOM: {
     GET_ALL: "/api/room",
@@ -150,5 +176,22 @@ export const API_ENDPOINTS = {
     MARK_READ: (id: string) => `/api/announcement/${id}/read`,
     UNREAD_COUNT: "/api/announcement/unread-count",
     BY_ROOM: (roomId: string) => `/api/announcement/room/${roomId}`,
+  },
+  DOCUMENT: {
+    UPLOAD: (roomId: string) => `/api/rooms/${roomId}/documents`,
+    GET_ALL: (roomId: string) => `/api/rooms/${roomId}/documents`,
+    GET_FILE: (roomId: string, documentId: string) => `/api/rooms/${roomId}/documents/${documentId}/file`,
+    DELETE: (roomId: string, documentId: string) => `/api/rooms/${roomId}/documents/${documentId}`,
+  },
+  CHAT: {
+    GET_MESSAGES: (roomId: string) => `/api/chat/${roomId}/messages`,
+    SEND_MESSAGE: (roomId: string) => `/api/chat/${roomId}/messages`,
+    DELETE_MESSAGE: (roomId: string, messageId: string) => `/api/chat/${roomId}/messages/${messageId}`,
+  },
+  ACTIVITY: {
+    RECORD: "/api/activitylog/record",
+    GET_WORKSPACE_LOGS: "/api/activitylog/workspace",
+    GET_ORGANIZATION_LOGS: (organizationId: string) => `/api/activitylog/organization/${organizationId}`,
+    GET_SYSTEM_LOGS: "/api/activitylog/system",
   },
 };

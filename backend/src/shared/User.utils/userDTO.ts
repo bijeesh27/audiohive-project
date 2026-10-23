@@ -5,7 +5,9 @@ export interface IuserDTO {
   password:string;
   role: string;
   status: boolean;
-  workspaceId?: string;
+  workspaceIds?: unknown[];
+  /** @deprecated Read only during migration from the single-workspace model. */
+  workspaceId?: unknown;
   createdAt?: Date;
   updatedAt?: Date;
 }

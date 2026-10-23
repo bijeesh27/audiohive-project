@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getRoom, getRoomParticipants } from "../../services/roomServices";
-import { Globe, Lock, ArrowLeft, DoorOpen, ShieldOff, Users, Wifi } from "lucide-react";
+import { Globe, Lock, ArrowLeft, DoorOpen, ShieldOff, Users, Wifi, Mic, PhoneCall } from "lucide-react";
 import { API_ROUTES } from "../../constants/Api_Routes";
+import { HttpStatus } from "../../constants/httpStatus";
 import { useSocket } from "../../context/SocketContext";
+import { useAuth } from "../../context/AuthContext";
 import { RoomDocuments } from "../workspaceAdmin/RoomDocuments";
+import { RoomChatPanel } from "../../components/room/RoomChatPanel";
+import { useVoiceChat } from "../../hooks/useVoiceChat";
+import VoiceChatPanel from "../../components/room/VoiceChatPanel";
 
 interface Room {
   _id: string;
@@ -25,6 +30,7 @@ const RoomDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { socket } = useSocket();
+  const { username } = useAuth();
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +38,17 @@ const RoomDetail = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; username: string }[]>([]);
+
+  const {
+    isInVoice,
+    isMuted,
+    voiceParticipants,
+    remoteStreams,
+    micError,
+    joinVoice,
+    leaveVoice,
+    toggleMute,
+  } = useVoiceChat(socket);
 
   useEffect(() => {
     if (!id) return;
@@ -47,7 +64,7 @@ const RoomDetail = () => {
       .catch((err) => {
         const status = err?.response?.status;
         const msg = err?.response?.data?.message || "Failed to load room";
-        if (status === 403) {
+        if (status === HttpStatus.FORBIDDEN) {
           setAccessDenied(true);
         }
         setError(msg);
@@ -61,7 +78,8 @@ const RoomDetail = () => {
     setParticipantsLoading(true);
     getRoomParticipants(id)
       .then((res) => {
-        setParticipants(res.data.data?.participants || []);
+        const data = res.data.data;
+        setParticipants(data?.participants || data?.users || []);
       })
       .catch(() => {
       })
@@ -225,18 +243,51 @@ const RoomDetail = () => {
         )}
       </div>
 
-      {/* Room Content Area — placeholder for future features (chat, audio, etc.) */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[200px] flex flex-col items-center justify-center text-gray-400">
-        <DoorOpen className="w-14 h-14 mb-4 text-gray-300" />
-        {/* eslint-disable-next-line react/no-unescaped-entities */}
-        <p className="text-base font-medium text-gray-500">You're inside {room.name}</p>
-        <p className="text-sm mt-1">
-          {room.type === "public"
-            ? "This is a public room — all workspace members can join."
-            : "This is a private room — only invited members can join."}
-        </p>
-      </div>
+      {/* ── Voice Chat Section ────────────────────────────────────── */}
+      {isInVoice ? (
+        <VoiceChatPanel
+          voiceParticipants={voiceParticipants}
+          remoteStreams={remoteStreams}
+          isMuted={isMuted}
+          isInVoice={isInVoice}
+          currentUsername={username ?? "You"}
+          onToggleMute={toggleMute}
+          onLeave={() => leaveVoice(id!)}
+        />
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[200px] flex flex-col items-center justify-center text-gray-400 gap-4">
+          <DoorOpen className="w-14 h-14 mb-1 text-gray-300" />
+          {/* eslint-disable-next-line react/no-unescaped-entities */}
+          <p className="text-base font-medium text-gray-500">You're inside {room.name}</p>
+          <p className="text-sm mt-0">
+            {room.type === "public"
+              ? "This is a public room — all workspace members can join."
+              : "This is a private room — only invited members can join."}
+          </p>
+
+          {/* Mic error banner */}
+          {micError && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 max-w-sm text-center">
+              <Mic className="w-4 h-4 flex-shrink-0" />
+              {micError}
+            </div>
+          )}
+
+          {/* Join Voice button */}
+          <button
+            onClick={() => joinVoice(id!)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <PhoneCall className="w-4 h-4" />
+            Join Voice Chat
+          </button>
+        </div>
+      )}
+
       <RoomDocuments roomId={room._id} />
+
+      <RoomChatPanel roomId={room._id} roomName={room.name} />
+
 
       {/* Online Now — real-time presence */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">

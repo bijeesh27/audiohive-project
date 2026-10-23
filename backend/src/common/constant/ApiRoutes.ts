@@ -1,6 +1,7 @@
 export const API_ROUTES = {
   AUTH: {
     REFRESH: "/refresh",
+    SWITCH_WORKSPACE: "/switch-workspace",
     REGISTER: "/register",
     VERIFY_OTP: "/verify-otp",
     RESEND_OTP: "/resend-otp",
@@ -22,6 +23,7 @@ export const API_ROUTES = {
 
   SUPER_ADMIN: {
     GET_USERS: "/get-users",
+    SET_USER_WORKSPACES: "/users/:userId/workspaces",
     GET_USER: "/users/:id",
     APPROVE_WORKSPACE: "/approve-workspace",
     DASHBOARD_STATS: "/dashboard-stats",
@@ -54,6 +56,7 @@ export const API_ROUTES = {
     GET_ALL_ORGANIZATIONS: "/getall-organizations",
     GET_USERS: "/get-users",
     GET_MY_ORGANIZATION: "/my-organization",
+    SET_USER_WORKSPACES: "/users/:userId/workspaces",
     DASHBOARD_STATS: "/dashboard-stats",
     SEND_INVITATION: "/send-invitation",
   },
@@ -64,6 +67,7 @@ export const API_ROUTES = {
     DELETE_WORKSPACE: "/deleteworkspace/:id",
     GET_ALL_WORKSPACES: "/getallworkspaces",
     GET_MY_WORKSPACES: "/my-workspaces",
+    GET_MEMBER_WORKSPACES: "/available-to-me",
     INVITE: "/:id/invite",
     GET_WORKSPACE: "/getworkspace/:id",
     GET_USERS: "/:id/users",
@@ -96,9 +100,20 @@ export const API_ROUTES = {
   DOCUMENT: {
     UPLOAD_DOCUMENT: "/:roomId/documents",
     GET_ROOM_DOCUMENTS: "/:roomId/documents",
+    GET_DOCUMENT_FILE: "/:roomId/documents/:documentId/file",
     DELETE_DOCUMENT: "/:roomId/documents/:documentId",
   },
-  ACTIVITY:{
-    RECORD_ACTIVITY:'/record'
+
+  CHAT: {
+    GET_MESSAGES: "/:roomId/messages",
+    SEND_MESSAGE: "/:roomId/messages",
+    DELETE_MESSAGE: "/:roomId/messages/:messageId",
+  },
+
+  ACTIVITY: {
+    RECORD_ACTIVITY: '/record',
+    GET_WORKSPACE_LOGS: '/workspace',
+    GET_ORGANIZATION_LOGS: '/organization/:organizationId',
+    GET_SYSTEM_LOGS: '/system',
   }
 };

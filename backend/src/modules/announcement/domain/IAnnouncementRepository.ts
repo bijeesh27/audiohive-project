@@ -2,9 +2,9 @@ import { AnnouncementResponseDTO } from "../application/dto/announcementDTO.js";
 
 export interface IAnnouncementRepository {
   createAnnouncement(data: Partial<AnnouncementResponseDTO>): Promise<AnnouncementResponseDTO>;
-  updateAnnouncement(id: string, data: Partial<AnnouncementResponseDTO>): Promise<void>;
-  deleteAnnouncement(id: string): Promise<void>;
-  findAnnouncement(id: string): Promise<AnnouncementResponseDTO | null>;
+  updateAnnouncement(id: string, workspaceId: string, data: Partial<AnnouncementResponseDTO>): Promise<void>;
+  deleteAnnouncement(id: string, workspaceId: string): Promise<void>;
+  findAnnouncement(id: string, workspaceId: string): Promise<AnnouncementResponseDTO | null>;
   getAllAnnouncements(
     workspaceId: string,
     page: number,
@@ -12,8 +12,8 @@ export interface IAnnouncementRepository {
     status?: string,
     search?: string
   ): Promise<{ announcements: AnnouncementResponseDTO[]; total: number }>;
-  pinAnnouncement(id: string, isPinned: boolean): Promise<void>;
-  markAsRead(id: string, userId: string): Promise<void>;
+  pinAnnouncement(id: string, workspaceId: string, isPinned: boolean): Promise<void>;
+  markAsRead(id: string, workspaceId: string, userId: string): Promise<void>;
   getUnreadCount(workspaceId: string, userId: string): Promise<number>;
-  getByRoom(roomId: string): Promise<AnnouncementResponseDTO[]>;
+  getByRoom(roomId: string, workspaceId: string): Promise<AnnouncementResponseDTO[]>;
 }

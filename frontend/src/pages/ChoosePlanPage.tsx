@@ -4,6 +4,7 @@ import type { SubscriptionDTO } from '../services/subscriptionServices';
 import { Check } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../config/axios';
+import { API_ROUTES } from '../constants/Api_Routes';
 
 const PENDING_ORGANIZATION_KEY = 'audiohive.pendingOrganization';
 
@@ -59,7 +60,7 @@ const ChoosePlanPage = () => {
     setSelectedPlanId(plan._id ?? null);
     if (!organizationData) {
       // Guard: if org data is missing, send user back to create org
-      navigate('/create-organization');
+      navigate(API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION);
       return;
     }
 
@@ -75,7 +76,7 @@ const ChoosePlanPage = () => {
           planId: plan._id,
         });
         sessionStorage.removeItem(PENDING_ORGANIZATION_KEY);
-        navigate('/invitation-sent', { state: organizationData });
+        navigate(API_ROUTES.PUBLIC.NAV.INVITATION_SENT, { state: organizationData });
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error("Failed to send free plan invitation", error);

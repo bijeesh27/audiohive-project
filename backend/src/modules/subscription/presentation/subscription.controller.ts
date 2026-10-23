@@ -11,6 +11,7 @@ import {
 import { ISubscriptionDocument } from "../infrastructure/subscriptionSchema";
 import { ApiResposne } from "../../../common/Response/Response";
 import { MESSAGES } from "../../../common/constant/messages";
+import { HttpStatus } from "../../../common/constant/httpStatus";
 import { AppError } from "../../../common/Errors/AppError";
 
 export class AuthController{
@@ -27,7 +28,7 @@ export class AuthController{
         try {
             const { planId, ownerEmail, companyName, slug, ownerName } = req.body;
             if (!planId) {
-                throw new AppError("planId is required", 400);
+                throw new AppError(MESSAGES.ERRORS.PLAN_ID_REQUIRED, HttpStatus.BAD_REQUEST);
             }
             const sessionUrl = await this.createCheckoutSessionUseCase.execute({ planId, ownerEmail, companyName, slug, ownerName });
             return ApiResposne.success(res, MESSAGES.SUCCESS.CHECKOUT_SESSION_CREATED, { url: sessionUrl });
@@ -40,7 +41,7 @@ export class AuthController{
         try {
             const { sessionId } = req.body;
             if (!sessionId) {
-                throw new AppError("sessionId is required", 400);
+                throw new AppError(MESSAGES.ERRORS.SESSION_ID_REQUIRED, HttpStatus.BAD_REQUEST);
             }
             const data = await this.verifyCheckoutSessionUseCase.execute({ sessionId });
             return ApiResposne.success(res, MESSAGES.SUCCESS.CHECKOUT_SESSION_VERIFIED, data);
@@ -52,7 +53,7 @@ export class AuthController{
     async createSubscription(req:Request,res:Response,next:NextFunction){
        try {
          const response= await this.createSubscriptionUseCase.execute(req.body)
-         return ApiResposne.success(res,MESSAGES.SUCCESS.SUBSCRIPTION_CREATED,response)
+         return ApiResposne.success(res,MESSAGES.SUCCESS.SUBSCRIPTION_CREATED,response,HttpStatus.CREATED)
          
        } catch (error) {
         next(error)

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { XCircle } from "lucide-react";
+import { API_ROUTES } from "../constants/Api_Routes";
 
 const SubscriptionCancel = () => {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ const SubscriptionCancel = () => {
           Please go back and choose a plan to complete your setup.
         </p>
         <button
-          onClick={() => navigate("/choose-plan")}
+          onClick={() => navigate(API_ROUTES.PUBLIC.NAV.CHOOSE_PLAN)}
           className="w-full rounded-md bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
         >
           Return to Plan Selection

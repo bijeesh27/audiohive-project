@@ -5,14 +5,15 @@ export interface UploadDocumentDTO {
   fileName: string;
   mimeType: string;
   size: number;
-  url: string;
   buffer: Buffer;
+  workspaceId: string;
 }
 
 export interface DeleteDocumentDTO {
   documentId: string;
   roomId: string;
   userId: string;
+  workspaceId: string;
 }
 
 export interface GetRoomDocumentsDTO {

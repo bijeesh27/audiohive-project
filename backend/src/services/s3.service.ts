@@ -1,4 +1,4 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "../config/s3.js";
 
 interface IUploadToS3 {
@@ -21,6 +21,21 @@ export class S3Service {
     await s3Client.send(command);
 
     return key;
+  }
+
+  async downloadFile(key: string): Promise<Buffer> {
+    const response = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Key: key,
+      })
+    );
+
+    if (!response.Body) {
+      throw new Error("The stored document has no file content");
+    }
+
+    return Buffer.from(await response.Body.transformToByteArray());
   }
 }
 

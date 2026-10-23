@@ -11,6 +11,6 @@ export const getWorkspaceAdminProfile = () => {
   return axiosInstance.get(API_ENDPOINTS.WORKSPACE_ADMIN.PROFILE);
 };
 
-export const getActiveuserCount=(workspaceId:string)=>{
-  return axiosInstance.get(`/activeusers/${workspaceId}`)
-}
+export const getActiveuserCount = (workspaceId: string) => {
+  return axiosInstance.get(API_ENDPOINTS.WORKSPACE_ADMIN.ACTIVE_USERS(workspaceId));
+};

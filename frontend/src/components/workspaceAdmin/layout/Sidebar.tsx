@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, DoorOpen, LogOut, Megaphone } from "lucide-react";
+import { LayoutDashboard, Users, DoorOpen, LogOut, Megaphone, Activity } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
@@ -15,6 +15,7 @@ export default function Sidebar() {
     { name: "Users", path: API_ROUTES.WORKSPACE_ADMIN.NAV.GET_USERS, icon: Users },
     { name: "Rooms", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS, icon: DoorOpen },
     { name: "Announcements", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ANNOUNCEMENTS, icon: Megaphone },
+    { name: "Activity Logs", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ACTIVITY_LOGS, icon: Activity },
   ];
 
 

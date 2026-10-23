@@ -4,6 +4,8 @@ import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import ActionButton from "../../components/common/ActionButton";
 import { ShieldBan, ShieldCheck } from "lucide-react";
+import { getAllOrganizations, getMyOrganization } from "../../services/organizationServices";
+import { subscriptionService } from "../../services/subscriptionServices";
 interface User {
   _id: string;
   username: string;
@@ -26,6 +28,9 @@ const Users = () => {
   const [confirmUser, setConfirmUser] = useState<User | null>(null);
   const [toggling, setToggling] = useState(false);
 
+  const [org,setOrg]=useState()
+  const [plan,setPlan]=useState()
+
   const fetchUsers = useCallback(() => {
     let cancelled = false;
     setLoading(true);
@@ -43,11 +48,22 @@ const Users = () => {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
+      getAllOrganizations(page,limit,debouncedSearch).then((res=>{
+        
+        setOrg(res.data.organizations)
+      }))
+
+      subscriptionService.getAllSubscriptions().then((res)=>{
+        setPlan(res.data.data)
+      })
       
     return () => {
       cancelled = true;
     };
   }, [page, limit, debouncedSearch]);
+
+  
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

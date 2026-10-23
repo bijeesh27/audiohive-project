@@ -21,9 +21,7 @@ export class CreateOrganizationUseCase implements IuseCase<
       ownerEmail: data.ownerEmail,
       token: token,
     };
-    // Only create the invitation record here.
-    // The organization itself is created later, in SendOrganizationInvitationUseCase,
-    // after the user has chosen and (if needed) paid for a plan.
+    
     await this.oragnizationRepository.createInvitation(organizationInvitation);
 
     await this.activityLogRepository.recordActivity({

@@ -30,4 +30,18 @@ export class UserRepository
     const updated = await this.model.findByIdAndUpdate(userId, data, { new: true });
     return updated as IuserDTO;
   }
+
+  async setWorkspaceIds(
+    userId: string,
+    workspaceIds: string[],
+  ): Promise<IuserDTO | null> {
+    return (await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        $set: { workspaceIds },
+        $unset: { workspaceId: 1 },
+      },
+      { new: true },
+    ).select("-password")) as IuserDTO | null;
+  }
 }

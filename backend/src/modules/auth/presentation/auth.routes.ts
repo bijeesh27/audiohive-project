@@ -9,8 +9,9 @@ import { ForgetUseCase } from "../application/usecases/ForgetUseCase.ts";
 import { ChangePasswordUseCase } from "../application/usecases/changePasswordUseCase.ts";
 import { API_ROUTES } from "../../../common/constant/ApiRoutes.ts";
 import { validateRequest } from "../../../middleware/validateRequest.ts";
-import { changePasswordSchema, forgetPasswordSchema, loginSchema, otpSchema, registerAdminSchema, registerSchema, resetPasswordSchema } from "../../../common/validation/authValidation.ts";
-import { authMiddleware } from "../../../middleware/authMiddleware.ts";
+import { changePasswordSchema, forgetPasswordSchema, loginSchema, otpSchema, registerAdminSchema, registerSchema, resetPasswordSchema, switchWorkspaceSchema } from "../../../common/validation/authValidation.ts";
+import { authMiddleware, roleMiddleware } from "../../../middleware/authMiddleware.ts";
+import { UserRoles } from "../../../common/constant/userRoles.ts";
 import { ResendOtpUseCase } from "../application/usecases/ResendOtpUseCase.ts";
 import { ResetPasswordUseCase } from "../application/usecases/ResetPasswordUseCase.ts";
 import { RegisterWorkspaceAdminUseCase } from "../application/usecases/registerWorkspaceAdminUseCase.ts";
@@ -19,6 +20,7 @@ import { RegisterOwnerUseCase } from "../application/usecases/registerOwnerUseCa
 import { GetInvitationDetailsUseCase } from "../application/usecases/getInvitationDetailsUseCase.ts";
 import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository.ts";
 import { OrganizationRepository } from "../../organization/infrastructure/organizationRepository.ts";
+import { SwitchWorkspaceUseCase } from "../application/usecases/switchWorkspaceUseCase.ts";
 
 const router = express.Router();
 
@@ -41,6 +43,7 @@ const registerWorkspaceAdminUseCase=new RegisterWorkspaceAdminUseCase(userReopsi
 const registerOwnerUseCase=new RegisterOwnerUseCase(userReopsitory, organizationRepository);
 const registerWorkspaceUserUseCase=new RegisterWorkspaceUserUseCase(userReopsitory, workspaceRepository);
 const getInvitationDetailsUseCase = new GetInvitationDetailsUseCase(workspaceRepository, organizationRepository);
+const switchWorkspaceUseCase = new SwitchWorkspaceUseCase(userReopsitory, workspaceRepository);
 
 const controller = new AuthController(
   registerUserUseCase,
@@ -53,10 +56,18 @@ const controller = new AuthController(
   registerWorkspaceAdminUseCase,
   registerOwnerUseCase,
   getInvitationDetailsUseCase,
-  registerWorkspaceUserUseCase
+  registerWorkspaceUserUseCase,
+  switchWorkspaceUseCase
 );
 
 router.post(API_ROUTES.AUTH.REFRESH, controller.refreshToken.bind(controller));
+router.post(
+  API_ROUTES.AUTH.SWITCH_WORKSPACE,
+  authMiddleware,
+  roleMiddleware([UserRoles.MEMBER]),
+  validateRequest(switchWorkspaceSchema),
+  controller.switchWorkspace.bind(controller),
+);
 router.post(API_ROUTES.AUTH.REGISTER, validateRequest(registerSchema), controller.register.bind(controller));
 router.post(API_ROUTES.AUTH.VERIFY_OTP, validateRequest(otpSchema),controller.verifyOtp.bind(controller));
 router.post(API_ROUTES.AUTH.RESEND_OTP, validateRequest(forgetPasswordSchema), controller.resendOtp.bind(controller));

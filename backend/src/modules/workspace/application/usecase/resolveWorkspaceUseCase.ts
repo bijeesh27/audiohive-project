@@ -4,6 +4,8 @@ import { IuserRepository } from "../../../auth/domain/IuserRepository";
 import { UserRoles } from "../../../../common/constant/userRoles";
 import { MESSAGES } from "../../../../common/constant/messages";
 import { ResolveWorkspaceDTO, ResolvedWorkspaceDTO } from "../dto/workspaceDTOs";
+import { getUserWorkspaceIds } from "../../../../shared/User.utils/workspaceMembership";
+import { AppError } from "../../../../common/Errors/AppError";
 
 export class ResolveWorkspaceUseCase implements IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO> {
   constructor(
@@ -23,10 +25,17 @@ export class ResolveWorkspaceUseCase implements IuseCase<ResolveWorkspaceDTO, Re
       };
     } else {
       const user = reqUser.userId ? await this.userRepository.findById(reqUser.userId) : null;
-      if (!user || !user.workspaceId) throw new Error(MESSAGES.ERRORS.USER_NOT_IN_WORKSPACE);
-      const workspaceId = user.workspaceId.toString();
+      if (!user || !user.status) throw new AppError(MESSAGES.ERRORS.USER_NOT_IN_WORKSPACE, 403);
+      const workspaceIds = getUserWorkspaceIds(user);
+      const workspaceId = reqUser.activeWorkspaceId;
+      if (!workspaceId || !workspaceIds.includes(workspaceId)) {
+        throw new AppError(MESSAGES.ERRORS.USER_NOT_IN_WORKSPACE, 403);
+      }
       const workspace = await this.workspaceRepository.getWorkspaceById(workspaceId);
-      const organizationId = workspace?.organizationId?.toString() ?? "";
+      if (!workspace || workspace.status !== "active") {
+        throw new AppError(MESSAGES.ERRORS.USER_NOT_IN_WORKSPACE, 403);
+      }
+      const organizationId = workspace.organizationId.toString();
       return { workspaceId, organizationId };
     }
   }

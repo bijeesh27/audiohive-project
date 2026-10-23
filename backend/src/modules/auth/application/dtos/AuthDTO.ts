@@ -2,7 +2,10 @@ export interface RegisterDTO{
     username:string;
     email:string;
     password:string,
-    role?:string
+    role?:string;
+    workspaceIds?: string[];
+    /** @deprecated Used only when reading pre-migration account data. */
+    workspaceId?: string;
 }
 
 export interface OtpDTO{
@@ -14,6 +17,10 @@ export interface OtpDTO{
 export interface LoginDTO{
     email:string;
     password:string;
+}
+
+export interface SwitchWorkspaceDTO {
+  workspaceId: string;
 }
 
 export interface ForgetPasswordDTO{
@@ -59,6 +66,8 @@ export interface InvitationDetailsDTO {
   workspaceId?: string;
   organizationId?: string;
   type: InvitationType;
+  workspaceAdminName?: string;
+  invitedName?: string;
   ownerName?: string;
   ownerEmail?: string;
 }

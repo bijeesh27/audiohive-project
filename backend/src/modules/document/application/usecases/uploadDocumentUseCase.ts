@@ -47,9 +47,8 @@ export class UploadDocumentUseCase
       await this.activityLogRepository.recordActivity({
             occurredAt: new Date(),
             action: "UPLOAD_DOCUMENT",
-            actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-            organizationId: data ? (data as any).organizationId : undefined,
-            workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
+            actorId: data.uploaderId,
+            workspaceId: data.workspaceId,
             targetType: "UPLOAD",
             targetId: undefined,
             metadata: {}

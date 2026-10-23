@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { getMyWorkspaces, inviteWorkspaceAdmin, updateWorkspace } from "../../services/workspaceServices";
+import { API_ROUTES } from "../../constants/Api_Routes";
 import Button from "../../components/common/Button";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
@@ -85,7 +86,7 @@ const Workspaces = () => {
   }, [search]);
 
   const goToDetails = (workspaceId: string) => {
-    navigate(`/organization-owner/getworkspace/${workspaceId}`);
+    navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.WORKSPACE_DETAIL(workspaceId));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -267,9 +268,9 @@ const Workspaces = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="w-52 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
-          <a href="/organization-owner/create-workspace">
+          <Link to={API_ROUTES.ORGANIZATION_ADMIN.NAV.CREATE_WORKSPACE}>
             <Button label="Add Workspace" />
-          </a>
+          </Link>
         </div>
       </div>
 

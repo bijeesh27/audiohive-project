@@ -17,6 +17,10 @@ import { createOrganizationSchema, updateOrganizationSchema } from "../../../com
 import { authMiddleware, roleMiddleware } from '../../../middleware/authMiddleware'
 import { UserRoles } from '../../../common/constant/userRoles'
 import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
+import { SetUserWorkspacesUseCase } from "../application/usecases/setUserWorkspacesUseCase";
+import { UserRepository as WorkspaceUserRepository } from "../../workspaceAdmin/infrastructure/userRepository";
+import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository";
+import { setUserWorkspacesSchema } from "../../../common/validation/formValidation";
 
 const router=express.Router()
 
@@ -31,6 +35,12 @@ const getMyOrganizationUseCase=new GetMyOrganizationUseCase(organizationReposito
 const getAllOrganizationUsersUseCase=new GetAllOrganizationUsersUseCase(organizationRepository)
 const getOrgDashboardStatsUseCase=new GetOrgDashboardStatsUseCase(organizationRepository)
 const sendOrganizationInvitationUseCase = new SendOrganizationInvitationUseCase(organizationRepository,activityLogRepository)
+const setUserWorkspacesUseCase = new SetUserWorkspacesUseCase(
+    organizationRepository,
+    new WorkspaceReopsitory(),
+    new WorkspaceUserRepository(),
+    activityLogRepository,
+)
 
 
 
@@ -42,7 +52,8 @@ getAllOrganizationUseCase,
 getMyOrganizationUseCase,
 getAllOrganizationUsersUseCase,
 getOrgDashboardStatsUseCase,
-sendOrganizationInvitationUseCase
+sendOrganizationInvitationUseCase,
+setUserWorkspacesUseCase
 )
 
 
@@ -65,6 +76,13 @@ router.get(
     authMiddleware,
     roleMiddleware([UserRoles.ORGANIZATION_OWNER]) ,
     controller.getOrganizationUsers.bind(controller)
+)
+router.put(
+    API_ROUTES.ORGANIZATION.SET_USER_WORKSPACES,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    validateRequest(setUserWorkspacesSchema),
+    controller.setUserWorkspaces.bind(controller)
 )
 router.get(
     API_ROUTES.ORGANIZATION.DASHBOARD_STATS,

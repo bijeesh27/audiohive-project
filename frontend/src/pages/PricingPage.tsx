@@ -3,6 +3,7 @@ import { subscriptionService } from '../services/subscriptionServices';
 import type { SubscriptionDTO } from '../services/subscriptionServices';
 import { Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_ROUTES } from '../constants/Api_Routes';
 
 const PricingPage = () => {
   const [plans, setPlans] = useState<SubscriptionDTO[]>([]);
@@ -25,7 +26,7 @@ const PricingPage = () => {
   }, []);
 
   const handleChoosePlan = (plan: SubscriptionDTO) => {
-    navigate('/create-organization', { state: { selectedPlanId: plan._id } });
+    navigate(API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION, { state: { selectedPlanId: plan._id } });
   };
 
   if (loading) {

@@ -16,8 +16,9 @@ import {
 } from "../application/dto/workspaceDTOs";
 import { IWorkspaceDocument } from "../infrastructure/workspaceSchema";
 import { AuthRequest } from "../../../middleware/authMiddleware";
-import { IuserDocument } from "../../../shared/User.utils/userSchema";
+import { IuserDTO } from "../../../shared/User.utils/userDTO";
 import { AppError } from "../../../common/Errors/AppError";
+import { GetMemberWorkspacesInput } from "../application/usecase/getMemberWorkspacesUseCase";
 
 export class WorkspaceController {
   constructor(
@@ -36,9 +37,10 @@ export class WorkspaceController {
     private readonly sendWorkspaceInvitationUseCase: IuseCase<SendWorkspaceInvitationDTO, void>,
     private readonly getWorkspaceUsersUseCase: IuseCase<
       GetWorkspaceUsersDTO,
-      { users: IuserDocument[]; total: number } | null
+      { users: IuserDTO[]; total: number } | null
     >,
-    private readonly removeWorkspaceUserUseCase: IuseCase<RemoveWorkspaceUserDTO, IuserDocument>
+    private readonly removeWorkspaceUserUseCase: IuseCase<RemoveWorkspaceUserDTO, IuserDTO>,
+    private readonly getMemberWorkspacesUseCase: IuseCase<GetMemberWorkspacesInput, IWorkspaceDocument[]>
   ) {}
 
   async createWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
@@ -142,27 +144,45 @@ export class WorkspaceController {
     }
   }
 
-  async getWorkspaceUsers(req: Request, res: Response, next: NextFunction) {
+  async getWorkspaceUsers(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const workspaceId = req.params.id as string;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search as string | undefined;
+      const ownerEmail = req.user?.userEmail;
+      if (!ownerEmail) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
 
-      const data = await this.getWorkspaceUsersUseCase.execute({ workspaceId, page, limit, search });
+      const data = await this.getWorkspaceUsersUseCase.execute({ workspaceId, ownerEmail, page, limit, search });
       return ApiResposne.success(res, MESSAGES.SUCCESS.USERS_FETCHED, data);
     } catch (error) {
       next(error);
     }
   }
 
-  async removeWorkspaceUser(req: Request, res: Response, next: NextFunction) {
+  async removeWorkspaceUser(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const workspaceId = req.params.id as string;
       const userId = req.params.userId as string;
 
-      const data = await this.removeWorkspaceUserUseCase.execute({ workspaceId, userId });
+      const ownerEmail = req.user?.userEmail;
+      const actorId = req.user?.id;
+      if (!ownerEmail || !actorId) {
+        throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      }
+
+      const data = await this.removeWorkspaceUserUseCase.execute({ workspaceId, userId, ownerEmail, actorId });
       return ApiResposne.success(res, MESSAGES.SUCCESS.USER_REMOVED_FROM_WORKSPACE, data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMemberWorkspaces(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user?.id) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      const workspaces = await this.getMemberWorkspacesUseCase.execute({ userId: req.user.id });
+      return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_GET_ALL, { workspaces });
     } catch (error) {
       next(error);
     }
