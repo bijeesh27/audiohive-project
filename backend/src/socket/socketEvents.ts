@@ -13,7 +13,24 @@ export const SOCKET_EVENTS = {
   CHAT_MESSAGE_DELETED: "chat:message-deleted",
   CHAT_TYPING: "chat:typing",
   CHAT_STOP_TYPING: "chat:stop-typing",
-  // ── Voice / WebRTC ──────────────────────────────────────────
+  // ── Direct Chat ─────────────────────────────────────────────
+  DM_NEW_MESSAGE: "dm:new-message",
+  DM_MESSAGES_READ: "dm:messages-read",
+  DM_UNREAD_COUNT: "dm:unread-count",
+  DM_TYPING: "dm:typing",
+  DM_STOP_TYPING: "dm:stop-typing",
+  USER_STATUS_CHANGED: "user:status-changed",
+  // ── Call / WebRTC (Audio & Video) ───────────────────────────
+  CALL_JOIN: "call:join",
+  CALL_LEAVE: "call:leave",
+  CALL_USER_JOINED: "call:user-joined",
+  CALL_USER_LEFT: "call:user-left",
+  CALL_OFFER: "call:offer",
+  CALL_ANSWER: "call:answer",
+  CALL_ICE_CANDIDATE: "call:ice-candidate",
+  CALL_PARTICIPANTS: "call:participants",
+  CALL_MEDIA_STATE_CHANGED: "call:media-state-changed",
+  // ── Voice / WebRTC (Backwards Compatibility) ────────────────
   VOICE_JOIN: "voice:join",
   VOICE_LEAVE: "voice:leave",
   VOICE_USER_JOINED: "voice:user-joined",

@@ -3,11 +3,32 @@ import { Server as SocketIOServer } from "socket.io";
 import { socketAuthMiddleware } from "./socketMiddleware.js";
 import { SOCKET_EVENTS } from "./socketEvents.js";
 import logger from "../shared/utils/logger.js";
-import { RoomModel } from "../modules/room/infrastructure/roomSchema.js";
+import { RoomRepository } from "../modules/room/infrastructure/roomRepository.js";
+import { ValidateRoomAccessUseCase } from "../modules/room/application/usecases/validateRoomAccessUseCase.js";
+import { MeetingRepository } from "../modules/meeting/infrastructure/meetingRepository.js";
+import { ValidateCallAccessUseCase } from "../modules/meeting/application/usecases/validateCallAccessUseCase.js";
+
+export interface CallParticipantSession {
+  peerId: string;
+  userId: string;
+  username: string;
+  isMuted: boolean;
+  isVideoOff: boolean;
+  isScreenSharing?: boolean;
+}
 
 const roomPresence = new Map<string, Map<string, { userId: string; username: string }>>();
+const callRooms = new Map<string, Map<string, CallParticipantSession>>();
+const socketCallRoom = new Map<string, string>(); // socketId -> roomId
+const onlineUsers = new Map<string, number>();
 
-const voiceRooms = new Map<string, Map<string, { userId: string; username: string }>>();
+const roomRepository = new RoomRepository();
+const validateRoomAccessUseCase = new ValidateRoomAccessUseCase(roomRepository);
+const meetingRepository = new MeetingRepository();
+const validateCallAccessUseCase = new ValidateCallAccessUseCase(
+  roomRepository,
+  meetingRepository
+);
 
 let io: SocketIOServer;
 
@@ -24,28 +45,74 @@ export const socketService = {
 
     io.on("connection", (socket) => {
       const user = socket.data.user;
+      if (!user) return;
+
+      const userId = user.id;
       const workspaceId: string | undefined = user?.workspaceId
         ? String(user.workspaceId)
         : undefined;
 
+      // Join individual user room for private/direct messaging & notifications
+      socket.join(`user:${userId}`);
+
+      // Track online status
+      const currentSocketCount = (onlineUsers.get(userId) || 0) + 1;
+      onlineUsers.set(userId, currentSocketCount);
+
+      if (currentSocketCount === 1) {
+        if (workspaceId) {
+          io.to(`workspace:${workspaceId}`).emit(SOCKET_EVENTS.USER_STATUS_CHANGED, {
+            userId,
+            isOnline: true,
+          });
+        }
+      }
+
       if (workspaceId) {
         socket.join(`workspace:${workspaceId}`);
-        socket.join(`user:${user.id}`);
         logger.info(
           `[Socket] User ${user?.id} (${user?.role}) joined workspace:${workspaceId}`
         );
       } else {
-        logger.warn(
+        logger.info(
           `[Socket] User ${user?.id} (${user?.role}) connected without workspaceId`
         );
       }
 
+      // ── Direct Messaging events ────────────────────────────────
+      socket.on(SOCKET_EVENTS.DM_TYPING, ({ receiverId, conversationId }: { receiverId: string; conversationId: string }) => {
+        io.to(`user:${receiverId}`).emit(SOCKET_EVENTS.DM_TYPING, {
+          senderId: userId,
+          username: user.username ?? user.userEmail ?? userId,
+          conversationId,
+        });
+      });
+
+      socket.on(SOCKET_EVENTS.DM_STOP_TYPING, ({ receiverId, conversationId }: { receiverId: string; conversationId: string }) => {
+        io.to(`user:${receiverId}`).emit(SOCKET_EVENTS.DM_STOP_TYPING, {
+          senderId: userId,
+          conversationId,
+        });
+      });
+
+      socket.on("dm:get-online-users", (callback?: (users: string[]) => void) => {
+        const activeIds = Array.from(onlineUsers.keys());
+        if (typeof callback === "function") {
+          callback(activeIds);
+        } else {
+          socket.emit("dm:online-users", activeIds);
+        }
+      });
+
       // ── Room presence ──────────────────────────────────────────
       socket.on(SOCKET_EVENTS.ROOM_JOIN, async (roomId: string) => {
-        const room = await RoomModel.findById(roomId).select("workspaceId allowedUsers type");
-        const isAllowed = room && room.workspaceId.toString() === workspaceId && (
-          user.role !== "member" || room.type === "public" || room.allowedUsers.some((id) => id.toString() === user.id)
-        );
+        const isAllowed = await validateRoomAccessUseCase.execute({
+          roomId,
+          workspaceId,
+          userId: user.id,
+          role: user.role,
+        });
+
         if (!isAllowed) {
           socket.emit("access-denied", { message: "Room access denied" });
           return;
@@ -64,17 +131,19 @@ export const socketService = {
         const online = Array.from(roomPresence.get(roomId)!.values());
 
         io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
-
         socket.emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
 
         logger.info(`[Socket] User ${user.id} joined room:${roomId} — ${online.length} online`);
       });
 
       socket.on(SOCKET_EVENTS.ROOM_GET_PRESENCE, async (roomId: string) => {
-        const room = await RoomModel.findById(roomId).select("workspaceId allowedUsers type");
-        const isAllowed = room && room.workspaceId.toString() === workspaceId && (
-          user.role !== "member" || room.type === "public" || room.allowedUsers.some((id) => id.toString() === user.id)
-        );
+        const isAllowed = await validateRoomAccessUseCase.execute({
+          roomId,
+          workspaceId,
+          userId: user.id,
+          role: user.role,
+        });
+
         if (!isAllowed) {
           socket.emit("access-denied", { message: "Room access denied" });
           return;
@@ -114,91 +183,193 @@ export const socketService = {
         });
       });
 
-      // ── Voice / WebRTC Signaling ────────────────────────────────
-      socket.on(SOCKET_EVENTS.VOICE_JOIN, async (roomId: string) => {
-        // Reuse existing access-check logic
-        const room = await RoomModel.findById(roomId).select("workspaceId allowedUsers type");
-        const isAllowed =
-          room &&
-          room.workspaceId.toString() === workspaceId &&
-          (user.role !== "member" ||
-            room.type === "public" ||
-            room.allowedUsers.some((id) => id.toString() === user.id));
+      // ── Call / WebRTC (Audio & Video) ──────────────────────────
+      const handleLeaveCall = (socketId: string) => {
+        const roomId = socketCallRoom.get(socketId);
+        if (!roomId) return;
+
+        socketCallRoom.delete(socketId);
+        const callMap = callRooms.get(roomId);
+        if (callMap) {
+          callMap.delete(socketId);
+          io.to(`call:${roomId}`).emit(SOCKET_EVENTS.CALL_USER_LEFT, { peerId: socketId });
+          io.to(`call:${roomId}`).emit(SOCKET_EVENTS.VOICE_USER_LEFT, { peerId: socketId });
+          if (callMap.size === 0) {
+            callRooms.delete(roomId);
+          }
+        }
+        socket.leave(`call:${roomId}`);
+        logger.info(`[Call] Peer ${socketId} left call in room:${roomId}`);
+      };
+
+      const handleJoinCall = async (
+        roomId: string,
+        mediaState?: { isMuted?: boolean; isVideoOff?: boolean }
+      ) => {
+        const isAllowed = await validateCallAccessUseCase.execute({
+          roomId,
+          workspaceId,
+          userId: user.id,
+          role: user.role,
+        });
 
         if (!isAllowed) {
-          socket.emit("access-denied", { message: "Room access denied" });
+          socket.emit("access-denied", { message: "Call access denied" });
           return;
         }
 
-        if (!voiceRooms.has(roomId)) {
-          voiceRooms.set(roomId, new Map());
+        // Leave any prior call session first
+        if (socketCallRoom.has(socket.id)) {
+          handleLeaveCall(socket.id);
         }
 
-        const voiceMap = voiceRooms.get(roomId)!;
-        const existingParticipants = Array.from(voiceMap.entries()).map(
-          ([peerId, info]) => ({ peerId, ...info })
-        );
-        socket.emit(SOCKET_EVENTS.VOICE_PARTICIPANTS, existingParticipants);
-        voiceMap.forEach((_info, peerId) => {
-          io.to(peerId).emit(SOCKET_EVENTS.VOICE_USER_JOINED, {
-            peerId: socket.id,
-            userId: user.id,
-            username: user.username ?? user.userEmail ?? user.id,
-          });
-        });
+        socket.join(`call:${roomId}`);
+        socketCallRoom.set(socket.id, roomId);
 
-        voiceMap.set(socket.id, {
+        if (!callRooms.has(roomId)) {
+          callRooms.set(roomId, new Map());
+        }
+
+        const callMap = callRooms.get(roomId)!;
+        const participant: CallParticipantSession = {
+          peerId: socket.id,
           userId: user.id,
           username: user.username ?? user.userEmail ?? user.id,
-        });
+          isMuted: mediaState?.isMuted ?? false,
+          isVideoOff: mediaState?.isVideoOff ?? false,
+        };
+
+        // Send existing participants to the newly joined peer
+        const existingParticipants = Array.from(callMap.values());
+        socket.emit(SOCKET_EVENTS.CALL_PARTICIPANTS, existingParticipants);
+        socket.emit(SOCKET_EVENTS.VOICE_PARTICIPANTS, existingParticipants);
+
+        // Notify all existing peers in this room's call
+        socket.to(`call:${roomId}`).emit(SOCKET_EVENTS.CALL_USER_JOINED, participant);
+        socket.to(`call:${roomId}`).emit(SOCKET_EVENTS.VOICE_USER_JOINED, participant);
+
+        callMap.set(socket.id, participant);
 
         logger.info(
-          `[Voice] User ${user.id} joined voice in room:${roomId} — ${voiceMap.size} in voice`
+          `[Call] User ${user.id} (${participant.username}) joined call in room:${roomId} — ${callMap.size} in call`
         );
-      });
+      };
 
-      socket.on(SOCKET_EVENTS.VOICE_LEAVE, (roomId: string) => {
-        const voiceMap = voiceRooms.get(roomId);
-        if (!voiceMap) return;
-
-        voiceMap.delete(socket.id);
-        io.to(`room:${roomId}`).emit(SOCKET_EVENTS.VOICE_USER_LEFT, {
-          peerId: socket.id,
-        });
-
-        if (voiceMap.size === 0) {
-          voiceRooms.delete(roomId);
+      const verifyCallSignaling = (to: string): boolean => {
+        const senderRoom = socketCallRoom.get(socket.id);
+        const targetRoom = socketCallRoom.get(to);
+        if (!senderRoom || !targetRoom || senderRoom !== targetRoom) {
+          logger.warn(
+            `[Call] Unauthorized signaling attempt from ${socket.id} to ${to}`
+          );
+          return false;
         }
+        return true;
+      };
 
-        logger.info(
-          `[Voice] User ${user.id} left voice in room:${roomId} — ${voiceMap?.size ?? 0} in voice`
-        );
-      });
+      // Join call (support both CALL_JOIN and VOICE_JOIN)
       socket.on(
-        SOCKET_EVENTS.VOICE_OFFER,
-        ({ to, sdp }: { to: string; sdp: RTCSessionDescriptionInit }) => {
-          io.to(to).emit(SOCKET_EVENTS.VOICE_OFFER, { from: socket.id, sdp });
+        SOCKET_EVENTS.CALL_JOIN,
+        (roomId: string, mediaState?: { isMuted?: boolean; isVideoOff?: boolean }) => {
+          handleJoinCall(roomId, mediaState);
         }
       );
 
       socket.on(
-        SOCKET_EVENTS.VOICE_ANSWER,
-        ({ to, sdp }: { to: string; sdp: RTCSessionDescriptionInit }) => {
-          io.to(to).emit(SOCKET_EVENTS.VOICE_ANSWER, { from: socket.id, sdp });
+        SOCKET_EVENTS.VOICE_JOIN,
+        (roomId: string, mediaState?: { isMuted?: boolean; isVideoOff?: boolean }) => {
+          handleJoinCall(roomId, mediaState);
         }
       );
 
+      // Leave call (support both CALL_LEAVE and VOICE_LEAVE)
+      socket.on(SOCKET_EVENTS.CALL_LEAVE, () => {
+        handleLeaveCall(socket.id);
+      });
+
+      socket.on(SOCKET_EVENTS.VOICE_LEAVE, () => {
+        handleLeaveCall(socket.id);
+      });
+
+      // Media state toggle (mic / video / screen share)
       socket.on(
-        SOCKET_EVENTS.VOICE_ICE_CANDIDATE,
-        ({ to, candidate }: { to: string; candidate: RTCIceCandidateInit }) => {
-          io.to(to).emit(SOCKET_EVENTS.VOICE_ICE_CANDIDATE, {
-            from: socket.id,
-            candidate,
+        SOCKET_EVENTS.CALL_MEDIA_STATE_CHANGED,
+        ({
+          isMuted,
+          isVideoOff,
+          isScreenSharing,
+        }: {
+          isMuted?: boolean;
+          isVideoOff?: boolean;
+          isScreenSharing?: boolean;
+        }) => {
+          const roomId = socketCallRoom.get(socket.id);
+          if (!roomId) return;
+          const callMap = callRooms.get(roomId);
+          const participant = callMap?.get(socket.id);
+          if (!participant) return;
+
+          if (typeof isMuted === "boolean") participant.isMuted = isMuted;
+          if (typeof isVideoOff === "boolean") participant.isVideoOff = isVideoOff;
+          if (typeof isScreenSharing === "boolean") participant.isScreenSharing = isScreenSharing;
+
+          io.to(`call:${roomId}`).emit(SOCKET_EVENTS.CALL_MEDIA_STATE_CHANGED, {
+            peerId: socket.id,
+            isMuted: participant.isMuted,
+            isVideoOff: participant.isVideoOff,
+            isScreenSharing: participant.isScreenSharing,
           });
         }
       );
 
+      // WebRTC Offer
+      const handleOffer = ({ to, sdp }: { to: string; sdp: RTCSessionDescriptionInit }) => {
+        if (!verifyCallSignaling(to)) return;
+        io.to(to).emit(SOCKET_EVENTS.CALL_OFFER, { from: socket.id, sdp });
+        io.to(to).emit(SOCKET_EVENTS.VOICE_OFFER, { from: socket.id, sdp });
+      };
+      socket.on(SOCKET_EVENTS.CALL_OFFER, handleOffer);
+      socket.on(SOCKET_EVENTS.VOICE_OFFER, handleOffer);
+
+      // WebRTC Answer
+      const handleAnswer = ({ to, sdp }: { to: string; sdp: RTCSessionDescriptionInit }) => {
+        if (!verifyCallSignaling(to)) return;
+        io.to(to).emit(SOCKET_EVENTS.CALL_ANSWER, { from: socket.id, sdp });
+        io.to(to).emit(SOCKET_EVENTS.VOICE_ANSWER, { from: socket.id, sdp });
+      };
+      socket.on(SOCKET_EVENTS.CALL_ANSWER, handleAnswer);
+      socket.on(SOCKET_EVENTS.VOICE_ANSWER, handleAnswer);
+
+      // WebRTC ICE Candidate
+      const handleIceCandidate = ({
+        to,
+        candidate,
+      }: {
+        to: string;
+        candidate: RTCIceCandidateInit;
+      }) => {
+        if (!verifyCallSignaling(to)) return;
+        io.to(to).emit(SOCKET_EVENTS.CALL_ICE_CANDIDATE, { from: socket.id, candidate });
+        io.to(to).emit(SOCKET_EVENTS.VOICE_ICE_CANDIDATE, { from: socket.id, candidate });
+      };
+      socket.on(SOCKET_EVENTS.CALL_ICE_CANDIDATE, handleIceCandidate);
+      socket.on(SOCKET_EVENTS.VOICE_ICE_CANDIDATE, handleIceCandidate);
+
       socket.on("disconnect", () => {
+        // ── Clean up online users ──
+        const remainingSockets = (onlineUsers.get(userId) || 1) - 1;
+        if (remainingSockets <= 0) {
+          onlineUsers.delete(userId);
+          if (workspaceId) {
+            io.to(`workspace:${workspaceId}`).emit(SOCKET_EVENTS.USER_STATUS_CHANGED, {
+              userId,
+              isOnline: false,
+            });
+          }
+        } else {
+          onlineUsers.set(userId, remainingSockets);
+        }
+
         // ── Clean up room presence ──
         roomPresence.forEach((members, roomId) => {
           if (members.has(socket.id)) {
@@ -209,16 +380,8 @@ export const socketService = {
           }
         });
 
-        // ── Clean up voice rooms ──
-        voiceRooms.forEach((voiceMap, roomId) => {
-          if (voiceMap.has(socket.id)) {
-            voiceMap.delete(socket.id);
-            io.to(`room:${roomId}`).emit(SOCKET_EVENTS.VOICE_USER_LEFT, {
-              peerId: socket.id,
-            });
-            if (voiceMap.size === 0) voiceRooms.delete(roomId);
-          }
-        });
+        // ── Clean up call rooms ──
+        handleLeaveCall(socket.id);
 
         logger.info(`[Socket] User ${user?.id} disconnected`);
       });
@@ -231,6 +394,14 @@ export const socketService = {
   getIO(): SocketIOServer {
     if (!io) throw new Error("Socket.io not initialized. Call socketService.init() first.");
     return io;
+  },
+
+  isUserOnline(userId: string): boolean {
+    return (onlineUsers.get(userId) || 0) > 0;
+  },
+
+  getOnlineUserIds(): string[] {
+    return Array.from(onlineUsers.keys());
   },
 
   emitToWorkspace(workspaceId: string, event: string, payload: unknown) {

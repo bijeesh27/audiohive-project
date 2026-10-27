@@ -1,11 +1,12 @@
 import express from "express";
-import { authMiddleware } from "../../../middleware/authMiddleware";
-import { ChatMessageRepository } from "../infrastructure/chatMessageRepository";
-import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
-import { SendMessageUseCase } from "../application/usecases/sendMessageUseCase";
-import { GetRoomMessagesUseCase } from "../application/usecases/getRoomMessagesUseCase";
-import { DeleteMessageUseCase } from "../application/usecases/deleteMessageUseCase";
-import { ChatController } from "./chat.controller";
+import { authMiddleware } from "../../../middleware/authMiddleware.js";
+import { ChatMessageRepository } from "../infrastructure/chatMessageRepository.js";
+import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository.js";
+import { SendMessageUseCase } from "../application/usecases/sendMessageUseCase.js";
+import { GetRoomMessagesUseCase } from "../application/usecases/getRoomMessagesUseCase.js";
+import { DeleteMessageUseCase } from "../application/usecases/deleteMessageUseCase.js";
+import { ChatController } from "./chat.controller.js";
+import directMessageRouter from "./directMessage.routes.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -24,6 +25,10 @@ const controller = new ChatController(
 
 router.use(authMiddleware);
 
+// Direct messaging routes
+router.use("/direct", directMessageRouter);
+
+// Room chat routes
 router.get("/:roomId/messages", controller.getMessages.bind(controller));
 router.post("/:roomId/messages", controller.sendMessage.bind(controller));
 router.delete("/:roomId/messages/:messageId", controller.deleteMessage.bind(controller));

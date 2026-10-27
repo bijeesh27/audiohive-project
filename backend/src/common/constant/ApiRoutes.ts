@@ -115,5 +115,14 @@ export const API_ROUTES = {
     GET_WORKSPACE_LOGS: '/workspace',
     GET_ORGANIZATION_LOGS: '/organization/:organizationId',
     GET_SYSTEM_LOGS: '/system',
-  }
+  },
+
+  MEETING: {
+    CREATE_MEETING: "/",
+    GET_ALL_MEETINGS: "/",
+    GET_MEETING: "/:id",
+    UPDATE_MEETING: "/:id",
+    CANCEL_MEETING: "/:id/cancel",
+    DELETE_MEETING: "/:id",
+  },
 };

@@ -26,8 +26,6 @@ const RemoteAudio = ({ stream }: { stream: MediaStream }) => {
     <audio
       ref={audioRef}
       autoPlay
-      playsInline
-      // eslint-disable-next-line react/no-unknown-property
       style={{ display: "none" }}
     />
   );

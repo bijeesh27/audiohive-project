@@ -10,7 +10,7 @@ interface Document {
   url: string;
   mimeType: string;
   size: number;
-  uploaderId: { _id: string; username: string };
+  uploaderId?: { _id?: string; username?: string } | string | null;
   createdAt: string;
 }
 
@@ -18,6 +18,22 @@ const canPreviewDocument = (mimeType?: string) =>
   mimeType === "application/pdf" ||
   mimeType === "text/plain" ||
   Boolean(mimeType?.startsWith("image/"));
+
+const getUploaderName = (uploaderId?: { _id?: string; username?: string } | string | null) => {
+  if (!uploaderId) return "Unknown";
+  if (typeof uploaderId === "object") {
+    return uploaderId.username || "Unknown";
+  }
+  return "Unknown";
+};
+
+const getUploaderId = (uploaderId?: { _id?: string; username?: string } | string | null) => {
+  if (!uploaderId) return null;
+  if (typeof uploaderId === "object") {
+    return uploaderId._id || null;
+  }
+  return uploaderId;
+};
 
 export const RoomDocuments = ({ roomId }: { roomId: string }) => {
   const { socket } = useSocket();
@@ -203,7 +219,7 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
                 <div>
                   <p className="text-sm font-medium text-gray-900 truncate max-w-[200px] md:max-w-xs">{doc.originalName}</p>
                   <p className="text-xs text-gray-500">
-                    {formatSize(doc.size)} • by {doc.uploaderId.username}
+                    {formatSize(doc.size)} • by {getUploaderName(doc.uploaderId)}
                   </p>
                 </div>
               </div>
@@ -211,9 +227,9 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
                 <button
                   onClick={() => {
                     setViewFile({
-                      documentId: doc._id,
-                      status: canPreviewDocument(doc.mimeType) ? "loading" : "unsupported",
-                    });
+                    documentId: doc._id,
+                    status: canPreviewDocument(doc.mimeType) ? "loading" : "unsupported",
+                  });
                     setDocumentToView(doc);
                   }}
                   className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center"
@@ -230,7 +246,7 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
                   <Download className="w-4 h-4" />
                 </button>
                 
-                {currentUserId === doc.uploaderId._id && (
+                {currentUserId && getUploaderId(doc.uploaderId) === currentUserId && (
                   <button
                     onClick={() => setDocumentToDelete(doc._id)}
                     disabled={deletingId === doc._id}
