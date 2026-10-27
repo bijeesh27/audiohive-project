@@ -15,17 +15,12 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-4 pl-4">
-        <button className="relative p-2 text-gray-400 hover:text-gray-500 transition-colors">
-          
-          
-
-          <ActionButton
-         icon={Bell}
-              label="View Notifications"
-              onClick={()=>{} }
-              colorClasses="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 focus:ring-indigo-300"/>
-        
-        </button>
+        <ActionButton
+          icon={Bell}
+          label="View Notifications"
+          onClick={() => {}}
+          colorClasses="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 focus:ring-indigo-300"
+        />
         <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium cursor-pointer">
           WA
         </div>

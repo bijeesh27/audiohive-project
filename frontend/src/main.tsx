@@ -5,6 +5,7 @@ import App from "./App.tsx";
 import AuthContextProvider from "./context/AuthContext.tsx";
 import SocketContextProvider from "./context/SocketContext.tsx";
 import AnnouncementContextProvider from "./context/AnnouncementContext.tsx";
+import DirectChatContextProvider from "./context/DirectChatContext.tsx";
 import ErrorBoundary from "./components/common/ErrorBoundary.tsx";
 
 createRoot(document.getElementById("root")!).render(
@@ -13,7 +14,9 @@ createRoot(document.getElementById("root")!).render(
       <AuthContextProvider>
         <SocketContextProvider>
           <AnnouncementContextProvider>
-            <App />
+            <DirectChatContextProvider>
+              <App />
+            </DirectChatContextProvider>
           </AnnouncementContextProvider>
         </SocketContextProvider>
       </AuthContextProvider>

@@ -1,21 +1,25 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, DoorOpen, LogOut, Megaphone } from "lucide-react";
+import { LayoutDashboard, DoorOpen, Calendar, LogOut, Megaphone, MessageSquare } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
 import { API_ROUTES } from "../../../constants/Api_Routes";
 import { useUnreadCount } from "../../../hooks/useUnreadCount";
+import { useDirectChat } from "../../../context/DirectChatContext";
 
 export default function MemberSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setAccessToken, setUserRole, setWorkspaceId, setWorkspaceOptions } = useAuth();
-  const { unreadCount } = useUnreadCount();
+  const { unreadCount: announcementUnread } = useUnreadCount();
+  const { unreadCount: dmUnread } = useDirectChat();
 
   const navItems = [
     { name: "Dashboard", path: API_ROUTES.MEMBER.NAV.DASHBOARD, icon: LayoutDashboard },
     { name: "Rooms", path: API_ROUTES.MEMBER.NAV.ROOMS, icon: DoorOpen },
-    { name: "Announcements", path: API_ROUTES.MEMBER.NAV.ANNOUNCEMENTS, icon: Megaphone, badge: unreadCount },
+    { name: "Meetings", path: API_ROUTES.MEMBER.NAV.MEETINGS, icon: Calendar },
+    { name: "Chat", path: API_ROUTES.MEMBER.NAV.CHAT, icon: MessageSquare, badge: dmUnread },
+    { name: "Announcements", path: API_ROUTES.MEMBER.NAV.ANNOUNCEMENTS, icon: Megaphone, badge: announcementUnread },
   ];
 
   const handleLogout = async () => {
@@ -86,4 +90,3 @@ export default function MemberSidebar() {
     </aside>
   );
 }
-

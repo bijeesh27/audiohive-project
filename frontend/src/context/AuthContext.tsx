@@ -1,4 +1,3 @@
-
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import axiosInstance, { setToken } from "../config/axios";
 import { ContextError } from "../Errors/error";
@@ -13,6 +12,7 @@ export interface WorkspaceOption {
 
 interface AuthContextType {
   accessToken: string | null;
+  userId: string | null;
   username: string | null;
   setAccessToken: React.Dispatch<React.SetStateAction<string | null>>;
   userRole: string | null;
@@ -36,6 +36,21 @@ const extractWorkspaceId = (token: string | null): string | null => {
     if (!payload) return null;
     const decoded = JSON.parse(atob(payload));
     return decoded?.workspaceId ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const extractUserId = (token: string | null): string | null => {
+  if (!token) return null;
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const bytes = Uint8Array.from(atob(paddedBase64), (character) => character.charCodeAt(0));
+    const decoded = JSON.parse(new TextDecoder().decode(bytes));
+    return decoded?.id ?? decoded?.userId ?? null;
   } catch {
     return null;
   }
@@ -65,6 +80,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [workspaceOptions, setWorkspaceOptions] = useState<WorkspaceOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const username = useMemo(() => extractUsername(accessToken), [accessToken]);
+  const userId = useMemo(() => extractUserId(accessToken), [accessToken]);
 
   const loadMemberWorkspaces = useCallback(async () => {
     const response = await getMemberWorkspaces();
@@ -101,23 +117,26 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
           if (role === "workspaceadmin") {
             try {
               const profileRes = await getWorkspaceAdminProfile();
-              setWorkspaceId(profileRes.data?.data?.workspaceId ?? null);
+              const profileWorkspaceId = profileRes?.data?.data?.workspaceId;
+              setWorkspaceId(profileWorkspaceId ?? tokenWorkspaceId ?? null);
             } catch {
-              setWorkspaceId(null);
+              setWorkspaceId(tokenWorkspaceId ?? null);
             }
           } else if (role === "member") {
-            setWorkspaceId(tokenWorkspaceId);
             try {
-              await loadMemberWorkspaces();
+              const workspaces = await loadMemberWorkspaces();
+              const matchingWorkspace = workspaces.find((w) => w._id === tokenWorkspaceId);
+              const selectedWorkspaceId = matchingWorkspace?._id ?? workspaces[0]?._id ?? tokenWorkspaceId ?? null;
+              setWorkspaceId(selectedWorkspaceId);
             } catch {
-              setWorkspaceOptions([]);
+              setWorkspaceId(tokenWorkspaceId ?? null);
             }
           } else {
-            setWorkspaceId(tokenWorkspaceId);
-            setWorkspaceOptions([]);
+            setWorkspaceId(tokenWorkspaceId ?? null);
           }
         }
-      } catch {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
         setToken(null);
         setAccessToken(null);
         setUserRole(null);
@@ -129,29 +148,30 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
     };
     initAuth();
   }, [loadMemberWorkspaces]);
+
   useEffect(() => {
-    const handleLogoutEvent = (e: StorageEvent) => {
+    const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "logout") {
-        setToken(null);
         setAccessToken(null);
         setUserRole(null);
         setWorkspaceId(null);
         setWorkspaceOptions([]);
       }
     };
-    window.addEventListener("storage", handleLogoutEvent);
-    return () => window.removeEventListener("storage", handleLogoutEvent);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const isAuthenticated = !!accessToken; 
+  const isAuthenticated = !!accessToken;
 
   return (
-    <AuthContext.Provider 
-      value={{ 
-        accessToken, 
+    <AuthContext.Provider
+      value={{
+        accessToken,
+        userId,
         username,
-        setAccessToken, 
-        userRole, 
+        setAccessToken,
+        userRole,
         setUserRole,
         workspaceId,
         setWorkspaceId,
@@ -172,7 +192,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new ContextError("useAuth must be used inside AuthContextProvider")
+    throw new ContextError("useAuth must be used inside AuthContextProvider");
   }
   return context;
 };

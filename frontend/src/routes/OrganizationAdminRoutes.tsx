@@ -1,14 +1,14 @@
-
-import { Route, Routes } from 'react-router-dom'
-import { API_ROUTES } from '../constants/Api_Routes'
-import Dashboard from '../pages/organizationAdmin/Dashboard'
-import OrganizationLayout from '../components/organizationAdmin/layout/OrganizationLayout'
-import Workspaces from '../pages/organizationAdmin/Workspaces'
-import CreateWorkspace from '../pages/organizationAdmin/CreateWorkspace'
-import SubscriptionDetails from '../pages/organizationAdmin/SubscriptionDetails'
-import Users from '../pages/organizationAdmin/Users'
-import WorkspaceDetailsPage from '../pages/organizationAdmin/WorkspaceDetailsPage'
-import ActivityLog from '../pages/organizationAdmin/ActivityLog'
+import { Route, Routes } from 'react-router-dom';
+import { API_ROUTES } from '../constants/Api_Routes';
+import Dashboard from '../pages/organizationAdmin/Dashboard';
+import OrganizationLayout from '../components/organizationAdmin/layout/OrganizationLayout';
+import Workspaces from '../pages/organizationAdmin/Workspaces';
+import CreateWorkspace from '../pages/organizationAdmin/CreateWorkspace';
+import SubscriptionDetails from '../pages/organizationAdmin/SubscriptionDetails';
+import Users from '../pages/organizationAdmin/Users';
+import WorkspaceDetailsPage from '../pages/organizationAdmin/WorkspaceDetailsPage';
+import ActivityLog from '../pages/organizationAdmin/ActivityLog';
+import DirectChatPage from '../pages/chat/DirectChatPage';
 
 const OrganizationRoutes = () => {
   return (
@@ -22,10 +22,12 @@ const OrganizationRoutes = () => {
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.USERS} element={<Users/>}/>
             <Route path='/getworkspace/:workspaceId' element={<WorkspaceDetailsPage/>}/>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.ACTIVITY_LOGS} element={<ActivityLog/>}/>
+            <Route path={API_ROUTES.ORGANIZATION_ADMIN.CHAT} element={<DirectChatPage/>}/>
+            <Route path={API_ROUTES.ORGANIZATION_ADMIN.CHAT_CONVERSATION} element={<DirectChatPage/>}/>
         </Route>
       </Routes>
     </div>
-  )
-}
+  );
+};
 
-export default OrganizationRoutes
+export default OrganizationRoutes;

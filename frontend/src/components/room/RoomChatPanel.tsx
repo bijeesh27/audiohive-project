@@ -53,7 +53,7 @@ export const RoomChatPanel: React.FC<RoomChatPanelProps> = ({ roomId, roomName }
   // Fetch initial message history
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    // loading initial state is true
 
     getRoomMessages(roomId, { limit: 50 })
       .then((data) => {

@@ -1,23 +1,26 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, DoorOpen, LogOut, Megaphone, Activity } from "lucide-react";
+import { LayoutDashboard, Users, DoorOpen, Calendar, LogOut, Megaphone, Activity, MessageSquare } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
 import { API_ROUTES } from "../../../constants/Api_Routes";
+import { useDirectChat } from "../../../context/DirectChatContext";
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setAccessToken, setUserRole } = useAuth();
+  const { unreadCount: dmUnread } = useDirectChat();
 
   const navItems = [
     { name: "Dashboard", path: API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD, icon: LayoutDashboard },
     { name: "Users", path: API_ROUTES.WORKSPACE_ADMIN.NAV.GET_USERS, icon: Users },
     { name: "Rooms", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS, icon: DoorOpen },
+    { name: "Meetings", path: API_ROUTES.WORKSPACE_ADMIN.NAV.MEETINGS, icon: Calendar },
+    { name: "Chat", path: API_ROUTES.WORKSPACE_ADMIN.NAV.CHAT, icon: MessageSquare, badge: dmUnread },
     { name: "Announcements", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ANNOUNCEMENTS, icon: Megaphone },
     { name: "Activity Logs", path: API_ROUTES.WORKSPACE_ADMIN.NAV.ACTIVITY_LOGS, icon: Activity },
   ];
-
 
   const handleLogout = async () => {
     try {
@@ -64,7 +67,12 @@ export default function Sidebar() {
                 <Icon
                   className={`w-5 h-5 ${isActive ? "text-gray-900" : "text-gray-400"}`}
                 />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {item.badge > 9 ? "9+" : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

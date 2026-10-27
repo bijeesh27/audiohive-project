@@ -88,3 +88,11 @@ export interface RemoveRoomUserDTO {
   organizationId: string;
   actorId?: string;
 }
+
+
+export interface ValidateRoomAccessDTO {
+  roomId: string;
+  workspaceId?: string;
+  userId: string;
+  role: string;
+}
