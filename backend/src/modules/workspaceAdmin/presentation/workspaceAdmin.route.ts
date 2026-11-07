@@ -15,12 +15,16 @@ import { UpdateWorkspaceMemberUseCase } from "../application/usecase/updateWorks
 import { RemoveWorkspaceMemberUseCase } from "../application/usecase/removeWorkspaceMemberUseCase.ts";
 import { UserRepository as AuthUserRepository } from "../../auth/infrastructure/userRepository.ts";
 import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
+import { WorkspaceUserAnalyticsRepository } from "../infrastructure/workspaceUserAnalyticsRepository.ts";
+import { GetWorkspaceUserAnalyticsUseCase } from "../application/usecase/getWorkspaceUserAnalyticsUseCase.ts";
+import { GetUserActivityHistoryUseCase } from "../application/usecase/getUserActivityHistoryUseCase.ts";
 
 const router = express.Router();
 const activityLogRepository = new ActivityLogRepository();
 const userRepository = new UserRepository();
 const authUserRepository = new AuthUserRepository();
 const workspaceRepository = new WorkspaceReopsitory();
+const workspaceUserAnalyticsRepository = new WorkspaceUserAnalyticsRepository();
 
 const getAllUserUseCase = new GetAllUserUseCase(userRepository);
 const sendUserInvitationUseCase = new SendUserInvitationUseCase(workspaceRepository,activityLogRepository);
@@ -30,6 +34,8 @@ const getActiveUserUseCase=new GetActiveUserUseCase(userRepository)
 const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, authUserRepository);
 const updateWorkspaceMemberUseCase = new UpdateWorkspaceMemberUseCase(userRepository);
 const removeWorkspaceMemberUseCase = new RemoveWorkspaceMemberUseCase(userRepository);
+const getWorkspaceUserAnalyticsUseCase = new GetWorkspaceUserAnalyticsUseCase(workspaceUserAnalyticsRepository);
+const getUserActivityHistoryUseCase = new GetUserActivityHistoryUseCase(workspaceUserAnalyticsRepository);
 
 const controller = new WorkspaceAdminController(
   getAllUserUseCase,
@@ -38,7 +44,9 @@ const controller = new WorkspaceAdminController(
   resolveWorkspaceUseCase,
   getActiveUserUseCase,
   updateWorkspaceMemberUseCase,
-  removeWorkspaceMemberUseCase
+  removeWorkspaceMemberUseCase,
+  getWorkspaceUserAnalyticsUseCase,
+  getUserActivityHistoryUseCase
 );
 
 router.get(
@@ -81,6 +89,20 @@ router.get(
   authMiddleware,
   roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
   controller.getActiveUsers.bind(controller),
-)
+);
+
+router.get(
+  API_ROUTES.WORKSPACE_ADMIN.USER_ANALYTICS,
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  controller.getUserAnalytics.bind(controller),
+);
+
+router.get(
+  API_ROUTES.WORKSPACE_ADMIN.USER_ACTIVITY_HISTORY,
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  controller.getUserActivityHistory.bind(controller),
+);
 
 export default router;

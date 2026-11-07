@@ -51,3 +51,12 @@ export const inviteWorkspaceAdminSchema = z.object({
 export const setUserWorkspacesSchema = z.object({
   workspaceIds: z.array(z.string().min(1, "Workspace ID is required")).min(1, "Select at least one workspace"),
 });
+
+export const analyticsQuerySchema = z.object({
+  range: z.enum(["today", "7d", "30d", "custom"]).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  search: z.string().optional(),
+  page: z.coerce.number().min(1).optional(),
+  limit: z.coerce.number().min(1).max(100).optional(),
+});

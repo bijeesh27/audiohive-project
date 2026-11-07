@@ -63,8 +63,10 @@ export const API_ROUTES = {
     ACTIVITY_LOGS: "activity-logs",
     CHAT: "chat",
     CHAT_CONVERSATION: "chat/:conversationId",
+    USER_ANALYTICS: "user-analytics",
     NAV: {
       DASHBOARD: "/workspaceadmin/dashboard",
+      USER_ANALYTICS: "/workspaceadmin/user-analytics",
       GET_USERS: "/workspaceadmin/get-users",
       ROOMS: "/workspaceadmin/rooms",
       ROOM_DETAIL: (id: string) => `/workspaceadmin/rooms/${id}`,
@@ -173,6 +175,8 @@ export const API_ENDPOINTS = {
     INVITE_USER: "/api/workspaceadmin/invite-user",
     UPDATE_USER: (userId: string) => `/api/workspaceadmin/users/${userId}`,
     ACTIVE_USERS: (workspaceId: string) => `/api/workspaceadmin/activeusers/${workspaceId}`,
+    USER_ANALYTICS: "/api/workspaceadmin/user-analytics",
+    USER_ACTIVITY_HISTORY: (userId: string) => `/api/workspaceadmin/users/${userId}/activities`,
   },
   SUBSCRIPTION: {
     GET_ALL: "/api/subscription/getallsubscriptions",
@@ -203,6 +207,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/api/organization/update-organization/${id}`,
     MY_ORGANIZATION: "/api/organization/my-organization",
     DASHBOARD_STATS: "/api/organization/dashboard-stats",
+    ANALYTICS: "/api/organization/analytics",
     GET_USERS: "/api/organization/get-users",
     SET_USER_WORKSPACES: (userId: string) => `/api/organization/users/${userId}/workspaces`,
   },

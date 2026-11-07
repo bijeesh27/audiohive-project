@@ -26,3 +26,15 @@ export const getMyOrganization = async () => {
 export const getOrgDashboardStats = async () => {
   return await axiosInstance.get(API_ENDPOINTS.ORGANIZATION_ADMIN.DASHBOARD_STATS).then((res) => res.data);
 };
+
+export interface OrgAnalyticsParams {
+  range?: "today" | "7d" | "30d" | "custom";
+  startDate?: string;
+  endDate?: string;
+}
+
+export const getOrganizationAnalytics = async (params?: OrgAnalyticsParams) => {
+  return await axiosInstance
+    .get(API_ENDPOINTS.ORGANIZATION_ADMIN.ANALYTICS, { params })
+    .then((res) => res.data);
+};

@@ -12,6 +12,12 @@ import { UpdateWorkspaceMemberInput } from "../application/usecase/updateWorkspa
 import { RemoveWorkspaceMemberInput } from "../application/usecase/removeWorkspaceMemberUseCase.ts";
 import { AppError } from "../../../common/Errors/AppError.ts";
 import { HttpStatus } from "../../../common/constant/httpStatus.ts";
+import {
+  GetWorkspaceUserAnalyticsInputDTO,
+  WorkspaceUserAnalyticsResponseDTO,
+  GetUserActivityHistoryInputDTO,
+  UserActivityHistoryResponseDTO,
+} from "../application/dtos/workspaceUserAnalyticsDTO.ts";
 
 export class WorkspaceAdminController {
   constructor(
@@ -21,7 +27,9 @@ export class WorkspaceAdminController {
     private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>,
     private readonly getActiveUserUseCase: IuseCase<string, number>,
     private readonly updateWorkspaceMemberUseCase: IuseCase<UpdateWorkspaceMemberInput, IuserDTO>,
-    private readonly removeWorkspaceMemberUseCase: IuseCase<RemoveWorkspaceMemberInput, IuserDTO>
+    private readonly removeWorkspaceMemberUseCase: IuseCase<RemoveWorkspaceMemberInput, IuserDTO>,
+    private readonly getWorkspaceUserAnalyticsUseCase?: IuseCase<GetWorkspaceUserAnalyticsInputDTO, WorkspaceUserAnalyticsResponseDTO>,
+    private readonly getUserActivityHistoryUseCase?: IuseCase<GetUserActivityHistoryInputDTO, UserActivityHistoryResponseDTO>
   ) {}
 
   getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -138,6 +146,72 @@ export class WorkspaceAdminController {
         status: updateData.status,
       });
       return ApiResposne.success(res, MESSAGES.SUCCESS.USER_UPDATED, updatedUser);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getUserAnalytics = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const adminEmail = req.user?.userEmail;
+      if (!adminEmail || !this.getWorkspaceUserAnalyticsUseCase) {
+        throw new AccessDeniedError();
+      }
+
+      const { workspaceId } = await this.resolveWorkspaceUseCase.execute({
+        userEmail: adminEmail,
+        role: UserRoles.WORKSPACE_ADMIN,
+      });
+
+      const range = req.query.range as "today" | "7d" | "30d" | "custom" | undefined;
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
+      const search = req.query.search as string | undefined;
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      const data = await this.getWorkspaceUserAnalyticsUseCase.execute({
+        workspaceId,
+        adminEmail,
+        range,
+        startDate,
+        endDate,
+        search,
+        page,
+        limit,
+      });
+
+      return ApiResposne.success(res, MESSAGES.SUCCESS.USER_ANALYTICS_RETRIEVED, data);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getUserActivityHistory = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const adminEmail = req.user?.userEmail;
+      const userId = req.params.userId as string;
+      if (!adminEmail || !userId || !this.getUserActivityHistoryUseCase) {
+        throw new AccessDeniedError();
+      }
+
+      const { workspaceId } = await this.resolveWorkspaceUseCase.execute({
+        userEmail: adminEmail,
+        role: UserRoles.WORKSPACE_ADMIN,
+      });
+
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 15;
+
+      const data = await this.getUserActivityHistoryUseCase.execute({
+        workspaceId,
+        userId,
+        adminEmail,
+        page,
+        limit,
+      });
+
+      return ApiResposne.success(res, MESSAGES.SUCCESS.USER_ACTIVITY_HISTORY_RETRIEVED, data);
     } catch (error) {
       next(error);
     }

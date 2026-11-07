@@ -77,32 +77,56 @@ export default function DirectChatPage() {
   // Fetch conversations list
   const loadConversations = useCallback(async () => {
     try {
-      // initial state is loading true
       const data = await getConversations();
-      setConversations(data);
-      return data;
+      const list = Array.isArray(data) ? data : [];
+      setConversations(list);
+      return list;
     } catch {
-      // ignored error
       return [];
     } finally {
       setLoadingConversations(false);
     }
   }, []);
 
+  // Load conversations on component mount
   useEffect(() => {
-    if (!activeConversationId) return;
+    loadConversations();
+  }, [loadConversations]);
+
+  useEffect(() => {
+    if (!activeConversationId) {
+      setMessages([]);
+      setLoadingMessages(false);
+      return;
+    }
+
     let cancelled = false;
+    setLoadingMessages(true);
+    setMessages([]);
 
     getConversationMessages(activeConversationId)
       .then((res) => {
         if (!cancelled) {
-          setMessages(res.messages || []);
+          setMessages(res?.messages || []);
           setTimeout(() => scrollToBottom(false), 50);
 
-          // Update unread count in conversations state locally
-          setConversations((prev) =>
-            prev.map((c) => (c.id === activeConversationId ? { ...c, unreadCount: 0 } : c))
-          );
+          // If conversation object returned, ensure it's in the conversations list
+          if (res?.conversation) {
+            setConversations((prev) => {
+              const exists = prev.some((c) => c.id === res.conversation.id);
+              if (!exists) {
+                return [res.conversation, ...prev];
+              }
+              return prev.map((c) =>
+                c.id === activeConversationId ? { ...c, unreadCount: 0 } : c
+              );
+            });
+          } else {
+            // Update unread count in conversations state locally
+            setConversations((prev) =>
+              prev.map((c) => (c.id === activeConversationId ? { ...c, unreadCount: 0 } : c))
+            );
+          }
           refreshUnreadCount();
         }
       })
@@ -232,11 +256,37 @@ export default function DirectChatPage() {
 
     try {
       setSending(true);
-      await sendDirectMessage({
+      const sentMsg = await sendDirectMessage({
         receiverId: otherUser._id,
         content: messageText,
         conversationId: activeConversation.id,
       });
+
+      if (sentMsg) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === sentMsg.id)) return prev;
+          return [...prev, sentMsg];
+        });
+        setTimeout(() => scrollToBottom(true), 50);
+
+        setConversations((prev) => {
+          const existingIdx = prev.findIndex((c) => c.id === sentMsg.conversationId);
+          if (existingIdx !== -1) {
+            const updated = [...prev];
+            const conv = { ...updated[existingIdx] };
+            conv.lastMessage = {
+              content: sentMsg.content,
+              senderId: sentMsg.senderId,
+              createdAt: sentMsg.createdAt,
+              type: sentMsg.type,
+            };
+            conv.updatedAt = sentMsg.createdAt;
+            updated.splice(existingIdx, 1);
+            return [conv, ...updated];
+          }
+          return prev;
+        });
+      }
     } catch {
       // ignored error
       setInputText(messageText);
@@ -643,6 +693,11 @@ export default function DirectChatPage() {
               </button>
             </form>
           </>
+        ) : activeConversationId && (loadingConversations || loadingMessages) ? (
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            <p className="text-sm font-medium text-gray-600">Loading conversation...</p>
+          </div>
         ) : (
           /* Empty state when no conversation is selected */
           <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">

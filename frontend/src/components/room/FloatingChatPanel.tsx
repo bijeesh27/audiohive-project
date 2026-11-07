@@ -102,7 +102,7 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
 
     setSending(true);
     try {
-      const savedMsg = await sendRoomMessage(roomId, text);
+      const savedMsg = await sendRoomMessage(roomId, { content: text });
       setMessages((prev) => {
         if (prev.some((m) => m._id === savedMsg._id)) return prev;
         return [...prev, savedMsg];
@@ -123,14 +123,10 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
       const fallbackMsg: ChatMessage = {
         _id: `temp-${Date.now()}`,
         roomId,
-        senderId: {
-          _id: currentUserId || "local",
-          username: username || "You",
-          email: "",
-          profilePicture: "",
-          role: "member",
-        },
-        message: text,
+        senderId: currentUserId || "local",
+        senderName: username || "You",
+        senderRole: "member",
+        content: text,
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, fallbackMsg]);
@@ -205,9 +201,11 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
           </div>
         ) : (
           messages.map((msg) => {
+            const senderIdStr = typeof msg.senderId === "object" ? msg.senderId?._id : msg.senderId;
+            const senderUsername = (typeof msg.senderId === "object" ? msg.senderId?.username : msg.senderName) || "User";
             const isLocal =
-              msg.senderId._id === currentUserId ||
-              msg.senderId.username === username;
+              senderIdStr === currentUserId ||
+              senderUsername === username;
 
             return (
               <div
@@ -216,7 +214,7 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
               >
                 <div className="flex items-center gap-1.5 mb-1 px-1">
                   <span className="text-[10px] font-medium text-slate-400">
-                    {isLocal ? "You" : msg.senderId.username}
+                    {isLocal ? "You" : senderUsername}
                   </span>
                   <span className="text-[9px] text-slate-500">
                     {msg.createdAt
@@ -235,7 +233,7 @@ export const FloatingChatPanel: React.FC<FloatingChatPanelProps> = ({
                       : "bg-slate-800/80 backdrop-blur-md text-slate-200 rounded-tl-none border border-slate-700/60"
                   }`}
                 >
-                  {msg.message}
+                  {msg.content || (msg as unknown as { message?: string }).message}
                 </div>
               </div>
             );

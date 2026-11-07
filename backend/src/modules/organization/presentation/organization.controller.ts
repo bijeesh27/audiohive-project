@@ -15,6 +15,10 @@ import {
     SendOrganizationInvitationDTO,
     UpdateOrganizationDTO,
 } from "../application/dto/organizationDTO";
+import {
+    GetOrganizationAnalyticsInputDTO,
+    OrganizationAnalyticsResponseDTO,
+} from "../application/dto/organizationAnalyticsDTO";
 import { MESSAGES } from "../../../common/constant/messages";
 import { AppError } from "../../../common/Errors/AppError";
 import { HttpStatus } from "../../../common/constant/httpStatus";
@@ -32,7 +36,8 @@ export class OrganizationController {
         private readonly getAllOrganizationUsersUseCase: IuseCase<GetOrganizationUsersDTO, GetOrganizationUsersResultDTO>,
         private readonly getOrgDashboardStatsUseCase: IuseCase<GetOrgDashboardStatsDTO, OrgDashboardStatsDTO>,
         private readonly sendOrganizationInvitationUseCase: IuseCase<SendOrganizationInvitationDTO, void>,
-        private readonly setUserWorkspacesUseCase: IuseCase<SetUserWorkspacesDTO, IuserDTO>
+        private readonly setUserWorkspacesUseCase: IuseCase<SetUserWorkspacesDTO, IuserDTO>,
+        private readonly getOrganizationAnalyticsUseCase?: IuseCase<GetOrganizationAnalyticsInputDTO, OrganizationAnalyticsResponseDTO>
     ) {}
 
     async createOrganization(req: Request, res: Response, next: NextFunction) {
@@ -149,6 +154,28 @@ export class OrganizationController {
             }
             const data = await this.getOrgDashboardStatsUseCase.execute({ ownerEmail: userEmail });
             return ApiResposne.success(res, MESSAGES.SUCCESS.DASHBOARD_STATS_FETCHED, data, HttpStatus.OK);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getAnalytics(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const ownerEmail = req.user?.userEmail;
+            if (!ownerEmail || !this.getOrganizationAnalyticsUseCase) {
+                throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+            }
+            const range = req.query.range as "today" | "7d" | "30d" | "custom" | undefined;
+            const startDate = req.query.startDate as string | undefined;
+            const endDate = req.query.endDate as string | undefined;
+
+            const data = await this.getOrganizationAnalyticsUseCase.execute({
+                ownerEmail,
+                range,
+                startDate,
+                endDate,
+            });
+            return ApiResposne.success(res, MESSAGES.SUCCESS.ORGANIZATION_ANALYTICS_RETRIEVED, data, HttpStatus.OK);
         } catch (error) {
             next(error);
         }
