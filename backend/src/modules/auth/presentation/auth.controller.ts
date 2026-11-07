@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { UserModel } from "../../../shared/User.utils/userSchema.ts";
 import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema.ts";
+import { ActivityLogModel } from "../../activityLog/infrastructure/activitylogSchema.ts";
 import { getUserWorkspaceIds } from "../../../shared/User.utils/workspaceMembership.ts";
 import jwt from "jsonwebtoken";
 import { ApiResposne } from "../../../common/Response/Response.ts";
@@ -158,6 +159,22 @@ export class AuthController {
         sameSite: "lax",
         maxAge: parseInt(process.env.MAX_AGE!),
       });
+
+      if (workspaceId) {
+        ActivityLogModel.create({
+          occurredAt: new Date(),
+          action: "USER_LOGIN",
+          actorId: user._id.toString(),
+          actorRole: userRole,
+          workspaceId: workspaceId.toString(),
+          targetType: "User",
+          targetId: user._id.toString(),
+          metadata: {
+            username: user.username,
+            email: user.email,
+          },
+        }).catch(() => {});
+      }
 
       return ApiResposne.success(res, MESSAGES.SUCCESS.LOGIN_SUCCESS, {
         accessToken,

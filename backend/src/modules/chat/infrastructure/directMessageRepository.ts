@@ -82,9 +82,21 @@ export class DirectMessageRepository implements IDirectMessageRepository {
         type: data.type || "text",
       };
 
-      const currentUnread = conv.unreadCounts.get(data.receiverId) || 0;
-      conv.unreadCounts.set(data.receiverId, currentUnread + 1);
-      conv.unreadCounts.set(data.senderId, 0);
+      if (!conv.unreadCounts) {
+        conv.unreadCounts = new Map();
+      }
+      const currentUnread =
+        (typeof conv.unreadCounts.get === "function"
+          ? conv.unreadCounts.get(data.receiverId)
+          : (conv.unreadCounts as any)?.[data.receiverId]) || 0;
+
+      if (typeof conv.unreadCounts.set === "function") {
+        conv.unreadCounts.set(data.receiverId, currentUnread + 1);
+        conv.unreadCounts.set(data.senderId, 0);
+      } else {
+        (conv.unreadCounts as any)[data.receiverId] = currentUnread + 1;
+        (conv.unreadCounts as any)[data.senderId] = 0;
+      }
       conv.markModified("unreadCounts");
       await conv.save();
     }
@@ -141,7 +153,14 @@ export class DirectMessageRepository implements IDirectMessageRepository {
 
     const conv = await ConversationModel.findById(conversationId);
     if (conv) {
-      conv.unreadCounts.set(userId, 0);
+      if (!conv.unreadCounts) {
+        conv.unreadCounts = new Map();
+      }
+      if (typeof conv.unreadCounts.set === "function") {
+        conv.unreadCounts.set(userId, 0);
+      } else {
+        (conv.unreadCounts as any)[userId] = 0;
+      }
       conv.markModified("unreadCounts");
       await conv.save();
     }
@@ -253,16 +272,36 @@ export class DirectMessageRepository implements IDirectMessageRepository {
 
     const targetUserIds = new Set<string>();
 
+    // Collect all workspace IDs relevant to this user
+    const workspaceIdSet = new Set<string>();
     if (currentWorkspaceId && Types.ObjectId.isValid(currentWorkspaceId)) {
-      const workspace = await WorkspaceModel.findById(currentWorkspaceId);
+      workspaceIdSet.add(currentWorkspaceId);
+    }
+    if (user.workspaceId) {
+      workspaceIdSet.add(user.workspaceId.toString());
+    }
+    if (Array.isArray(user.workspaceIds)) {
+      user.workspaceIds.forEach((wId) => {
+        if (wId) workspaceIdSet.add(wId.toString());
+      });
+    }
+
+    // Workspaces where user is admin
+    const workspacesAsAdmin = await WorkspaceModel.find({
+      workspaceAdminEmail: user.email,
+    }).select("_id");
+    workspacesAsAdmin.forEach((w) => workspaceIdSet.add(w._id.toString()));
+
+    for (const wId of workspaceIdSet) {
+      const workspace = await WorkspaceModel.findById(wId);
       if (workspace) {
         // Members assigned to this workspace
         const members = await UserModel.find({
           status: true,
           _id: { $ne: new Types.ObjectId(userId) },
           $or: [
-            { workspaceIds: new Types.ObjectId(currentWorkspaceId) },
-            { workspaceId: new Types.ObjectId(currentWorkspaceId) },
+            { workspaceIds: new Types.ObjectId(wId) },
+            { workspaceId: new Types.ObjectId(wId) },
           ],
         }).select("_id");
         members.forEach((m) => targetUserIds.add(m._id.toString()));

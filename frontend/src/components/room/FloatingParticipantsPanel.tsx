@@ -45,7 +45,7 @@ export const FloatingParticipantsPanel: React.FC<FloatingParticipantsPanelProps>
   speakingPeers,
   pinnedPeerId,
   onTogglePin,
-  roomId,
+  roomId: _roomId,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState(false);

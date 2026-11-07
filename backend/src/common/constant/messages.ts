@@ -174,6 +174,10 @@ export const MESSAGES = {
 
     DOWNLOAD_URL_GENERATED: "Download URL generated successfully",
 
+    ORGANIZATION_ANALYTICS_RETRIEVED: "Organization analytics retrieved successfully",
+    USER_ANALYTICS_RETRIEVED: "Workspace user analytics retrieved successfully",
+    USER_ACTIVITY_HISTORY_RETRIEVED: "User activity history retrieved successfully",
+
     MEETING_CREATED: "Meeting scheduled successfully",
     MEETINGS_FETCHED: "Meetings fetched successfully",
     MEETING_FETCHED: "Meeting details fetched successfully",

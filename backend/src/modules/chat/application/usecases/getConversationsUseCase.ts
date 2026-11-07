@@ -31,7 +31,11 @@ export class GetConversationsUseCase
             isOnline: false,
           };
 
-        const unreadCount = conv.unreadCounts?.get(userId) || 0;
+        const unreadCount = conv.unreadCounts
+          ? typeof conv.unreadCounts.get === "function"
+            ? conv.unreadCounts.get(userId) || 0
+            : (conv.unreadCounts as Record<string, number>)[userId] || 0
+          : 0;
 
         return {
           id: conv._id.toString(),

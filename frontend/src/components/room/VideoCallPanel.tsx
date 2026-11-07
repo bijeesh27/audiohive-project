@@ -224,7 +224,7 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
         isVideoOff: false,
         isScreenSharing: true,
         stream: localStream,
-        connectionState: undefined,
+        connectionState: undefined as RTCPeerConnectionState | undefined,
       };
     }
     const remote = participants.find((p) => p.isScreenSharing);
@@ -248,7 +248,7 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
         isVideoOff,
         isScreenSharing: Boolean(isScreenSharing),
         stream: localStream,
-        connectionState: undefined,
+        connectionState: undefined as RTCPeerConnectionState | undefined,
         hasHandRaised,
       },
     ];

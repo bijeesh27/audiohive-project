@@ -22,10 +22,14 @@ import { UserRepository as WorkspaceUserRepository } from "../../workspaceAdmin/
 import { WorkspaceReopsitory } from "../../workspace/infrastructure/workspaceRepository";
 import { setUserWorkspacesSchema } from "../../../common/validation/formValidation";
 
+import { OrganizationAnalyticsRepository } from "../infrastructure/organizationAnalyticsRepository";
+import { GetOrganizationAnalyticsUseCase } from "../application/usecases/getOrganizationAnalyticsUseCase";
+
 const router=express.Router()
 
 
 const organizationRepository=new OrganizationRepository()
+const organizationAnalyticsRepository = new OrganizationAnalyticsRepository();
 const activityLogRepository=new ActivityLogRepository
 const createOrganizationUseCase=new CreateOrganizationUseCase(organizationRepository,activityLogRepository)
 const updateOrganizationUseCase=new UpdateOrganizationUseCase(organizationRepository,activityLogRepository)
@@ -35,6 +39,7 @@ const getMyOrganizationUseCase=new GetMyOrganizationUseCase(organizationReposito
 const getAllOrganizationUsersUseCase=new GetAllOrganizationUsersUseCase(organizationRepository)
 const getOrgDashboardStatsUseCase=new GetOrgDashboardStatsUseCase(organizationRepository)
 const sendOrganizationInvitationUseCase = new SendOrganizationInvitationUseCase(organizationRepository,activityLogRepository)
+const getOrganizationAnalyticsUseCase = new GetOrganizationAnalyticsUseCase(organizationAnalyticsRepository);
 const setUserWorkspacesUseCase = new SetUserWorkspacesUseCase(
     organizationRepository,
     new WorkspaceReopsitory(),
@@ -53,7 +58,8 @@ getMyOrganizationUseCase,
 getAllOrganizationUsersUseCase,
 getOrgDashboardStatsUseCase,
 sendOrganizationInvitationUseCase,
-setUserWorkspacesUseCase
+setUserWorkspacesUseCase,
+getOrganizationAnalyticsUseCase
 )
 
 
@@ -89,6 +95,12 @@ router.get(
     authMiddleware,
     roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
     controller.getOrgDashboardStats.bind(controller)
+)
+router.get(
+    API_ROUTES.ORGANIZATION.ANALYTICS,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    controller.getAnalytics.bind(controller)
 )
 
 export default router

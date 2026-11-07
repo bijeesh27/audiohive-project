@@ -51,6 +51,8 @@ export const API_ROUTES = {
     PROFILE: "/profile",
     UPDATE_USER: "/users/:id",
     GET_ACTIVE_USERS: "/activeusers/:workspaceId",
+    USER_ANALYTICS: "/user-analytics",
+    USER_ACTIVITY_HISTORY: "/users/:userId/activities",
   },
 
   MEMBER: {},
@@ -74,6 +76,7 @@ export const API_ROUTES = {
     SET_USER_WORKSPACES: "/users/:userId/workspaces",
     DASHBOARD_STATS: "/dashboard-stats",
     SEND_INVITATION: "/send-invitation",
+    ANALYTICS: "/analytics",
   },
 
   WORKSPACE: {
