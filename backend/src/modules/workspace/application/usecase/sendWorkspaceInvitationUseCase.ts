@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { HttpStatus } from "../../../../common/constant/httpStatus";
+import { MESSAGES } from "../../../../common/constant/messages";
 import { AppError } from "../../../../common/Errors/AppError";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
@@ -31,7 +32,7 @@ export class SendWorkspaceInvitationUseCase implements IuseCase<SendWorkspaceInv
         }
 
         if (workspace.organizationId.toString() !== organization._id.toString()) {
-            throw new AppError("You don't have permission to assign an admin for this workspace", HttpStatus.FORBIDDEN);
+            throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED_ASSIGN_WORKSPACE_ADMIN, HttpStatus.FORBIDDEN);
         }
 
         const token = randomBytes(32).toString('hex');
@@ -61,14 +62,12 @@ export class SendWorkspaceInvitationUseCase implements IuseCase<SendWorkspaceInv
         });
 
         await this.activityLogRepository.recordActivity({
-              occurredAt: new Date(),
-              action: "SEND_WORKSPACE_INVITATION",
-              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-              organizationId: data ? (data as any).organizationId : undefined,
-              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-              targetType: "SEND",
-              targetId: undefined,
-              metadata: {}
-            });
+          occurredAt: new Date(),
+          action: "SEND_WORKSPACE_INVITATION",
+          actorId: null,
+          workspaceId: data.workspaceId,
+          targetType: "INVITATION",
+          metadata: { email: data.email },
+        });
     }
 }

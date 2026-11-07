@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware, roleMiddleware } from "../../../middleware/authMiddleware.js";
 import { UserRoles } from "../../../common/constant/userRoles.js";
+import { API_ROUTES } from "../../../common/constant/ApiRoutes.js";
 import { MeetingRepository } from "../infrastructure/meetingRepository.js";
 import { CreateMeetingUseCase } from "../application/usecases/createMeetingUseCase.js";
 import { GetMeetingsUseCase } from "../application/usecases/getMeetingsUseCase.js";
@@ -39,11 +40,11 @@ const allowedRoles = [
 meetingRouter.use(authMiddleware);
 meetingRouter.use(roleMiddleware(allowedRoles));
 
-meetingRouter.post("/", meetingController.createMeeting);
-meetingRouter.get("/", meetingController.getMeetings);
-meetingRouter.get("/:id", meetingController.getMeetingById);
-meetingRouter.put("/:id", meetingController.updateMeeting);
-meetingRouter.patch("/:id/cancel", meetingController.cancelMeeting);
-meetingRouter.delete("/:id", meetingController.deleteMeeting);
+meetingRouter.post(API_ROUTES.MEETING.CREATE_MEETING, meetingController.createMeeting);
+meetingRouter.get(API_ROUTES.MEETING.GET_ALL_MEETINGS, meetingController.getMeetings);
+meetingRouter.get(API_ROUTES.MEETING.GET_MEETING, meetingController.getMeetingById);
+meetingRouter.put(API_ROUTES.MEETING.UPDATE_MEETING, meetingController.updateMeeting);
+meetingRouter.patch(API_ROUTES.MEETING.CANCEL_MEETING, meetingController.cancelMeeting);
+meetingRouter.delete(API_ROUTES.MEETING.DELETE_MEETING, meetingController.deleteMeeting);
 
 export default meetingRouter;

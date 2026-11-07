@@ -1,4 +1,5 @@
 import { API_ROUTES } from "../../../../common/constant/ApiRoutes";
+import { MESSAGES } from "../../../../common/constant/messages";
 import { emailQueue } from "../../../../config/queue.config";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../domain/IorganizationRepository";
@@ -16,7 +17,7 @@ export class SendOrganizationInvitationUseCase implements IuseCase<SendOrganizat
 
     const invitation = await this.organizationRepository.findInvitationByEmail(ownerEmail);
     if (!invitation) {
-      throw new Error("Organization invitation not found");
+      throw new Error(MESSAGES.ERRORS.ORGANIZATION_INVITATION_NOT_FOUND);
     }
 
     // Create the organization in the database now that a plan has been confirmed.

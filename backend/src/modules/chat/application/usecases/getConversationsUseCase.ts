@@ -13,7 +13,7 @@ export class GetConversationsUseCase
 
     const conversations: ConversationResponseDTO[] = rawConversations
       .map((conv) => {
-        const participants = (conv.participants || []).map((p: any) => ({
+        const participants = (conv.participants || []).map((p: { _id?: { toString(): string } | string; username?: string; email?: string; role?: string; toString(): string }) => ({
           _id: p._id?.toString() || p.toString(),
           username: p.username || "Unknown",
           email: p.email || "",

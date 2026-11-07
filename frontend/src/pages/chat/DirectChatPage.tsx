@@ -10,11 +10,10 @@ import {
   Check,
   CheckCheck,
   X,
-  User as UserIcon,
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
-import { useDirectChat } from "../../context/DirectChatContext";
+import { useDirectChat } from "../../context/useDirectChat";
 import {
   getConversations,
   getConversationMessages,
@@ -28,6 +27,8 @@ import type {
   DirectMessage,
   EligibleUser,
 } from "../../services/directChatServices";
+import { API_ROUTES } from "../../constants/Api_Routes";
+import { UserRoles } from "../../constants/userRole";
 
 const ROLE_BADGES: Record<string, string> = {
   workspaceadmin: "bg-blue-100 text-blue-700",
@@ -44,9 +45,7 @@ export default function DirectChatPage() {
   const { isUserOnline, refreshUnreadCount } = useDirectChat();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(
-    routeConversationId || null
-  );
+  const activeConversationId = routeConversationId || null;
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -62,7 +61,7 @@ export default function DirectChatPage() {
   const [searchingUsers, setSearchingUsers] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeConversationId) || null,
@@ -78,13 +77,12 @@ export default function DirectChatPage() {
   // Fetch conversations list
   const loadConversations = useCallback(async () => {
     try {
-      setLoadingConversations(true);
+      // initial state is loading true
       const data = await getConversations();
       setConversations(data);
       return data;
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Failed to load conversations", err);
+    } catch {
+      // ignored error
       return [];
     } finally {
       setLoadingConversations(false);
@@ -92,25 +90,8 @@ export default function DirectChatPage() {
   }, []);
 
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
-
-  // Sync route param with active conversation
-  useEffect(() => {
-    if (routeConversationId && routeConversationId !== activeConversationId) {
-      setActiveConversationId(routeConversationId);
-    }
-  }, [routeConversationId, activeConversationId]);
-
-  // Load messages when active conversation changes
-  useEffect(() => {
-    if (!activeConversationId) {
-      setMessages([]);
-      return;
-    }
-
+    if (!activeConversationId) return;
     let cancelled = false;
-    setLoadingMessages(true);
 
     getConversationMessages(activeConversationId)
       .then((res) => {
@@ -125,9 +106,8 @@ export default function DirectChatPage() {
           refreshUnreadCount();
         }
       })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error("Failed to load conversation messages", err);
+      .catch(() => {
+        // ignored error
       })
       .finally(() => {
         if (!cancelled) setLoadingMessages(false);
@@ -257,9 +237,8 @@ export default function DirectChatPage() {
         content: messageText,
         conversationId: activeConversation.id,
       });
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Failed to send direct message", err);
+    } catch {
+      // ignored error
       setInputText(messageText);
     } finally {
       setSending(false);
@@ -313,31 +292,30 @@ export default function DirectChatPage() {
         return exists ? prev : [conv, ...prev];
       });
 
-      setActiveConversationId(conv.id);
+      
 
       // Update URL route based on role
       const basePath =
-        userRole === "workspaceadmin"
-          ? "/workspaceadmin/chat"
-          : userRole === "organization-owner"
-          ? "/organization-owner/chat"
-          : "/member/chat";
+        userRole === UserRoles.WORKSPACE_ADMIN
+          ? API_ROUTES.WORKSPACE_ADMIN.NAV.CHAT
+          : userRole === UserRoles.ORGANIZATION_OWNER
+          ? API_ROUTES.ORGANIZATION_ADMIN.NAV.CHAT
+          : API_ROUTES.MEMBER.NAV.CHAT;
 
       navigate(`${basePath}/${conv.id}`);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Failed to start chat with user", err);
+    } catch {
+      // ignored error
     }
   };
 
   const handleSelectConversation = (conv: Conversation) => {
-    setActiveConversationId(conv.id);
+    
     const basePath =
-      userRole === "workspaceadmin"
-        ? "/workspaceadmin/chat"
-        : userRole === "organization-owner"
-        ? "/organization-owner/chat"
-        : "/member/chat";
+      userRole === UserRoles.WORKSPACE_ADMIN
+        ? API_ROUTES.WORKSPACE_ADMIN.NAV.CHAT
+        : userRole === UserRoles.ORGANIZATION_OWNER
+        ? API_ROUTES.ORGANIZATION_ADMIN.NAV.CHAT
+        : API_ROUTES.MEMBER.NAV.CHAT;
 
     navigate(`${basePath}/${conv.id}`);
   };
@@ -520,7 +498,15 @@ export default function DirectChatPage() {
               <div className="flex items-center gap-3">
                 {/* Mobile Back Button */}
                 <button
-                  onClick={() => setActiveConversationId(null)}
+                  onClick={() => {
+                    const b =
+                      userRole === UserRoles.WORKSPACE_ADMIN
+                        ? API_ROUTES.WORKSPACE_ADMIN.NAV.CHAT
+                        : userRole === UserRoles.ORGANIZATION_OWNER
+                        ? API_ROUTES.ORGANIZATION_ADMIN.NAV.CHAT
+                        : API_ROUTES.MEMBER.NAV.CHAT;
+                    navigate(b);
+                  }}
                   className="md:hidden p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg mr-1"
                   title="Back to conversations"
                 >
@@ -610,11 +596,11 @@ export default function DirectChatPage() {
                       >
                         <span>{formatMessageTime(msg.createdAt)}</span>
                         {isMe && (
-                          <span>
+                          <span title={msg.isRead ? "Read" : "Sent"}>
                             {msg.isRead ? (
-                              <CheckCheck className="w-3.5 h-3.5 text-indigo-600" title="Read" />
+                              <CheckCheck className="w-3.5 h-3.5 text-indigo-600" />
                             ) : (
-                              <Check className="w-3.5 h-3.5 text-gray-400" title="Sent" />
+                              <Check className="w-3.5 h-3.5 text-gray-400" />
                             )}
                           </span>
                         )}

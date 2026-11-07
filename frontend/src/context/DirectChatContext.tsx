@@ -1,17 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useSocket } from "./SocketContext";
 import { useAuth } from "./AuthContext";
 import { getDirectChatUnreadCount } from "../services/directChatServices";
-
-interface DirectChatContextType {
-  unreadCount: number;
-  onlineUserIds: Set<string>;
-  isUserOnline: (userId: string) => boolean;
-  refreshUnreadCount: () => Promise<void>;
-  decrementUnread: (by?: number) => void;
-}
-
-const DirectChatContext = createContext<DirectChatContextType | null>(null);
+import { DirectChatContext } from "./directChatContextInstance";
 
 export const DirectChatContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { socket, isConnected } = useSocket();
@@ -34,18 +25,26 @@ export const DirectChatContextProvider = ({ children }: { children: React.ReactN
   }, []);
 
   const isUserOnline = useCallback(
-    (targetUserId: string) => onlineUserIds.has(targetUserId),
-    [onlineUserIds]
+    (targetUserId: string) => (isAuthenticated ? onlineUserIds.has(targetUserId) : false),
+    [isAuthenticated, onlineUserIds]
   );
 
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshUnreadCount();
-    } else {
-      setUnreadCount(0);
-      setOnlineUserIds(new Set());
-    }
-  }, [isAuthenticated, refreshUnreadCount]);
+    if (!isAuthenticated) return;
+    let cancelled = false;
+
+    getDirectChatUnreadCount()
+      .then((res) => {
+        if (!cancelled) {
+          setUnreadCount(res.unreadCount || 0);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -97,28 +96,18 @@ export const DirectChatContextProvider = ({ children }: { children: React.ReactN
     };
   }, [socket, isConnected, userId, refreshUnreadCount]);
 
-  return (
-    <DirectChatContext.Provider
-      value={{
-        unreadCount,
-        onlineUserIds,
-        isUserOnline,
-        refreshUnreadCount,
-        decrementUnread,
-      }}
-    >
-      {children}
-    </DirectChatContext.Provider>
+  const value = useMemo(
+    () => ({
+      unreadCount: isAuthenticated ? unreadCount : 0,
+      onlineUserIds: isAuthenticated ? onlineUserIds : new Set<string>(),
+      isUserOnline,
+      refreshUnreadCount,
+      decrementUnread,
+    }),
+    [isAuthenticated, unreadCount, onlineUserIds, isUserOnline, refreshUnreadCount, decrementUnread]
   );
-};
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const useDirectChat = () => {
-  const context = useContext(DirectChatContext);
-  if (!context) {
-    throw new Error("useDirectChat must be used inside DirectChatContextProvider");
-  }
-  return context;
+  return <DirectChatContext.Provider value={value}>{children}</DirectChatContext.Provider>;
 };
 
 export default DirectChatContextProvider;

@@ -29,14 +29,12 @@ export class UpdateSubscriptionUseCase implements IuseCase<UpdateSubscriptionDTO
         }
 
         await this.activityLogRepository.recordActivity({
-              occurredAt: new Date(),
-              action: "UPDATE_SUBSCRIPTION",
-              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-              organizationId: data ? (data as any).organizationId : undefined,
-              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-              targetType: "UPDATE",
-              targetId: undefined,
-              metadata: {}
-            });
+      occurredAt: new Date(),
+      action: "UPDATE_SUBSCRIPTION",
+      actorId: null,
+      targetType: "SUBSCRIPTION",
+      targetId: data.id,
+      metadata: {},
+    });
     }
 }

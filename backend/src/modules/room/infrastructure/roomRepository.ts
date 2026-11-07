@@ -80,7 +80,7 @@ export class RoomRepository
     }>("allowedUsers", "username email role status");
 
     type Participant = { _id: string; username: string; email: string; role: string; status: boolean };
-    let users: Participant[] = [];
+    let users: Participant[];
 
     if (room?.type === "public") {
       const workspaceMembers = await UserModel.find({

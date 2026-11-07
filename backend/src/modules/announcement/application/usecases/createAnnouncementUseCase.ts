@@ -33,7 +33,7 @@ export class CreateAnnouncementUseCase
       organizationId: data.organizationId, 
       workspaceId: data.workspaceId, 
       targetType: "Announcement", 
-      targetId: saved.id || (saved as any)._id, 
+      targetId: (saved as { id?: string; _id?: { toString(): string } }).id || (saved as { _id?: { toString(): string } })._id?.toString() || "", 
       metadata: { title: data.title } 
     });
 

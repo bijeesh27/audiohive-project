@@ -34,7 +34,6 @@ import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { VideoCallPanel } from "../../components/room/VideoCallPanel";
 import { RoomDocuments } from "./RoomDocuments";
-import { RoomChatPanel } from "../../components/room/RoomChatPanel";
 
 interface Room {
   _id: string;
@@ -554,12 +553,18 @@ const AdminRoomDetail = () => {
         </div>
       )}
 
-      {/* 2-COLUMN LAYOUT: Content on left, Voice & Text Chat on right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: Room details & actions, documents, online users, participants table */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-          {/* MAIN GRID: Room Card & Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-6 items-start">
+      {/* Prominent Video Conference Hub (Full Screen Experience) */}
+      <VideoCallPanel
+        roomId={room._id}
+        roomName={room.name}
+        roomType={room.type}
+        currentUsername={username ?? "Admin"}
+      />
+
+      {/* Main Content: Room details & actions, documents, online users, participants table (Clean full-width layout) */}
+      <div className="space-y-6">
+        {/* MAIN GRID: Room Card & Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-6 items-start">
             {/* ROOM CARD */}
             <div className="w-full min-w-0 bg-white border border-gray-200 rounded-xl shadow-sm px-6 py-6">
               <div className="flex items-start justify-between gap-4">
@@ -769,21 +774,6 @@ const AdminRoomDetail = () => {
             />
           </div>
         </div>
-
-        {/* RIGHT COLUMN: Audio & Video Call and Text Chat */}
-        <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-6">
-          {/* Audio & Video Call Section */}
-          <VideoCallPanel
-            roomId={room._id}
-            roomName={room.name}
-            roomType={room.type}
-            currentUsername={username ?? "Admin"}
-          />
-
-          {/* Text Chat */}
-          <RoomChatPanel roomId={room._id} roomName={room.name} />
-        </div>
-      </div>
 
       {/* ROOM MODAL */}
       <RoomModal

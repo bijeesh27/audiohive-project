@@ -15,7 +15,7 @@ export class ActivityLogRepository extends BaseRepository<IActivityLogDocumet> i
         await this.model.create(data)
     }
 
-    private async buildSearchFilter(search?: string): Promise<Record<string, any>> {
+    private async buildSearchFilter(search?: string): Promise<Record<string, unknown>> {
         if (!search || !search.trim()) return {};
 
         const searchTrimmed = search.trim();
@@ -31,9 +31,9 @@ export class ActivityLogRepository extends BaseRepository<IActivityLogDocumet> i
             { _id: 1 }
         ).lean();
 
-        const actorIds = matchingUsers.map((u: any) => u._id.toString());
+        const actorIds = matchingUsers.map((u: { _id: { toString(): string } }) => u._id.toString());
 
-        const orConditions: any[] = [
+        const orConditions: Record<string, unknown>[] = [
             { action: searchRegex },
             { actorRole: searchRegex },
             { targetType: searchRegex },
@@ -46,10 +46,10 @@ export class ActivityLogRepository extends BaseRepository<IActivityLogDocumet> i
         return { $or: orConditions };
     }
 
-    private async enrichLogs(rawLogs: any[]): Promise<EnrichedActivityLog[]> {
+    private async enrichLogs(rawLogs: Array<Record<string, unknown> & { _id?: unknown; actorId?: unknown; workspaceId?: unknown; organizationId?: unknown; metadata?: Record<string, unknown> }>): Promise<EnrichedActivityLog[]> {
         if (!rawLogs || rawLogs.length === 0) return [];
 
-        const isMongoId = (id?: string | null): boolean => {
+        const isMongoId = (id: unknown): id is string => {
             return typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id);
         };
 
@@ -64,15 +64,15 @@ export class ActivityLogRepository extends BaseRepository<IActivityLogDocumet> i
         ]);
 
         const userMap = new Map<string, { username: string; email: string }>();
-        users.forEach((u: any) => userMap.set(u._id.toString(), { username: u.username, email: u.email }));
+        users.forEach((u: { _id: { toString(): string }; username: string; email: string }) => userMap.set(u._id.toString(), { username: u.username, email: u.email }));
 
         const workspaceMap = new Map<string, string>();
-        workspaces.forEach((w: any) => workspaceMap.set(w._id.toString(), w.workspaceName));
+        workspaces.forEach((w: { _id: { toString(): string }; workspaceName: string }) => workspaceMap.set(w._id.toString(), w.workspaceName));
 
         const orgMap = new Map<string, string>();
-        organizations.forEach((o: any) => orgMap.set(o._id.toString(), o.companyName));
+        organizations.forEach((o: { _id: { toString(): string }; companyName: string }) => orgMap.set(o._id.toString(), o.companyName));
 
-        return rawLogs.map((log: any) => {
+        return rawLogs.map((log) => {
             const user = log.actorId ? userMap.get(log.actorId.toString()) : undefined;
             const workspaceName = log.workspaceId ? workspaceMap.get(log.workspaceId.toString()) : undefined;
             const organizationName = log.organizationId ? orgMap.get(log.organizationId.toString()) : undefined;

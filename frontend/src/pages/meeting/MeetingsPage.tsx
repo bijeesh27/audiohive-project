@@ -17,6 +17,7 @@ import { useAuth } from "../../context/AuthContext";
 import { MeetingCard } from "../../components/meeting/MeetingCard";
 import { ScheduleMeetingModal } from "../../components/meeting/ScheduleMeetingModal";
 import { VideoCallPanel } from "../../components/room/VideoCallPanel";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 export const MeetingsPage: React.FC = () => {
   const { accessToken, username, userRole } = useAuth();
@@ -26,6 +27,7 @@ export const MeetingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past" | "cancelled">("upcoming");
   const [search, setSearch] = useState("");
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [selectedMeetingForEdit, setSelectedMeetingForEdit] = useState<Meeting | null>(null);
   const [joinCodeInput, setJoinCodeInput] = useState("");
 
   // Active in-meeting call session
@@ -43,6 +45,19 @@ export const MeetingsPage: React.FC = () => {
       return null;
     }
   }, [accessToken]);
+
+  // Confirmation modal state for cancel and delete
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: "cancel" | "delete" | null;
+    meeting: Meeting | null;
+  }>({
+    isOpen: false,
+    type: null,
+    meeting: null,
+  });
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchMeetings = () => {
     setLoading(true);
@@ -63,23 +78,60 @@ export const MeetingsPage: React.FC = () => {
     fetchMeetings();
   }, []);
 
-  const handleCancelMeeting = async (meetingId: string) => {
-    if (!window.confirm("Are you sure you want to cancel this meeting?")) return;
-    try {
-      await cancelMeeting(meetingId);
-      fetchMeetings();
-    } catch {
-      alert("Failed to cancel meeting.");
-    }
+  const handleOpenCancelModal = (meeting: Meeting) => {
+    setActionError(null);
+    setConfirmModal({
+      isOpen: true,
+      type: "cancel",
+      meeting,
+    });
   };
 
-  const handleDeleteMeeting = async (meetingId: string) => {
-    if (!window.confirm("Are you sure you want to permanently delete this meeting?")) return;
+  const handleOpenDeleteModal = (meeting: Meeting) => {
+    setActionError(null);
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      meeting,
+    });
+  };
+
+  const handleCloseConfirmModal = () => {
+    if (actionLoading) return;
+    setConfirmModal({
+      isOpen: false,
+      type: null,
+      meeting: null,
+    });
+    setActionError(null);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmModal.meeting || !confirmModal.type) return;
+
+    setActionLoading(true);
+    setActionError(null);
+
     try {
-      await deleteMeeting(meetingId);
+      if (confirmModal.type === "cancel") {
+        await cancelMeeting(confirmModal.meeting._id);
+      } else {
+        await deleteMeeting(confirmModal.meeting._id);
+      }
+      setConfirmModal({
+        isOpen: false,
+        type: null,
+        meeting: null,
+      });
       fetchMeetings();
-    } catch {
-      alert("Failed to delete meeting.");
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setActionError(msg || `Failed to ${confirmModal.type} meeting. Please try again.`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -172,7 +224,10 @@ export const MeetingsPage: React.FC = () => {
           {/* Schedule Meeting Button */}
           <button
             type="button"
-            onClick={() => setIsScheduleOpen(true)}
+            onClick={() => {
+              setSelectedMeetingForEdit(null);
+              setIsScheduleOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -183,17 +238,17 @@ export const MeetingsPage: React.FC = () => {
 
       {/* Active Live Call Session (if joined a meeting) */}
       {activeMeetingCall && (
-        <div className="relative bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-2xl">
-          <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-800">
-            <div className="flex items-center gap-2 text-white text-sm font-semibold">
-              <Video className="w-4 h-4 text-emerald-400" />
+        <div className="relative">
+          <div className="flex items-center justify-between pb-2 mb-2">
+            <div className="flex items-center gap-2 text-gray-900 text-sm font-semibold">
+              <Video className="w-4 h-4 text-violet-600" />
               <span>{activeMeetingCall.title}</span>
-              <span className="text-xs text-slate-400 font-normal">({activeMeetingCall.meetingCode})</span>
+              <span className="text-xs text-gray-500 font-normal">({activeMeetingCall.meetingCode})</span>
             </div>
             <button
               type="button"
               onClick={() => setActiveMeetingCall(null)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
               title="Close meeting view"
             >
               <X className="w-4 h-4" />
@@ -292,7 +347,10 @@ export const MeetingsPage: React.FC = () => {
           {activeTab === "upcoming" && (
             <button
               type="button"
-              onClick={() => setIsScheduleOpen(true)}
+              onClick={() => {
+                setSelectedMeetingForEdit(null);
+                setIsScheduleOpen(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl shadow-sm transition-all"
             >
               <Plus className="w-4 h-4" />
@@ -308,19 +366,45 @@ export const MeetingsPage: React.FC = () => {
               meeting={meeting}
               currentUserId={currentUserId}
               userRole={userRole}
-              onCancel={handleCancelMeeting}
-              onDelete={handleDeleteMeeting}
+              onEdit={(m) => {
+                setSelectedMeetingForEdit(m);
+                setIsScheduleOpen(true);
+              }}
+              onCancel={handleOpenCancelModal}
+              onDelete={handleOpenDeleteModal}
               onJoin={(m) => setActiveMeetingCall(m)}
             />
           ))}
         </div>
       )}
 
-      {/* Schedule Modal */}
+      {/* Schedule / Edit Meeting Modal */}
       <ScheduleMeetingModal
         isOpen={isScheduleOpen}
-        onClose={() => setIsScheduleOpen(false)}
+        onClose={() => {
+          setIsScheduleOpen(false);
+          setSelectedMeetingForEdit(null);
+        }}
         onSuccess={() => fetchMeetings()}
+        initialMeeting={selectedMeetingForEdit}
+      />
+
+      {/* Confirm Cancel / Delete Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.type === "cancel" ? "Cancel Meeting" : "Delete Meeting"}
+        message={
+          confirmModal.type === "cancel"
+            ? `Are you sure you want to cancel "${confirmModal.meeting?.title || "this meeting"}"? Participants will no longer be able to join.`
+            : `Are you sure you want to permanently delete "${confirmModal.meeting?.title || "this meeting"}"? This action cannot be undone.`
+        }
+        confirmLabel={confirmModal.type === "cancel" ? "Cancel Meeting" : "Delete Meeting"}
+        cancelLabel="Keep Meeting"
+        onConfirm={handleConfirmAction}
+        onCancel={handleCloseConfirmModal}
+        isLoading={actionLoading}
+        isDanger={true}
+        error={actionError}
       />
     </div>
   );

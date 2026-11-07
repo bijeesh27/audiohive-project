@@ -8,6 +8,7 @@ import {
   Ban,
   Trash2,
   Video,
+  Pencil,
 } from "lucide-react";
 import type { Meeting } from "../../services/meetingServices";
 
@@ -15,8 +16,9 @@ interface MeetingCardProps {
   meeting: Meeting;
   currentUserId?: string | null;
   userRole?: string | null;
-  onCancel?: (meetingId: string) => void;
-  onDelete?: (meetingId: string) => void;
+  onEdit?: (meeting: Meeting) => void;
+  onCancel?: (meeting: Meeting) => void;
+  onDelete?: (meeting: Meeting) => void;
   onJoin?: (meeting: Meeting) => void;
 }
 
@@ -24,6 +26,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
   meeting,
   currentUserId,
   userRole,
+  onEdit,
   onCancel,
   onDelete,
   onJoin,
@@ -114,12 +117,22 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
 
         {canManage && meeting.status !== "cancelled" && (
           <div className="flex items-center gap-1">
+            {onEdit && meeting.status !== "completed" && (
+              <button
+                type="button"
+                onClick={() => onEdit(meeting)}
+                title="Edit Meeting"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
             {onCancel && (
               <button
                 type="button"
-                onClick={() => onCancel(meeting._id)}
+                onClick={() => onCancel(meeting)}
                 title="Cancel Meeting"
-                className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
               >
                 <Ban className="w-4 h-4" />
               </button>
@@ -127,9 +140,9 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
             {onDelete && (
               <button
                 type="button"
-                onClick={() => onDelete(meeting._id)}
+                onClick={() => onDelete(meeting)}
                 title="Delete Meeting"
-                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

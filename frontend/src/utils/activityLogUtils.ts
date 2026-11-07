@@ -12,7 +12,7 @@ export interface ActivityLogItem {
   targetType?: string;
   targetId?: string;
   occurredAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export const isMongoId = (val?: string | null): boolean => {
@@ -78,7 +78,7 @@ export const getTargetDisplay = (log: ActivityLogItem): { type: string; detail?:
   return { type, detail };
 };
 
-export const getFilteredMetadataEntries = (metadata?: Record<string, any>): [string, string][] => {
+export const getFilteredMetadataEntries = (metadata?: Record<string, unknown>): [string, string][] => {
   if (!metadata || typeof metadata !== "object") return [];
   const entries: [string, string][] = [];
 

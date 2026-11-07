@@ -21,21 +21,21 @@ const AuthRoutes = () => {
     <div>
       <Routes>
         <Route element={<PublicRoute />}>
-          <Route path="" element={<LandingPage />} />
+          <Route path={API_ROUTES.PUBLIC.HOME} element={<LandingPage />} />
           <Route path={API_ROUTES.PUBLIC.PRICING} element={<PricingPage />} />
           <Route path={API_ROUTES.PUBLIC.LOGIN} element={<LoginPage />} />
           <Route path={API_ROUTES.PUBLIC.REGISTER} element={<RegisterPage />} />
           <Route path={API_ROUTES.PUBLIC.OTP} element={<OtpPage />} />
           <Route path={API_ROUTES.PUBLIC.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
           <Route path={API_ROUTES.PUBLIC.RESET_PASSWORD} element={<ResetPasswordPage />} />
-          <Route path={API_ROUTES.WORKSPACE.NAV.CREATE_WORKSPACE} element={<CreateWorkspace/>}/>
-          <Route path={API_ROUTES.WORKSPACE.NAV.PENDING_APPROVAL} element={<PendingApproval/>}/>
-          <Route path={API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION} element={<CreateOrganization/>}/>
-          <Route path="/workspace/register-admin" element={<RegisterPage />} />
-          <Route path="/invitation-sent" element={<InvitationSent/>}/>
-          <Route path="/choose-plan" element={<ChoosePlanPage />} />
-          <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-          <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
+          <Route path={API_ROUTES.PUBLIC.CREATE_WORKSPACE} element={<CreateWorkspace />} />
+          <Route path={API_ROUTES.PUBLIC.PENDING_APPROVAL} element={<PendingApproval />} />
+          <Route path={API_ROUTES.PUBLIC.CREATE_ORGANIZATION} element={<CreateOrganization />} />
+          <Route path={API_ROUTES.PUBLIC.REGISTER_ADMIN} element={<RegisterPage />} />
+          <Route path={API_ROUTES.PUBLIC.INVITATION_SENT} element={<InvitationSent />} />
+          <Route path={API_ROUTES.PUBLIC.CHOOSE_PLAN} element={<ChoosePlanPage />} />
+          <Route path={API_ROUTES.PUBLIC.SUBSCRIPTION_SUCCESS} element={<SubscriptionSuccess />} />
+          <Route path={API_ROUTES.PUBLIC.SUBSCRIPTION_CANCEL} element={<SubscriptionCancel />} />
         </Route>
       </Routes>
     </div>

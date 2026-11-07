@@ -38,14 +38,11 @@ export class CreateSubscriptionUseCase implements IuseCase<
     }
 
       await this.activityLogRepository.recordActivity({
-            occurredAt: new Date(),
-            action: "CREATE_SUBCRIPTION",
-            actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-            organizationId: data ? (data as any).organizationId : undefined,
-            workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-            targetType: "CREATE",
-            targetId: undefined,
-            metadata: {}
-          });
+      occurredAt: new Date(),
+      action: "CREATE_SUBSCRIPTION",
+      actorId: null,
+      targetType: "SUBSCRIPTION",
+      metadata: { subscriptionName: data.subscriptionName },
+    });
   }
 }

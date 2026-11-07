@@ -4,7 +4,7 @@ import type { SubscriptionDTO } from '../services/subscriptionServices';
 import { Check } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../config/axios';
-import { API_ROUTES } from '../constants/Api_Routes';
+import { API_ROUTES, API_ENDPOINTS } from '../constants/Api_Routes';
 
 const PENDING_ORGANIZATION_KEY = 'audiohive.pendingOrganization';
 
@@ -41,14 +41,15 @@ const ChoosePlanPage = () => {
     routeOrganizationData?.selectedPlanId ?? organizationData?.selectedPlanId ?? null,
   );
 
+  const [planError, setPlanError] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         const response = await subscriptionService.getAllSubscriptions();
         setPlans(response.data || []);
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to fetch plans", error);
+      } catch {
+        setPlanError("Failed to fetch subscription plans");
       } finally {
         setLoading(false);
       }
@@ -58,6 +59,7 @@ const ChoosePlanPage = () => {
 
   const handleChoosePlan = async (plan: SubscriptionDTO) => {
     setSelectedPlanId(plan._id ?? null);
+    setPlanError(null);
     if (!organizationData) {
       // Guard: if org data is missing, send user back to create org
       navigate(API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION);
@@ -67,8 +69,8 @@ const ChoosePlanPage = () => {
     if (plan.price === 0) {
       // Free plan: create the organization and send the invitation email
       try {
-        setSubscribingId(plan._id);
-        await axiosInstance.post("/api/organization/send-invitation", {
+        setSubscribingId(plan._id ?? null);
+        await axiosInstance.post(API_ENDPOINTS.ORGANIZATION.SEND_INVITATION, {
           ownerEmail: organizationData.ownerEmail,
           companyName: organizationData.companyName,
           slug: organizationData.slug,
@@ -77,18 +79,17 @@ const ChoosePlanPage = () => {
         });
         sessionStorage.removeItem(PENDING_ORGANIZATION_KEY);
         navigate(API_ROUTES.PUBLIC.NAV.INVITATION_SENT, { state: organizationData });
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to send free plan invitation", error);
+      } catch {
+        setPlanError("Failed to send free plan invitation");
         setSubscribingId(null);
       }
     } else {
       // Paid plan: redirect to Stripe Checkout.
       // The org will be created after payment succeeds (in SubscriptionSuccess).
       try {
-        setSubscribingId(plan._id);
+        setSubscribingId(plan._id ?? null);
         const response = await axiosInstance.post(
-          "/api/subscription/create-checkout-session",
+          API_ENDPOINTS.SUBSCRIPTION.CREATE_CHECKOUT_SESSION,
           {
             planId: plan._id,
             ownerEmail: organizationData.ownerEmail,
@@ -97,11 +98,9 @@ const ChoosePlanPage = () => {
             ownerName: organizationData.ownerName,
           }
         );
-        // eslint-disable-next-line react-hooks/immutability
-        window.location.href = response.data.data.url;
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error("Subscription checkout error:", error);
+        window.location.assign(response.data.data.url);
+      } catch {
+        setPlanError("Failed to initiate subscription checkout");
         setSubscribingId(null);
       }
     }
@@ -129,10 +128,15 @@ const ChoosePlanPage = () => {
             Choose Your <span className="text-indigo-600">Plan</span>
           </h2>
           <p className="mt-4 text-lg text-gray-500">
-            {/* eslint-disable-next-line react/no-unescaped-entities */}
-            Select the subscription plan that best fits your organization's needs.
+            Select the subscription plan that best fits your organization&apos;s needs.
           </p>
         </div>
+
+        {planError && (
+          <div className="mb-6 rounded-md bg-red-50 p-4 text-center text-sm text-red-700">
+            {planError}
+          </div>
+        )}
 
         {/* Plans */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

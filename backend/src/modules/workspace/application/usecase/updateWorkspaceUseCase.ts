@@ -43,14 +43,16 @@ export class updateWorkspaceUsecase implements IuseCase<UpdateWorkspaceDTO,void>
         }
 
         await this.activityLogRepository.recordActivity({
-              occurredAt: new Date(),
-              action: "UPDATE_WORKSPACE",
-              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-              organizationId: data ? (data as any).organizationId : undefined,
-              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-              targetType: "UPDATE",
-              targetId: undefined,
-              metadata: {}
-            });
+          occurredAt: new Date(),
+          action: "UPDATE_WORKSPACE",
+          actorId: null,
+          workspaceId: data.id,
+          targetType: "WORKSPACE",
+          targetId: data.id,
+          metadata: {
+            workspaceName: data.workspaceName || null,
+            slug: data.slug || null,
+          },
+        });
     }
 }

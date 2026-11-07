@@ -1,11 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { getUsers, updateUser } from "../../services/authServices";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import ActionButton from "../../components/common/ActionButton";
 import { ShieldBan, ShieldCheck } from "lucide-react";
-import { getAllOrganizations, getMyOrganization } from "../../services/organizationServices";
-import { subscriptionService } from "../../services/subscriptionServices";
 interface User {
   _id: string;
   username: string;
@@ -28,13 +26,10 @@ const Users = () => {
   const [confirmUser, setConfirmUser] = useState<User | null>(null);
   const [toggling, setToggling] = useState(false);
 
-  const [org,setOrg]=useState()
-  const [plan,setPlan]=useState()
-
-  const fetchUsers = useCallback(() => {
+  
+  useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+
     getUsers(page, limit, debouncedSearch)
       .then((res) => {
         if (!cancelled) {
@@ -49,27 +44,10 @@ const Users = () => {
         if (!cancelled) setLoading(false);
       });
 
-      getAllOrganizations(page,limit,debouncedSearch).then((res=>{
-        
-        setOrg(res.data.organizations)
-      }))
-
-      subscriptionService.getAllSubscriptions().then((res)=>{
-        setPlan(res.data.data)
-      })
-      
     return () => {
       cancelled = true;
     };
   }, [page, limit, debouncedSearch]);
-
-  
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    const cleanup = fetchUsers();
-    return cleanup;
-  }, [fetchUsers]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -87,9 +65,8 @@ const Users = () => {
       setUsers(users.map(u =>
         u._id === user._id ? { ...u, status: newStatus } : u
       ));
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Failed to update user:", err);
+    } catch {
+      // failed to update user
     } finally {
       setToggling(false);
       setConfirmUser(null);

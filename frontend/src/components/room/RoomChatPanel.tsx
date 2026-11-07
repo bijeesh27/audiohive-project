@@ -31,7 +31,7 @@ export const RoomChatPanel: React.FC<RoomChatPanelProps> = ({ roomId, roomName }
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Extract current user ID from JWT token payload
   const currentUserId = React.useMemo(() => {
@@ -62,8 +62,8 @@ export const RoomChatPanel: React.FC<RoomChatPanelProps> = ({ roomId, roomName }
           setTimeout(() => scrollToBottom(false), 50);
         }
       })
-      .catch((err) => {
-        console.error("Failed to load chat messages", err);
+      .catch(() => {
+        // Failed to load chat messages
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -152,8 +152,8 @@ export const RoomChatPanel: React.FC<RoomChatPanelProps> = ({ roomId, roomName }
 
     try {
       await sendRoomMessage(roomId, { content: trimmed, type: "text" });
-    } catch (err) {
-      console.error("Failed to send message", err);
+    } catch {
+      // Failed to send message
       setInputText(trimmed); // restore text on failure
     } finally {
       setSending(false);
@@ -164,8 +164,8 @@ export const RoomChatPanel: React.FC<RoomChatPanelProps> = ({ roomId, roomName }
     try {
       await deleteRoomMessage(roomId, messageId);
       setMessages((prev) => prev.filter((m) => (m.id || m._id) !== messageId));
-    } catch (err) {
-      console.error("Failed to delete message", err);
+    } catch {
+      // Failed to delete message
     }
   };
 

@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { UserModel } from "../../../../shared/User.utils/userSchema.ts";
 import { getUserWorkspaceIds } from "../../../../shared/User.utils/workspaceMembership.ts";
+import logger from "../../../../shared/utils/logger.ts";
 
 dotenv.config();
 
@@ -27,12 +28,12 @@ async function migrateUserWorkspaceIds() {
     migrated += 1;
   }
 
-  console.info(`Migrated ${migrated} user workspace assignments`);
+  logger.info(`Migrated ${migrated} user workspace assignments`);
   await mongoose.disconnect();
 }
 
 migrateUserWorkspaceIds().catch(async (error: unknown) => {
-  console.error("Workspace membership migration failed", error);
+  logger.error("Workspace membership migration failed", error);
   await mongoose.disconnect();
   process.exitCode = 1;
 });

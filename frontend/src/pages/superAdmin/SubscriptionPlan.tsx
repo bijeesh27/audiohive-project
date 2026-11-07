@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { subscriptionService } from '../../services/subscriptionServices'
 import ActionButton from "../../components/common/ActionButton";
 import { Plus, Pencil, ShieldBan, ShieldCheck, Trash2 } from "lucide-react";
@@ -7,6 +7,7 @@ interface ISubscription {
   _id: string;
   subscriptionName: string;
   price: number;
+  description: string;
   maxWorkspaces: number;
   features: string[];
   isActive: boolean;
@@ -41,17 +42,28 @@ const SubscriptionPlan = () => {
   const [confirmDeletePlan, setConfirmDeletePlan] = useState<ISubscription | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchPlans = () => {
-    setLoading(true);
+  const loadPlans = useCallback(() => {
+    let cancelled = false;
     subscriptionService.getAllSubscriptions()
-      .then(res => setPlans(res.data))
-      .finally(() => setLoading(false));
-  };
+      .then((res: { data: ISubscription[] }) => {
+        if (!cancelled) setPlans(res.data);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchPlans();
-  }, []);
+    return loadPlans();
+  }, [loadPlans]);
+
+  const refreshPlans = () => {
+    setLoading(true);
+    loadPlans();
+  };
 
   const openCreate = () => {
     setEditingId(null);
@@ -129,12 +141,22 @@ const SubscriptionPlan = () => {
         await subscriptionService.createSubscription(form);
       }
       setShowModal(false);
-      fetchPlans();
+      refreshPlans();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const err = error as {
+        response?: {
+          data?: {
+            message?: string;
+            errors?: Array<{ field: string; message: string }> | string;
+          };
+        };
+        message?: string;
+      };
       const apiErrors = err?.response?.data?.errors;
       const message = Array.isArray(apiErrors)
-        ? apiErrors.map((e: { field: string; message: string }) => e.message).join(", ")
+        ? apiErrors.map((e) => e.message).join(", ")
+        : typeof apiErrors === "string"
+        ? apiErrors
         : err?.response?.data?.message || "Save failed";
       setFormError(message);
     } finally {
@@ -156,7 +178,7 @@ const SubscriptionPlan = () => {
       };
       await subscriptionService.updateSubscription(confirmTogglePlan._id, updatedPlan);
       setConfirmTogglePlan(null);
-      fetchPlans();
+      refreshPlans();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       alert(err?.response?.data?.message || "Failed to update status");
@@ -171,7 +193,7 @@ const SubscriptionPlan = () => {
     try {
       await subscriptionService.deleteSubscription(confirmDeletePlan._id);
       setConfirmDeletePlan(null);
-      fetchPlans();
+      refreshPlans();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       alert(err?.response?.data?.message || "Failed to delete plan");

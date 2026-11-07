@@ -28,7 +28,7 @@ export class MarkDirectMessagesAsReadUseCase
     io.to(`user:${userId}`).emit(SOCKET_EVENTS.DM_MESSAGES_READ, { conversationId, readBy: userId });
 
     const otherParticipantId = conv.participants
-      ?.map((p: any) => p._id?.toString() || p.toString())
+      ?.map((p: { _id?: { toString(): string } | string; toString(): string }) => p._id?.toString() || p.toString())
       .find((id) => id !== userId);
 
     if (otherParticipantId) {

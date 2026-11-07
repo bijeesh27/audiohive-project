@@ -10,6 +10,7 @@ import { SearchDirectChatUsersUseCase } from "../application/usecases/searchDire
 import { GetDirectChatUnreadCountUseCase } from "../application/usecases/getDirectChatUnreadCountUseCase.js";
 import { GetOrCreateConversationWithUserUseCase } from "../application/usecases/getOrCreateConversationWithUserUseCase.js";
 import { DirectMessageController } from "./directMessage.controller.js";
+import { API_ROUTES } from "../../../common/constant/ApiRoutes.js";
 
 const router = express.Router();
 
@@ -36,12 +37,12 @@ const controller = new DirectMessageController(
 
 router.use(authMiddleware);
 
-router.get("/conversations", controller.getConversations.bind(controller));
-router.get("/conversations/:conversationId/messages", controller.getMessages.bind(controller));
-router.get("/users/:targetUserId", controller.getOrCreateWithUser.bind(controller));
-router.post("/messages", controller.sendMessage.bind(controller));
-router.patch("/conversations/:conversationId/read", controller.markAsRead.bind(controller));
-router.get("/users", controller.searchUsers.bind(controller));
-router.get("/unread-count", controller.getUnreadCount.bind(controller));
+router.get(API_ROUTES.DIRECT_CHAT.CONVERSATIONS, controller.getConversations.bind(controller));
+router.get(API_ROUTES.DIRECT_CHAT.CONVERSATION_MESSAGES, controller.getMessages.bind(controller));
+router.get(API_ROUTES.DIRECT_CHAT.USER, controller.getOrCreateWithUser.bind(controller));
+router.post(API_ROUTES.DIRECT_CHAT.MESSAGES, controller.sendMessage.bind(controller));
+router.patch(API_ROUTES.DIRECT_CHAT.MARK_READ, controller.markAsRead.bind(controller));
+router.get(API_ROUTES.DIRECT_CHAT.USERS, controller.searchUsers.bind(controller));
+router.get(API_ROUTES.DIRECT_CHAT.UNREAD_COUNT, controller.getUnreadCount.bind(controller));
 
 export default router;

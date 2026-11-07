@@ -20,7 +20,6 @@ export class CreateRoomUseCase
     const room = await this.roomRepository.createRoom(
       data as unknown as IRoomDocument
     );
-    console.log(room)
 
     await this.activityLogRepository.recordActivity({
       occurredAt: new Date(),

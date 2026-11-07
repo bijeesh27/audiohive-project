@@ -16,14 +16,13 @@ export class MarkAsReadUseCase implements IuseCase<MarkReadDTO, void> {
     );
 
       await this.activityLogRepository.recordActivity({
-            occurredAt: new Date(),
-            action: "MARK_AS_READ",
-            actorId: input ? (input as any).actorId || (input as any).userId || (input as any).uploaderId || null : null,
-            organizationId: input ? (input as any).organizationId : undefined,
-            workspaceId: input ? (input as any).workspaceId || (input as any).roomId : undefined,
-            targetType: "MARK",
-            targetId: undefined,
-            metadata: {}
-          });
+        occurredAt: new Date(),
+        action: "MARK_AS_READ",
+        actorId: input.userId,
+        workspaceId: input.workspaceId,
+        targetType: "ANNOUNCEMENT",
+        targetId: input.announcementId,
+        metadata: {},
+      });
   }
 }

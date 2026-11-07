@@ -20,14 +20,12 @@ export class DeleteSubcriptionUseCase implements IuseCase<DeleteSubscriptionDTO,
       await this.subscriptionRepository.deleteSubscription(data.id)
 
       await this.activityLogRepository.recordActivity({
-            occurredAt: new Date(),
-            action: "DELETE_SUBCRIPTION",
-            actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-            organizationId: data ? (data as any).organizationId : undefined,
-            workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-            targetType: "DELETE",
-            targetId: undefined,
-            metadata: {}
-          });
+      occurredAt: new Date(),
+      action: "DELETE_SUBSCRIPTION",
+      actorId: null,
+      targetType: "SUBSCRIPTION",
+      targetId: data.id,
+      metadata: {},
+    });
   }
 }

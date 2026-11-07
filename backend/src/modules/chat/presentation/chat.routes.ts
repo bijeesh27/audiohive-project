@@ -7,6 +7,7 @@ import { GetRoomMessagesUseCase } from "../application/usecases/getRoomMessagesU
 import { DeleteMessageUseCase } from "../application/usecases/deleteMessageUseCase.js";
 import { ChatController } from "./chat.controller.js";
 import directMessageRouter from "./directMessage.routes.js";
+import { API_ROUTES } from "../../../common/constant/ApiRoutes.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -26,11 +27,11 @@ const controller = new ChatController(
 router.use(authMiddleware);
 
 // Direct messaging routes
-router.use("/direct", directMessageRouter);
+router.use(API_ROUTES.CHAT.DIRECT, directMessageRouter);
 
 // Room chat routes
-router.get("/:roomId/messages", controller.getMessages.bind(controller));
-router.post("/:roomId/messages", controller.sendMessage.bind(controller));
-router.delete("/:roomId/messages/:messageId", controller.deleteMessage.bind(controller));
+router.get(API_ROUTES.CHAT.GET_MESSAGES, controller.getMessages.bind(controller));
+router.post(API_ROUTES.CHAT.SEND_MESSAGE, controller.sendMessage.bind(controller));
+router.delete(API_ROUTES.CHAT.DELETE_MESSAGE, controller.deleteMessage.bind(controller));
 
 export default router;

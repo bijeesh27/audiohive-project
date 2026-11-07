@@ -4,6 +4,7 @@ import {stripe} from '../../../../config/stripe'
 import logger from "../../../../shared/utils/logger";
 import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
 import { CreateCheckoutSessionDTO } from "../dto/subcriptionDTOs";
+import { MESSAGES } from "../../../../common/constant/messages";
 
 export class CreateCheckoutSessionUseCase implements IuseCase<CreateCheckoutSessionDTO, string> {
   constructor(private readonly subscriptionRepository: IsubscriptionRepository, private readonly activityLogRepository: IactivityLogRepository) {}
@@ -12,11 +13,11 @@ export class CreateCheckoutSessionUseCase implements IuseCase<CreateCheckoutSess
     const plan = await this.subscriptionRepository.findSubscriptionById(planId);
 
     if (!plan) {
-      throw new Error("Subscription plan not found");
+      throw new Error(MESSAGES.ERRORS.SUBSCRIPTION_PLAN_NOT_FOUND);
     }
 
     if (!plan.stripePriceId) {
-      throw new Error("Stripe price is not configured for this plan");
+      throw new Error(MESSAGES.ERRORS.STRIPE_PRICE_NOT_CONFIGURED);
     }
 
     try {
@@ -40,23 +41,27 @@ export class CreateCheckoutSessionUseCase implements IuseCase<CreateCheckoutSess
       });
 
       if (!session.url) {
-        throw new Error("Stripe did not return a checkout URL");
+        throw new Error(MESSAGES.ERRORS.STRIPE_NO_CHECKOUT_URL);
       }
+
+      await this.activityLogRepository.recordActivity({
+        occurredAt: new Date(),
+        action: "CREATE_CHECKOUT_SESSION",
+        actorId: null,
+        targetType: "SUBSCRIPTION",
+        targetId: planId,
+        metadata: {
+          ownerEmail: ownerEmail || null,
+          companyName: companyName || null,
+          slug: slug || null,
+          ownerName: ownerName || null,
+        },
+      });
+
       return session.url;
     } catch (error) {
       logger.error("Stripe Session Creation Error:", error);
-      throw new Error("Unable to create checkout session", { cause: error });
+      throw new Error(MESSAGES.ERRORS.UNABLE_TO_CREATE_CHECKOUT, { cause: error });
     }
-
-      await this.activityLogRepository.recordActivity({
-            occurredAt: new Date(),
-            action: "CREATE_CHECKOUT_SESSION",
-            actorId: { planId, ownerEmail, companyName, slug, ownerName } ? ({ planId, ownerEmail, companyName, slug, ownerName } as any).actorId || ({ planId, ownerEmail, companyName, slug, ownerName } as any).userId || ({ planId, ownerEmail, companyName, slug, ownerName } as any).uploaderId || null : null,
-            organizationId: { planId, ownerEmail, companyName, slug, ownerName } ? ({ planId, ownerEmail, companyName, slug, ownerName } as any).organizationId : undefined,
-            workspaceId: { planId, ownerEmail, companyName, slug, ownerName } ? ({ planId, ownerEmail, companyName, slug, ownerName } as any).workspaceId || ({ planId, ownerEmail, companyName, slug, ownerName } as any).roomId : undefined,
-            targetType: "CREATE",
-            targetId: undefined,
-            metadata: {}
-          });
   }
 }

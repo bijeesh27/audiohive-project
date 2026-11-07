@@ -17,10 +17,10 @@ const OrganizationRoutes = () => {
         <Route element={<OrganizationLayout/>}>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.DASHBOARD} element={<Dashboard/>}/>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.WORKSPACES} element={<Workspaces/>}/>
-            <Route path='create-workspace' element={<CreateWorkspace/>}/>
-            <Route path='subscription' element={<SubscriptionDetails/>}/>
+            <Route path={API_ROUTES.ORGANIZATION_ADMIN.CREATE_WORKSPACE} element={<CreateWorkspace/>}/>
+            <Route path={API_ROUTES.ORGANIZATION_ADMIN.SUBSCRIPTION} element={<SubscriptionDetails/>}/>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.USERS} element={<Users/>}/>
-            <Route path='/getworkspace/:workspaceId' element={<WorkspaceDetailsPage/>}/>
+            <Route path={API_ROUTES.ORGANIZATION_ADMIN.WORKSPACE_DETAIL} element={<WorkspaceDetailsPage/>}/>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.ACTIVITY_LOGS} element={<ActivityLog/>}/>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.CHAT} element={<DirectChatPage/>}/>
             <Route path={API_ROUTES.ORGANIZATION_ADMIN.CHAT_CONVERSATION} element={<DirectChatPage/>}/>

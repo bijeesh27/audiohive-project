@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import axiosInstance from "../config/axios";
-import { API_ROUTES } from "../constants/Api_Routes";
+import { API_ROUTES, API_ENDPOINTS } from "../constants/Api_Routes";
 
 const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -28,17 +28,16 @@ const SubscriptionSuccess = () => {
       try {
         // Verify the Stripe payment session. The response includes all org data
         // that was stored in the session metadata at checkout creation time.
-        const response = await axiosInstance.post("/api/subscription/verify-session", {
+        const response = await axiosInstance.post(API_ENDPOINTS.SUBSCRIPTION.VERIFY_SESSION, {
           sessionId,
         });
-        console.log(response.data)
 
         if (response.data.data.status === "paid") {
           const { ownerEmail, companyName, slug, ownerName, planId } = response.data.data;
 
           // Payment confirmed: create the organization in the database (with the
           // correct paid planId) and send the invitation email to the owner.
-          await axiosInstance.post("/api/organization/send-invitation", {
+          await axiosInstance.post(API_ENDPOINTS.ORGANIZATION.SEND_INVITATION, {
             ownerEmail,
             companyName,
             slug,

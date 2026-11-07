@@ -2,6 +2,7 @@ import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IuserDTO } from "../../../../shared/User.utils/userDTO";
 import { IuserRepository } from "../../../workspaceAdmin/domain/IuserRepository";
 import { AppError } from "../../../../common/Errors/AppError";
+import { MESSAGES } from "../../../../common/constant/messages";
 import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
 import { RemoveWorkspaceUserDTO } from "../dto/workspaceDTOs";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
@@ -26,13 +27,13 @@ export class RemoveWorkspaceUserUseCase
       this.workspaceRepository.getWorkspaceById(workspaceId),
     ]);
     if (!organization || !workspace || workspace.organizationId.toString() !== organization._id.toString()) {
-      throw new AppError("You do not have permission to remove members from this workspace", 403);
+      throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED_REMOVE_WORKSPACE_MEMBERS, 403);
     }
 
     const updatedUser = await this.userRepository.removeUserFromWorkspace(userId, workspaceId);
 
     if (!updatedUser) {
-      throw new AppError("User not found or update failed", 404);
+      throw new AppError(MESSAGES.ERRORS.USER_NOT_FOUND_OR_UPDATE_FAILED, 404);
     }
 
     await this.activityLogRepository.recordActivity({

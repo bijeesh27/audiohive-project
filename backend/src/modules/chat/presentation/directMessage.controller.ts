@@ -1,42 +1,80 @@
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware.js";
 import { ApiResposne } from "../../../common/Response/Response.js";
-import { GetConversationsUseCase } from "../application/usecases/getConversationsUseCase.js";
-import { GetDirectMessagesUseCase } from "../application/usecases/getDirectMessagesUseCase.js";
-import { SendDirectMessageUseCase } from "../application/usecases/sendDirectMessageUseCase.js";
-import { MarkDirectMessagesAsReadUseCase } from "../application/usecases/markDirectMessagesAsReadUseCase.js";
-import { SearchDirectChatUsersUseCase } from "../application/usecases/searchDirectChatUsersUseCase.js";
-import { GetDirectChatUnreadCountUseCase } from "../application/usecases/getDirectChatUnreadCountUseCase.js";
-import { GetOrCreateConversationWithUserUseCase } from "../application/usecases/getOrCreateConversationWithUserUseCase.js";
+import { AppError } from "../../../common/Errors/AppError.js";
+import { HttpStatus } from "../../../common/constant/httpStatus.js";
+import { MESSAGES } from "../../../common/constant/messages.js";
+import { IuseCase } from "../../../shared/interface/IuseCase.js";
+import {
+  SendDirectMessageInputDTO,
+  DirectMessageResponseDTO,
+  ConversationResponseDTO,
+  GetDirectMessagesOptions,
+  PaginatedDirectMessages,
+  EligibleUserDTO,
+} from "../application/dto/directMessageDTO.js";
 
 export class DirectMessageController {
   constructor(
-    private readonly getConversationsUseCase: GetConversationsUseCase,
-    private readonly getDirectMessagesUseCase: GetDirectMessagesUseCase,
-    private readonly sendDirectMessageUseCase: SendDirectMessageUseCase,
-    private readonly markDirectMessagesAsReadUseCase: MarkDirectMessagesAsReadUseCase,
-    private readonly searchDirectChatUsersUseCase: SearchDirectChatUsersUseCase,
-    private readonly getDirectChatUnreadCountUseCase: GetDirectChatUnreadCountUseCase,
-    private readonly getOrCreateConversationWithUserUseCase: GetOrCreateConversationWithUserUseCase
+    private readonly getConversationsUseCase: IuseCase<
+      { userId: string },
+      ConversationResponseDTO[]
+    >,
+    private readonly getDirectMessagesUseCase: IuseCase<
+      {
+        conversationId: string;
+        userId: string;
+        options?: GetDirectMessagesOptions;
+      },
+      PaginatedDirectMessages & { conversation: ConversationResponseDTO }
+    >,
+    private readonly sendDirectMessageUseCase: IuseCase<
+      SendDirectMessageInputDTO,
+      DirectMessageResponseDTO
+    >,
+    private readonly markDirectMessagesAsReadUseCase: IuseCase<
+      { conversationId: string; userId: string },
+      { count: number }
+    >,
+    private readonly searchDirectChatUsersUseCase: IuseCase<
+      { userId: string; workspaceId?: string; query?: string },
+      EligibleUserDTO[]
+    >,
+    private readonly getDirectChatUnreadCountUseCase: IuseCase<
+      { userId: string },
+      { unreadCount: number }
+    >,
+    private readonly getOrCreateConversationWithUserUseCase: IuseCase<
+      { userId: string; targetUserId: string; workspaceId?: string },
+      ConversationResponseDTO
+    >
   ) {}
 
-  async getConversations(req: AuthRequest, res: Response, next: NextFunction) {
+  private getAuthenticatedUser(req: AuthRequest) {
+    const user = req.user;
+    if (!user) {
+      throw new AppError(MESSAGES.ERRORS.AUTHENTICATION_REQUIRED, HttpStatus.UNAUTHORIZED);
+    }
+    return user;
+  }
+
+  getConversations = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = req.user!;
+      const user = this.getAuthenticatedUser(req);
       const conversations = await this.getConversationsUseCase.execute({
         userId: user.id,
       });
-      return ApiResposne.success(res, "Conversations retrieved", conversations);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.CONVERSATIONS_RETRIEVED, conversations);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async getMessages(req: AuthRequest, res: Response, next: NextFunction) {
+  getMessages = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = req.user!;
-      const { conversationId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 50;
+      const user = this.getAuthenticatedUser(req);
+      const conversationId = req.params.conversationId as string;
+      const limit = parseInt(req.query.limit as string, 10) || 50;
       const before = (req.query.before as string) || undefined;
 
       const result = await this.getDirectMessagesUseCase.execute({
@@ -45,16 +83,16 @@ export class DirectMessageController {
         options: { limit, before },
       });
 
-      return ApiResposne.success(res, "Messages retrieved", result);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.MESSAGES_RETRIEVED, result);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async getOrCreateWithUser(req: AuthRequest, res: Response, next: NextFunction) {
+  getOrCreateWithUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = req.user!;
-      const { targetUserId } = req.params;
+      const user = this.getAuthenticatedUser(req);
+      const targetUserId = req.params.targetUserId as string;
 
       const conversation = await this.getOrCreateConversationWithUserUseCase.execute({
         userId: user.id,
@@ -62,19 +100,19 @@ export class DirectMessageController {
         workspaceId: user.workspaceId,
       });
 
-      return ApiResposne.success(res, "Conversation ready", conversation);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.CONVERSATION_READY, conversation);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async sendMessage(req: AuthRequest, res: Response, next: NextFunction) {
+  sendMessage = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = req.user!;
+      const user = this.getAuthenticatedUser(req);
       const { receiverId, content, type, conversationId } = req.body;
 
       if (!receiverId || !content?.trim()) {
-        return res.status(400).json({ success: false, message: "receiverId and content are required" });
+        throw new AppError(MESSAGES.ERRORS.RECEIVER_AND_CONTENT_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const result = await this.sendDirectMessageUseCase.execute({
@@ -88,31 +126,31 @@ export class DirectMessageController {
         conversationId,
       });
 
-      return ApiResposne.success(res, "Direct message sent", result);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.DIRECT_MESSAGE_SENT, result, HttpStatus.CREATED);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async markAsRead(req: AuthRequest, res: Response, next: NextFunction) {
+  markAsRead = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = req.user!;
-      const { conversationId } = req.params;
+      const user = this.getAuthenticatedUser(req);
+      const conversationId = req.params.conversationId as string;
 
       const result = await this.markDirectMessagesAsReadUseCase.execute({
         conversationId,
         userId: user.id,
       });
 
-      return ApiResposne.success(res, "Messages marked as read", result);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.MESSAGES_MARKED_AS_READ, result);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async searchUsers(req: AuthRequest, res: Response, next: NextFunction) {
+  searchUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = req.user!;
+      const user = this.getAuthenticatedUser(req);
       const query = (req.query.query as string) || "";
 
       const users = await this.searchDirectChatUsersUseCase.execute({
@@ -121,22 +159,22 @@ export class DirectMessageController {
         query,
       });
 
-      return ApiResposne.success(res, "Eligible users retrieved", users);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.ELIGIBLE_USERS_RETRIEVED, users);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async getUnreadCount(req: AuthRequest, res: Response, next: NextFunction) {
+  getUnreadCount = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = req.user!;
+      const user = this.getAuthenticatedUser(req);
       const result = await this.getDirectChatUnreadCountUseCase.execute({
         userId: user.id,
       });
 
-      return ApiResposne.success(res, "Unread count retrieved", result);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.UNREAD_COUNT_RETRIEVED, result);
     } catch (err) {
       next(err);
     }
-  }
+  };
 }

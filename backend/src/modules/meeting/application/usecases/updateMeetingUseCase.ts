@@ -6,6 +6,7 @@ import { IMeetingDocument } from "../../infrastructure/meetingSchema.js";
 import { AppError } from "../../../../common/Errors/AppError.js";
 import { HttpStatus } from "../../../../common/constant/httpStatus.js";
 import { UserRoles } from "../../../../common/constant/userRoles.js";
+import { MESSAGES } from "../../../../common/constant/messages.js";
 
 export class UpdateMeetingUseCase
   implements IuseCase<UpdateMeetingDTO, IMeetingDocument>
@@ -17,7 +18,7 @@ export class UpdateMeetingUseCase
 
     const existing = await this.meetingRepository.findMeetingById(meetingId, workspaceId);
     if (!existing) {
-      throw new AppError("Meeting not found", HttpStatus.NOT_FOUND);
+      throw new AppError(MESSAGES.ERRORS.MEETING_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
     // Only host or workspace admin / super admin can update
@@ -25,7 +26,7 @@ export class UpdateMeetingUseCase
     const isAdmin = userRole !== UserRoles.MEMBER;
 
     if (!isHost && !isAdmin) {
-      throw new AppError("You are not authorized to update this meeting", HttpStatus.FORBIDDEN);
+      throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED_UPDATE_MEETING, HttpStatus.FORBIDDEN);
     }
 
     const updatePayload: Partial<IMeetingDocument> = {};
@@ -36,7 +37,7 @@ export class UpdateMeetingUseCase
     if (data.startTime) {
       const start = new Date(data.startTime);
       if (isNaN(start.getTime())) {
-        throw new AppError("Invalid start time", HttpStatus.BAD_REQUEST);
+        throw new AppError(MESSAGES.ERRORS.INVALID_START_TIME, HttpStatus.BAD_REQUEST);
       }
       updatePayload.startTime = start;
     }
@@ -44,7 +45,7 @@ export class UpdateMeetingUseCase
     if (data.endTime) {
       const end = new Date(data.endTime);
       if (isNaN(end.getTime())) {
-        throw new AppError("Invalid end time", HttpStatus.BAD_REQUEST);
+        throw new AppError(MESSAGES.ERRORS.INVALID_END_TIME, HttpStatus.BAD_REQUEST);
       }
       updatePayload.endTime = end;
     }
@@ -57,7 +58,7 @@ export class UpdateMeetingUseCase
 
     const updated = await this.meetingRepository.updateMeeting(meetingId, workspaceId, updatePayload);
     if (!updated) {
-      throw new AppError("Failed to update meeting", HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new AppError(MESSAGES.ERRORS.FAILED_TO_UPDATE_MEETING, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     return updated;

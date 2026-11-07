@@ -43,7 +43,7 @@ export class CreateWorkspaceUseCase implements IuseCase<CreateWorkspaceDTO, void
 
         const { total: currentWorkspacesCount } = await this.workspaceRepository.getWorkspacesByOrg(organization._id.toString(), 1, 1);
         if (currentWorkspacesCount >= maxWorkspaces) {
-            throw new AppError("Maximum workspace limit reached for your subscription plan", HttpStatus.BAD_REQUEST);
+            throw new AppError(MESSAGES.ERRORS.MAX_WORKSPACE_LIMIT_REACHED, HttpStatus.BAD_REQUEST);
         }
 
         try {
@@ -81,14 +81,12 @@ export class CreateWorkspaceUseCase implements IuseCase<CreateWorkspaceDTO, void
         }
 
         await this.activityLogRepository.recordActivity({
-              occurredAt: new Date(),
-              action: "CREATE_WORKSPACE",
-              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-              organizationId: data ? (data as any).organizationId : undefined,
-              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-              targetType: "CREATE",
-              targetId: undefined,
-              metadata: {}
-            });
+          occurredAt: new Date(),
+          action: "CREATE_WORKSPACE",
+          actorId: null,
+          organizationId: organization._id.toString(),
+          targetType: "WORKSPACE",
+          metadata: { workspaceName: data.workspaceName, slug: data.slug },
+        });
     }
 }

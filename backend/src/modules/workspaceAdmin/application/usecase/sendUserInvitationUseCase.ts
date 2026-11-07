@@ -52,15 +52,13 @@ export class SendUserInvitationUseCase implements IuseCase<SendUserInvitationDTO
         });
 
         await this.activityLogRepository.recordActivity({
-              occurredAt: new Date(),
-              action: "SEND_USER_INVITATION",
-              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-              organizationId: data ? (data as any).organizationId : undefined,
-              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-              targetType: "SEND",
-              targetId: undefined,
-              metadata: {}
-            });
+          occurredAt: new Date(),
+          action: "SEND_USER_INVITATION",
+          actorId: null,
+          workspaceId: data.workspaceId,
+          targetType: "INVITATION",
+          metadata: { email: data.email, role: data.role },
+        });
     }
 }
 

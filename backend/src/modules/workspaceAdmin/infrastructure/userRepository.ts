@@ -34,11 +34,22 @@ export class UserRepository implements IuserRepository {
     }
 
     const [users, total] = await Promise.all([
-      UserModel.find(query).select("-password").skip(skip).limit(limit),
+      UserModel.find(query).select("-password").skip(skip).limit(limit).lean(),
       UserModel.countDocuments(query),
     ]);
 
-    return { users, total };
+    const mappedUsers: IuserDTO[] = users.map((u) => ({
+      _id: u._id.toString(),
+      username: u.username,
+      email: u.email,
+      password: "",
+      role: u.role || UserRoles.MEMBER,
+      status: u.status ?? true,
+      workspaceIds: u.workspaceIds,
+      workspaceId: u.workspaceId,
+    }));
+
+    return { users: mappedUsers, total };
   }
 
   async getDashboardStats(workspaceId: string): Promise<import("../application/dtos/workspaceAdminDTO.ts").WorkspaceDashboardStatsDTO> {

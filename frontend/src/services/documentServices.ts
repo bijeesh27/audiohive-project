@@ -1,6 +1,12 @@
 import axiosInstance from "../config/axios";
 import { API_ENDPOINTS } from "../constants/Api_Routes";
 
+export interface DocumentFileResponse {
+  downloadUrl: string;
+  fileName: string;
+  mimeType: string;
+}
+
 export const uploadRoomDocument = (roomId: string, file: File) => {
   const formData = new FormData();
   formData.append("document", file);
@@ -14,9 +20,9 @@ export const getRoomDocuments = (roomId: string) => {
 };
 
 export const getRoomDocumentFile = (roomId: string, documentId: string) => {
-  return axiosInstance.get(API_ENDPOINTS.DOCUMENT.GET_FILE(roomId, documentId), {
-    responseType: "blob",
-  });
+  return axiosInstance.get<{ success: boolean; message: string; data: DocumentFileResponse }>(
+    API_ENDPOINTS.DOCUMENT.GET_FILE(roomId, documentId)
+  );
 };
 
 export const deleteRoomDocument = (roomId: string, documentId: string) => {
