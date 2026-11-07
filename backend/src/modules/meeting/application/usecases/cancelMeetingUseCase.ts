@@ -5,6 +5,7 @@ import { IMeetingDocument } from "../../infrastructure/meetingSchema.js";
 import { AppError } from "../../../../common/Errors/AppError.js";
 import { HttpStatus } from "../../../../common/constant/httpStatus.js";
 import { UserRoles } from "../../../../common/constant/userRoles.js";
+import { MESSAGES } from "../../../../common/constant/messages.js";
 
 export class CancelMeetingUseCase
   implements IuseCase<CancelMeetingDTO, IMeetingDocument>
@@ -16,7 +17,7 @@ export class CancelMeetingUseCase
 
     const existing = await this.meetingRepository.findMeetingById(meetingId, workspaceId);
     if (!existing) {
-      throw new AppError("Meeting not found", HttpStatus.NOT_FOUND);
+      throw new AppError(MESSAGES.ERRORS.MEETING_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
     const isHost =
@@ -26,7 +27,7 @@ export class CancelMeetingUseCase
 
     if (!isHost && !isAdmin) {
       throw new AppError(
-        "You are not authorized to cancel this meeting",
+        MESSAGES.ERRORS.UNAUTHORIZED_CANCEL_MEETING,
         HttpStatus.FORBIDDEN
       );
     }

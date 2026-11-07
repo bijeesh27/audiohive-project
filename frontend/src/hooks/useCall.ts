@@ -453,7 +453,7 @@ export function useCall(socket: Socket): UseCallReturn {
 
     try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: "always" },
+        video: true,
         audio: false,
       });
 

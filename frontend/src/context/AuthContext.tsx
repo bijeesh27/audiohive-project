@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import axiosInstance, { setToken } from "../config/axios";
 import { ContextError } from "../Errors/error";
+import { API_ENDPOINTS } from "../constants/Api_Routes";
 import { getWorkspaceAdminProfile } from "../services/workspaceAdminServices";
 import { getMemberWorkspaces, switchMemberWorkspace } from "../services/workspaceServices";
 
@@ -104,7 +105,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const res = await axiosInstance.post("/api/auth/refresh");
+        const res = await axiosInstance.post(API_ENDPOINTS.AUTH.REFRESH);
         if (res.data && res.data.success) {
           const token = res.data.data.accessToken;
           const role = res.data.data.userRole;

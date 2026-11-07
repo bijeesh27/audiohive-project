@@ -5,9 +5,15 @@ import { API_ROUTES } from "../constants/Api_Routes";
 const LandingPage: FC = () => {
   const navigate = useNavigate();
 
-  const handleLogin = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
-  const handleCreateOrganization = (): void => navigate(API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION);
-  const  handleAccessOrganization = (): void => navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
+  const handleLogin = (): void => {
+    void navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
+  };
+  const handleCreateOrganization = (): void => {
+    void navigate(API_ROUTES.ORGANIZATION.NAV.CREATE_ORGANIZATION);
+  };
+  const handleAccessOrganization = (): void => {
+    void navigate(API_ROUTES.PUBLIC.NAV.LOGIN);
+  };
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -25,7 +31,7 @@ const LandingPage: FC = () => {
             <a href="#features" className="text-sm text-brand-text-muted transition hover:text-brand-text">
               Features
             </a>
-            <a href="/pricing" className="text-sm text-brand-text-muted transition hover:text-brand-text">
+            <a href={API_ROUTES.PUBLIC.NAV.PRICING} className="text-sm text-brand-text-muted transition hover:text-brand-text">
               Plans
             </a>
           </div>

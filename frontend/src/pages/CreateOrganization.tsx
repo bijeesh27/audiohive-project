@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axios";
 import { isAxiosError } from "axios";
-import { API_ROUTES } from "../constants/Api_Routes";
+import { API_ROUTES, API_ENDPOINTS } from "../constants/Api_Routes";
 
 const PENDING_ORGANIZATION_KEY = "audiohive.pendingOrganization";
 
@@ -79,7 +79,7 @@ const CreateOrganization = () => {
     try {
       // Create the invitation record (does NOT create the org yet).
       // The org is created after the user selects and confirms a plan.
-      await axiosInstance.post("/api/organization/create-organization", organizationData);
+      await axiosInstance.post(API_ENDPOINTS.ORGANIZATION_ADMIN.CREATE, organizationData);
 
       const pendingOrganization = { ...organizationData, selectedPlanId };
       try {

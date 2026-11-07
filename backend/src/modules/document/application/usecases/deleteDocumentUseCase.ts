@@ -3,6 +3,7 @@ import { IDocumentRepository } from "../../domain/IdocumentRepository.js";
 import { DeleteDocumentDTO } from "../dto/documentDTO.js";
 import { socketService } from "../../../../socket/socketService.js";
 import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
+import { MESSAGES } from "../../../../common/constant/messages.js";
 
 export class DeleteDocumentUseCase implements IuseCase<DeleteDocumentDTO, void> {
   constructor(private readonly documentRepository: IDocumentRepository, private readonly activityLogRepository: IactivityLogRepository) {}
@@ -11,15 +12,15 @@ export class DeleteDocumentUseCase implements IuseCase<DeleteDocumentDTO, void> 
     const document = await this.documentRepository.findById(data.documentId);
     
     if (!document) {
-      throw new Error("Document not found");
+      throw new Error(MESSAGES.ERRORS.DOCUMENT_NOT_FOUND);
     }
     
     if (document.roomId.toString() !== data.roomId) {
-      throw new Error("Document not found in this room");
+      throw new Error(MESSAGES.ERRORS.DOCUMENT_NOT_IN_ROOM);
     }
 
     if (document.uploaderId.toString() !== data.userId) {
-      throw new Error("Not authorized to delete this document");
+      throw new Error(MESSAGES.ERRORS.UNAUTHORIZED_DELETE_DOCUMENT);
     }
 
     await this.documentRepository.delete(data.documentId);

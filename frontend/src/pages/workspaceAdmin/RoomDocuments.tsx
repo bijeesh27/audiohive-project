@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import { uploadRoomDocument, getRoomDocuments, getRoomDocumentFile, deleteRoomDocument } from "../../services/documentServices";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
-import { FileText, Download, UploadCloud, Loader2, Eye, Trash2 } from "lucide-react";
+import { FileText, Download, UploadCloud, Loader2, Eye, Trash2, ExternalLink } from "lucide-react";
 
 interface Document {
   _id: string;
@@ -14,10 +14,64 @@ interface Document {
   createdAt: string;
 }
 
-const canPreviewDocument = (mimeType?: string) =>
-  mimeType === "application/pdf" ||
-  mimeType === "text/plain" ||
-  Boolean(mimeType?.startsWith("image/"));
+export type PreviewCategory = "image" | "pdf" | "text" | "video" | "audio" | "unsupported";
+
+export const getEffectiveMimeType = (mimeType?: string, fileName?: string): string => {
+  if (mimeType && mimeType !== "application/octet-stream" && mimeType.trim() !== "") {
+    return mimeType.toLowerCase().split(";")[0].trim();
+  }
+  if (!fileName) return "application/octet-stream";
+  const ext = fileName.toLowerCase().split(".").pop();
+  switch (ext) {
+    case "pdf":
+      return "application/pdf";
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    case "bmp":
+      return "image/bmp";
+    case "ico":
+      return "image/x-icon";
+    case "txt":
+      return "text/plain";
+    case "csv":
+      return "text/csv";
+    case "json":
+      return "application/json";
+    case "md":
+      return "text/markdown";
+    case "mp4":
+      return "video/mp4";
+    case "webm":
+      return "video/webm";
+    case "mp3":
+      return "audio/mpeg";
+    case "wav":
+      return "audio/wav";
+    case "ogg":
+      return "audio/ogg";
+    default:
+      return "application/octet-stream";
+  }
+};
+
+export const getDocumentPreviewType = (mimeType?: string, fileName?: string): PreviewCategory => {
+  const type = getEffectiveMimeType(mimeType, fileName);
+  if (type.startsWith("image/")) return "image";
+  if (type === "application/pdf") return "pdf";
+  if (type.startsWith("text/") || type === "application/json" || type === "text/csv" || type === "text/markdown") return "text";
+  if (type.startsWith("video/")) return "video";
+  if (type.startsWith("audio/")) return "audio";
+  return "unsupported";
+};
 
 const getUploaderName = (uploaderId?: { _id?: string; username?: string } | string | null) => {
   if (!uploaderId) return "Unknown";
@@ -47,7 +101,10 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
   const [viewFile, setViewFile] = useState<{
     documentId: string;
     status: "loading" | "ready" | "error" | "unsupported";
+    previewType: PreviewCategory;
     url?: string;
+    textContent?: string;
+    errorMessage?: string;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,33 +145,79 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
 
   const viewDocumentId = documentToView?._id;
   const viewDocumentMimeType = documentToView?.mimeType;
+  const viewDocumentName = documentToView?.originalName;
 
   useEffect(() => {
-    if (!viewDocumentId || !viewDocumentMimeType || !canPreviewDocument(viewDocumentMimeType)) return;
+    if (!viewDocumentId || !documentToView) return;
+
+    const previewType = getDocumentPreviewType(viewDocumentMimeType, viewDocumentName);
+    if (previewType === "unsupported") {
+      setViewFile({
+        documentId: viewDocumentId,
+        status: "unsupported",
+        previewType: "unsupported",
+      });
+      return;
+    }
 
     let active = true;
-    let objectUrl: string | null = null;
+
+    setViewFile({
+      documentId: viewDocumentId,
+      status: "loading",
+      previewType,
+    });
 
     getRoomDocumentFile(roomId, viewDocumentId)
-      .then((response) => {
-        objectUrl = URL.createObjectURL(response.data);
+      .then(async (response) => {
+        const downloadUrl = response.data?.data?.downloadUrl;
+        if (!downloadUrl) {
+          throw new Error("No download URL returned from server");
+        }
+
+        let textContent: string | undefined;
+        if (previewType === "text") {
+          try {
+            const textResponse = await fetch(downloadUrl);
+            textContent = await textResponse.text();
+          } catch {
+            // ignore text decode error
+          }
+        }
+
         if (active) {
-          setViewFile({ documentId: viewDocumentId, status: "ready", url: objectUrl });
-        } else {
-          URL.revokeObjectURL(objectUrl);
+          setViewFile({
+            documentId: viewDocumentId,
+            status: "ready",
+            previewType,
+            url: downloadUrl,
+            textContent,
+          });
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         // eslint-disable-next-line no-console
         console.error("Document preview failed", error);
-        if (active) setViewFile({ documentId: viewDocumentId, status: "error" });
+        const errorMsg =
+          error && typeof error === "object" && "response" in error
+            ? (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+              "Could not open this document. Try downloading it."
+            : "Could not open this document. Try downloading it.";
+
+        if (active) {
+          setViewFile({
+            documentId: viewDocumentId,
+            status: "error",
+            previewType,
+            errorMessage: errorMsg,
+          });
+        }
       });
 
     return () => {
       active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [roomId, viewDocumentId, viewDocumentMimeType]);
+  }, [roomId, viewDocumentId, viewDocumentMimeType, viewDocumentName]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -152,14 +255,19 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
   const handleDownload = async (doc: Document) => {
     try {
       const response = await getRoomDocumentFile(roomId, doc._id);
-      const objectUrl = URL.createObjectURL(response.data);
+      const downloadUrl = response.data?.data?.downloadUrl;
+      if (!downloadUrl) {
+        throw new Error("Download URL could not be generated");
+      }
+
       const link = document.createElement("a");
-      link.href = objectUrl;
+      link.href = downloadUrl;
       link.download = doc.originalName;
+      link.target = "_blank";
+      link.rel = "noreferrer";
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Document download failed", error);
@@ -226,10 +334,6 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => {
-                    setViewFile({
-                    documentId: doc._id,
-                    status: canPreviewDocument(doc.mimeType) ? "loading" : "unsupported",
-                  });
                     setDocumentToView(doc);
                   }}
                   className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center"
@@ -316,6 +420,17 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {activeViewFile?.url && (
+                  <a
+                    href={activeViewFile.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center"
+                    title="Open in new window"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
                 <button
                   onClick={() => handleDownload(documentToView)}
                   className="px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center gap-2"
@@ -332,26 +447,95 @@ export const RoomDocuments = ({ roomId }: { roomId: string }) => {
               </div>
             </div>
             
-            <div className="flex-1 bg-gray-100 w-full h-full relative">
+            <div className="flex-1 bg-gray-50 w-full h-full relative overflow-auto flex items-center justify-center p-4">
               {!activeViewFile || activeViewFile.status === "loading" ? (
-                <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading document...
+                <div className="flex flex-col items-center justify-center text-sm text-gray-500 gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                  <span>Loading preview...</span>
                 </div>
               ) : activeViewFile.status === "unsupported" ? (
-                <div className="flex h-full items-center justify-center text-center text-sm text-gray-600">
-                  Preview is not available for this file type. Download it to open the document.
+                <div className="flex flex-col items-center justify-center text-center p-8 max-w-md">
+                  <FileText className="w-12 h-12 text-gray-400 mb-3" />
+                  <p className="text-base font-semibold text-gray-800 mb-1">Preview not available</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Preview is not supported for this file type ({documentToView.originalName.split('.').pop()?.toUpperCase() || "file"}). You can download it to view on your device.
+                  </p>
+                  <button
+                    onClick={() => handleDownload(documentToView)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Download File
+                  </button>
                 </div>
               ) : activeViewFile.status === "error" ? (
-                <div className="flex h-full items-center justify-center text-sm text-red-600">
-                  Could not open this document. Try downloading it.
+                <div className="flex flex-col items-center justify-center text-center p-8 max-w-md">
+                  <div className="p-3 bg-red-50 text-red-600 rounded-full mb-3">
+                    <FileText className="w-8 h-8" />
+                  </div>
+                  <p className="text-base font-semibold text-gray-800 mb-1">Unable to Load Preview</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {activeViewFile.errorMessage || "Could not retrieve the document file. Please try downloading it directly."}
+                  </p>
+                  <button
+                    onClick={() => handleDownload(documentToView)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Download Instead
+                  </button>
                 </div>
-              ) : (
-                <iframe
-                  src={activeViewFile.url}
-                  className="w-full h-full border-0 absolute inset-0"
-                  title={documentToView.originalName}
-                />
-              )}
+              ) : activeViewFile.previewType === "image" ? (
+                <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
+                  <img
+                    src={activeViewFile.url}
+                    alt={documentToView.originalName}
+                    className="max-h-full max-w-full object-contain rounded shadow-sm bg-white"
+                  />
+                </div>
+              ) : activeViewFile.previewType === "text" ? (
+                <div className="w-full h-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto p-4 font-mono text-xs text-gray-800 whitespace-pre-wrap">
+                  {activeViewFile.textContent || "Empty file"}
+                </div>
+              ) : activeViewFile.previewType === "video" ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <video
+                    src={activeViewFile.url}
+                    controls
+                    className="max-h-full max-w-full rounded shadow"
+                  />
+                </div>
+              ) : activeViewFile.previewType === "audio" ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-white rounded-lg p-8 shadow-sm max-w-md my-auto">
+                  <FileText className="w-16 h-16 text-indigo-500" />
+                  <p className="text-sm font-medium text-gray-700">{documentToView.originalName}</p>
+                  <audio src={activeViewFile.url} controls className="w-full" />
+                </div>
+              ) : activeViewFile.previewType === "pdf" ? (
+                <div className="w-full h-full relative">
+                  <object
+                    data={activeViewFile.url}
+                    type="application/pdf"
+                    className="w-full h-full rounded border-0"
+                  >
+                    <iframe
+                      src={activeViewFile.url}
+                      className="w-full h-full border-0"
+                      title={documentToView.originalName}
+                    >
+                      <div className="p-4 text-center">
+                        <p className="text-sm text-gray-600 mb-2">PDF preview could not be displayed directly.</p>
+                        <a
+                          href={activeViewFile.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-indigo-600 underline font-medium text-sm"
+                        >
+                          Open PDF in a new tab
+                        </a>
+                      </div>
+                    </iframe>
+                  </object>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

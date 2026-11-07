@@ -15,6 +15,7 @@ import documentRouter from "./modules/document/presentation/documentRoutes.ts";
 import activityLogRouter from "./modules/activityLog/presentation/activity.routes.ts";
 import chatRouter from "./modules/chat/presentation/chat.routes.ts";
 import meetingRouter from "./modules/meeting/presentation/meeting.route.ts";
+import { BASE_API_ROUTES } from "./common/constant/ApiRoutes.ts";
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -33,26 +34,32 @@ export function connectApp() {
     "http://10.20.10.137:5173",
   ];
 
-  app.use(cors({ origin: allowedOrigins, credentials: true }));
+  app.use(
+    cors({
+      origin: allowedOrigins,
+      credentials: true,
+      exposedHeaders: ["Content-Disposition", "Content-Type", "Content-Length"],
+    })
+  );
   app.use(urlencoded({ extended: true }));
   app.use(json());
 
-  const PORT = process.env.PORT || 5000;
+  const PORT = Number(process.env.PORT) || 5000;
 
   app.use(cookieParser());
 
-  app.use("/api/auth", authRouter);
-  app.use("/api/super-admin", superAdminRouter);
-  app.use("/api/workspaceadmin", workspaceAdminRouter);
-  app.use("/api/subscription", subscriptionRouter);
-  app.use("/api/workspace", workspaceRouter);
-  app.use("/api/organization", organizationRouter);
-  app.use("/api/room", roomRouter);
-  app.use("/api/announcement", announcementRouter);
-  app.use("/api/rooms", documentRouter);
-  app.use("/api/chat", chatRouter);
-  app.use("/api/meeting", meetingRouter);
-  app.use("/api/activitylog", activityLogRouter);
+  app.use(BASE_API_ROUTES.AUTH, authRouter);
+  app.use(BASE_API_ROUTES.SUPER_ADMIN, superAdminRouter);
+  app.use(BASE_API_ROUTES.WORKSPACE_ADMIN, workspaceAdminRouter);
+  app.use(BASE_API_ROUTES.SUBSCRIPTION, subscriptionRouter);
+  app.use(BASE_API_ROUTES.WORKSPACE, workspaceRouter);
+  app.use(BASE_API_ROUTES.ORGANIZATION, organizationRouter);
+  app.use(BASE_API_ROUTES.ROOM, roomRouter);
+  app.use(BASE_API_ROUTES.ANNOUNCEMENT, announcementRouter);
+  app.use(BASE_API_ROUTES.ROOMS_DOCUMENTS, documentRouter);
+  app.use(BASE_API_ROUTES.CHAT, chatRouter);
+  app.use(BASE_API_ROUTES.MEETING, meetingRouter);
+  app.use(BASE_API_ROUTES.ACTIVITY_LOG, activityLogRouter);
 
   app.use(globelErrorHandler);
 

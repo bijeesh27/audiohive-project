@@ -67,8 +67,8 @@ const LoginFrom = () => {
               loginMethod: "password",
             },
           });
-        } catch (activityError) {
-          console.error("Failed to record login activity:", activityError);
+        } catch {
+          // Non-critical audit activity record failure
         }
 
         if (res.data.userRole === UserRoles.SUPER_ADMIN) {
@@ -124,7 +124,7 @@ const LoginFrom = () => {
         <div className="flex items-center justify-between mt-4 mb-1.5">
           <label className="text-sm font-medium text-slate-900">Password</label>
           <Link
-            to="/forgot-password"
+            to={API_ROUTES.PUBLIC.NAV.FORGOT_PASSWORD}
             className="text-xs font-medium text-indigo-600 hover:underline"
           >
             Forgot Password?

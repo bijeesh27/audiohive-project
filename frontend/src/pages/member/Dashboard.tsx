@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { DoorOpen, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 const Dashboard = () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getWorkspace,
@@ -73,23 +73,35 @@ const WorkspaceDetailsPage = () => {
   const [userSearch, setUserSearch] = useState("");
   const userLimit = 10;
 
-  const fetchWorkspace = () => {
+  const fetchWorkspace = useCallback(() => {
     if (!workspaceId) return;
-    setLoading(true);
-    setError(null);
     getWorkspace(workspaceId)
       .then((res) => setWorkspace(res.data))
-      .then((res)=>console.log(res))
       .catch((err) => setError(err?.response?.data?.message || "Failed to load workspace"))
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
-  const fetchUsers = () => {
+  useEffect(() => {
+    if (!workspaceId) return;
+    let cancelled = false;
+
+    getWorkspace(workspaceId)
+      .then((res) => {
+        if (!cancelled) setWorkspace(res.data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err?.response?.data?.message || "Failed to load workspace");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId]);
+
+  const fetchUsers = useCallback(() => {
     if (!workspaceId) return;
     setUsersLoading(true);
     getWorkspaceUsers(workspaceId, userPage, userLimit, userSearch)
@@ -97,9 +109,9 @@ const WorkspaceDetailsPage = () => {
         setUsers(res.data?.users || []);
         setUserTotalPages(Math.ceil((res.data?.total || 0) / userLimit));
       })
-      .catch((err) => console.error("Failed to load users:", err))
+      .catch(() => {})
       .finally(() => setUsersLoading(false));
-  };
+  }, [workspaceId, userPage, userLimit, userSearch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,8 +119,7 @@ const WorkspaceDetailsPage = () => {
       if (!cancelled) fetchUsers();
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId, userPage, userSearch]);
+      }, [fetchUsers]);
 
   // ---- Edit ----
   const openEditModal = () => {
@@ -140,7 +151,7 @@ const WorkspaceDetailsPage = () => {
         slug: editSlug,
       });
       setShowEditModal(false);
-      fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
+      fetchWorkspace();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       setEditError(err?.response?.data?.message || "Failed to update workspace");
@@ -187,7 +198,7 @@ const WorkspaceDetailsPage = () => {
         workspaceAdminName: adminName.trim(),
       });
       setShowInviteModal(false);
-      fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
+      fetchWorkspace();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       setInviteError(err?.response?.data?.message || "Failed to send invitation");
@@ -208,7 +219,7 @@ const WorkspaceDetailsPage = () => {
     try {
       await blockWorkspace(workspace._id, isSuspended ? "active" : "suspended");
       setShowBlockConfirm(false);
-      fetchWorkspace(); // eslint-disable-line react-hooks/set-state-in-effect
+      fetchWorkspace();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       setBlockError(

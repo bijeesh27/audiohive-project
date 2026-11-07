@@ -7,7 +7,6 @@ import { HttpStatus } from "../../constants/httpStatus";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { RoomDocuments } from "../workspaceAdmin/RoomDocuments";
-import { RoomChatPanel } from "../../components/room/RoomChatPanel";
 import { VideoCallPanel } from "../../components/room/VideoCallPanel";
 
 interface Room {
@@ -169,73 +168,82 @@ const RoomDetail = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (Details, Documents, Presence, Participants) */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-          {/* Room Header Card */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-start justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div
-                  className={`p-3 rounded-xl ${
-                    room.type === "public" ? "bg-indigo-50" : "bg-orange-50"
+      {/* Room Header Card */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <div
+              className={`p-3 rounded-xl ${
+                room.type === "public" ? "bg-indigo-50" : "bg-orange-50"
+              }`}
+            >
+              {room.type === "public" ? (
+                <Globe className="w-7 h-7 text-indigo-600" />
+              ) : (
+                <Lock className="w-7 h-7 text-orange-600" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{room.name}</h1>
+              <div className="flex items-center gap-3 mt-1">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    room.type === "public"
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "bg-orange-50 text-orange-700"
                   }`}
                 >
                   {room.type === "public" ? (
-                    <Globe className="w-7 h-7 text-indigo-600" />
+                    <Globe className="w-3 h-3" />
                   ) : (
-                    <Lock className="w-7 h-7 text-orange-600" />
+                    <Lock className="w-3 h-3" />
                   )}
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{room.name}</h1>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        room.type === "public"
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "bg-orange-50 text-orange-700"
-                      }`}
-                    >
-                      {room.type === "public" ? (
-                        <Globe className="w-3 h-3" />
-                      ) : (
-                        <Lock className="w-3 h-3" />
-                      )}
-                      {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
-                    </span>
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        room.status === "active"
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-sm text-gray-400">
-                Created{" "}
-                {new Date(room.createdAt).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                  {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
+                </span>
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    room.status === "active"
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-600"
+                  }`}
+                >
+                  {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
+                </span>
               </div>
             </div>
-
-            {room.description && (
-              <p className="mt-4 text-sm text-gray-500 leading-relaxed max-w-2xl">
-                {room.description}
-              </p>
-            )}
           </div>
 
-          <RoomDocuments roomId={room._id} />
+          <div className="text-sm text-gray-400">
+            Created{" "}
+            {new Date(room.createdAt).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </div>
+        </div>
 
+        {room.description && (
+          <p className="mt-4 text-sm text-gray-500 leading-relaxed max-w-2xl">
+            {room.description}
+          </p>
+        )}
+      </div>
+
+      {/* Prominent Video Conference Hub (Full Screen Experience) */}
+      <VideoCallPanel
+        roomId={room._id}
+        roomName={room.name}
+        roomType={room.type}
+        currentUsername={username ?? "You"}
+      />
+
+      {/* Main Content Area (Clean full-width layout without permanent right sidebar) */}
+      <div className="space-y-6">
+        <RoomDocuments roomId={room._id} />
+
+        {/* Grid for Presence and Room Participants */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Online Now — real-time presence */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
@@ -256,7 +264,7 @@ const RoomDetail = () => {
                 <p className="text-sm text-gray-500">No one else is here right now</p>
               </div>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
                 {onlineUsers.map((u) => (
                   <li key={u.userId} className="flex items-center gap-3 px-6 py-3">
                     <div className="relative flex-shrink-0">
@@ -309,7 +317,7 @@ const RoomDetail = () => {
                 <p className="text-sm text-gray-500">No participants yet</p>
               </div>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
                 {participants.map((p) => (
                   <li key={p._id} className="flex items-center gap-3 px-6 py-3">
                     <div className="flex-shrink-0 w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -326,20 +334,6 @@ const RoomDetail = () => {
               </ul>
             )}
           </div>
-        </div>
-
-        {/* Right Column (Audio & Video Call and Text Chat) */}
-        <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-6">
-          {/* Audio & Video Call Section */}
-          <VideoCallPanel
-            roomId={room._id}
-            roomName={room.name}
-            roomType={room.type}
-            currentUsername={username ?? "You"}
-          />
-
-          {/* Text Chat */}
-          <RoomChatPanel roomId={room._id} roomName={room.name} />
         </div>
       </div>
     </div>

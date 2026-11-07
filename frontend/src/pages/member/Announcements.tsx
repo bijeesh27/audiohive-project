@@ -1,8 +1,6 @@
 import { useAuth } from "../../context/AuthContext";
 import { useAnnouncements } from "../../hooks/useAnnouncements";
 import type { Announcement } from "../../hooks/useAnnouncements";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { markAsRead } from "../../services/announcementServices";
 import { useState } from "react";
 import {
   Megaphone,

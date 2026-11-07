@@ -12,6 +12,7 @@ interface IWorkspaceData {
   planId: string;
   planName: string;
   amount: number;
+  [key: string]: unknown;
 }
 
 const PendingApproval = () => {
@@ -19,12 +20,12 @@ const PendingApproval = () => {
   const location = useLocation();
 
   const workspaceData = location.state as IWorkspaceData | undefined;
-  // eslint-disable-next-line no-console
-  console.log(workspaceData);
+
   useEffect(() => {
-    createWorkspace(workspaceData);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (workspaceData) {
+      void createWorkspace(workspaceData);
+    }
+  }, [workspaceData]);
 
   if (!workspaceData) {
     return (

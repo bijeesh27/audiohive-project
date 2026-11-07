@@ -4,6 +4,7 @@ import { GetMeetingByIdDTO } from "../dto/meetingDTO.js";
 import { IMeetingDocument } from "../../infrastructure/meetingSchema.js";
 import { AppError } from "../../../../common/Errors/AppError.js";
 import { HttpStatus } from "../../../../common/constant/httpStatus.js";
+import { MESSAGES } from "../../../../common/constant/messages.js";
 
 export class GetMeetingByIdUseCase
   implements IuseCase<GetMeetingByIdDTO, IMeetingDocument>
@@ -18,7 +19,7 @@ export class GetMeetingByIdUseCase
       : await this.meetingRepository.findMeetingById(meetingId, workspaceId);
 
     if (!meeting) {
-      throw new AppError("Meeting not found", HttpStatus.NOT_FOUND);
+      throw new AppError(MESSAGES.ERRORS.MEETING_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
     return meeting;

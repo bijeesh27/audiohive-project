@@ -1,21 +1,44 @@
 import { NextFunction, Response } from "express";
-import { AuthRequest } from "../../../middleware/authMiddleware";
-import { ApiResposne } from "../../../common/Response/Response";
-import { SendMessageUseCase } from "../application/usecases/sendMessageUseCase";
-import { GetRoomMessagesUseCase } from "../application/usecases/getRoomMessagesUseCase";
-import { DeleteMessageUseCase } from "../application/usecases/deleteMessageUseCase";
+import { AuthRequest } from "../../../middleware/authMiddleware.js";
+import { ApiResposne } from "../../../common/Response/Response.js";
+import { AppError } from "../../../common/Errors/AppError.js";
+import { HttpStatus } from "../../../common/constant/httpStatus.js";
+import { MESSAGES } from "../../../common/constant/messages.js";
+import { IuseCase } from "../../../shared/interface/IuseCase.js";
+import {
+  SendMessageInputDTO,
+  ChatMessageResponseDTO,
+} from "../application/dto/chatDTO.js";
+import {
+  GetRoomMessagesOptions,
+  PaginatedChatMessages,
+} from "../domain/IChatMessageRepository.js";
 
 export class ChatController {
   constructor(
-    private readonly sendMessageUseCase: SendMessageUseCase,
-    private readonly getRoomMessagesUseCase: GetRoomMessagesUseCase,
-    private readonly deleteMessageUseCase: DeleteMessageUseCase
+    private readonly sendMessageUseCase: IuseCase<SendMessageInputDTO, ChatMessageResponseDTO>,
+    private readonly getRoomMessagesUseCase: IuseCase<
+      { roomId: string; options: GetRoomMessagesOptions },
+      PaginatedChatMessages
+    >,
+    private readonly deleteMessageUseCase: IuseCase<
+      { messageId: string; userId: string; role: string },
+      boolean
+    >
   ) {}
 
-  async getMessages(req: AuthRequest, res: Response, next: NextFunction) {
+  private getAuthenticatedUser(req: AuthRequest) {
+    const user = req.user;
+    if (!user) {
+      throw new AppError(MESSAGES.ERRORS.AUTHENTICATION_REQUIRED, HttpStatus.UNAUTHORIZED);
+    }
+    return user;
+  }
+
+  getMessages = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const { roomId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 50;
+      const roomId = req.params.roomId as string;
+      const limit = parseInt(req.query.limit as string, 10) || 50;
       const before = (req.query.before as string) || undefined;
 
       const result = await this.getRoomMessagesUseCase.execute({
@@ -23,39 +46,47 @@ export class ChatController {
         options: { limit, before },
       });
 
-      return ApiResposne.success(res, "Messages retrieved", result);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.MESSAGES_RETRIEVED, result);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async sendMessage(req: AuthRequest, res: Response, next: NextFunction) {
+  sendMessage = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const { roomId } = req.params;
+      const user = this.getAuthenticatedUser(req);
+      if (!user.workspaceId) {
+        throw new AppError(MESSAGES.ERRORS.WORKSPACE_CONTEXT_MISSING, HttpStatus.BAD_REQUEST);
+      }
+
+      const roomId = req.params.roomId as string;
       const { content, type, attachments } = req.body;
-      const user = req.user!;
+
+      if (!content?.trim() && (!attachments || attachments.length === 0)) {
+        throw new AppError(MESSAGES.ERRORS.MESSAGE_CONTENT_REQUIRED, HttpStatus.BAD_REQUEST);
+      }
 
       const result = await this.sendMessageUseCase.execute({
         roomId,
-        workspaceId: user.workspaceId!,
+        workspaceId: user.workspaceId,
         senderId: user.id,
         senderName: user.username,
         senderRole: user.role,
-        content,
+        content: content?.trim() || "",
         type,
         attachments,
       });
 
-      return ApiResposne.success(res, "Message sent", result);
+      return ApiResposne.success(res, MESSAGES.SUCCESS.MESSAGE_SENT, result, HttpStatus.CREATED);
     } catch (err) {
       next(err);
     }
-  }
+  };
 
-  async deleteMessage(req: AuthRequest, res: Response, next: NextFunction) {
+  deleteMessage = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const { messageId } = req.params;
-      const user = req.user!;
+      const user = this.getAuthenticatedUser(req);
+      const messageId = req.params.messageId as string;
 
       await this.deleteMessageUseCase.execute({
         messageId,
@@ -63,9 +94,9 @@ export class ChatController {
         role: user.role,
       });
 
-      return ApiResposne.success(res, "Message deleted", { success: true });
+      return ApiResposne.success(res, MESSAGES.SUCCESS.MESSAGE_DELETED, { success: true });
     } catch (err) {
       next(err);
     }
-  }
+  };
 }

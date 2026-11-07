@@ -97,7 +97,7 @@ export class DirectMessageRepository implements IDirectMessageRepository {
     options: GetDirectMessagesOptions
   ): Promise<{ messages: IDirectMessageDocument[]; total: number; hasMore: boolean }> {
     const limit = options.limit ?? 50;
-    const query: Record<string, any> = {
+    const query: Record<string, unknown> = {
       conversationId: new Types.ObjectId(conversationId),
       isDeleted: false,
     };
@@ -321,7 +321,7 @@ export class DirectMessageRepository implements IDirectMessageRepository {
 
     if (targetUserIds.size === 0) return [];
 
-    const filter: any = {
+    const filter: Record<string, unknown> = {
       _id: { $in: Array.from(targetUserIds).map((id) => new Types.ObjectId(id)) },
       status: true,
     };

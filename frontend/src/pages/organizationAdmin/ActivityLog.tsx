@@ -37,10 +37,9 @@ export default function OrganizationActivityLog() {
     if (!organizationId) return;
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-
     const timer = setTimeout(() => {
+      setLoading(true);
+      setError(null);
       getOrganizationActivityLogs(organizationId, { page, limit, search: search.trim() || undefined })
         .then((res) => {
           if (!cancelled && res?.data) {
@@ -63,10 +62,6 @@ export default function OrganizationActivityLog() {
       clearTimeout(timer);
     };
   }, [organizationId, page, search]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
 
   const columns: Column<ActivityLogItem>[] = [
     {
@@ -142,7 +137,7 @@ export default function OrganizationActivityLog() {
             type="text"
             placeholder="Search action, actor, role..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>

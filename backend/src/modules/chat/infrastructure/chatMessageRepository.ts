@@ -21,7 +21,7 @@ export class ChatMessageRepository
 
   async getRoomMessages(roomId: string, options: GetRoomMessagesOptions): Promise<PaginatedChatMessages> {
     const limit = options.limit ?? 50;
-    const query: Record<string, any> = {
+    const query: Record<string, unknown> = {
       roomId,
       isDeleted: false,
     };

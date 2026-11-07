@@ -1,4 +1,5 @@
 import { AppError } from "../../../../common/Errors/AppError";
+import { MESSAGES } from "../../../../common/constant/messages";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IuserDTO } from "../../../../shared/User.utils/userDTO";
 import { IuserRepository } from "../../domain/IuserRepository";
@@ -18,17 +19,17 @@ export class RemoveWorkspaceMemberUseCase
     const existingUser = await this.userRepository.findUserById(input.userId);
     const workspaceIds = existingUser ? getUserWorkspaceIds(existingUser) : [];
     if (!existingUser || !workspaceIds.includes(input.workspaceId)) {
-      throw new AppError("Member is not assigned to this workspace", 404);
+      throw new AppError(MESSAGES.ERRORS.MEMBER_NOT_ASSIGNED_TO_WORKSPACE, 404);
     }
     if (workspaceIds.length === 1) {
-      throw new AppError("Use the organization workspace manager to assign a replacement workspace before removing this member", 400);
+      throw new AppError(MESSAGES.ERRORS.REPLACEMENT_WORKSPACE_REQUIRED, 400);
     }
 
     const user = await this.userRepository.removeUserFromWorkspace(
       input.userId,
       input.workspaceId,
     );
-    if (!user) throw new AppError("Member is not assigned to this workspace", 404);
+    if (!user) throw new AppError(MESSAGES.ERRORS.MEMBER_NOT_ASSIGNED_TO_WORKSPACE, 404);
     return user;
   }
 }

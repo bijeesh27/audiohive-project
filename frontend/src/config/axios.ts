@@ -1,5 +1,6 @@
 import axios from "axios";
 import { HttpStatus } from "../constants/httpStatus";
+import { API_ENDPOINTS } from "../constants/Api_Routes";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
@@ -41,12 +42,12 @@ axiosInstance.interceptors.response.use(
       error.response.status === HttpStatus.UNAUTHORIZED &&
       hasAccessToken &&
       !originalRequest._retry &&
-      originalRequest.url !== "/api/auth/refresh" 
+      originalRequest.url !== API_ENDPOINTS.AUTH.REFRESH 
     ) {
       originalRequest._retry = true;
       try {
         const res = await axios.post(
-          `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/auth/refresh`,
+          `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${API_ENDPOINTS.AUTH.REFRESH}`,
           {},
           {
             withCredentials: true,

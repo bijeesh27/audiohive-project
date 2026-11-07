@@ -33,14 +33,13 @@ export class ApproveWorkspaceUseCase implements IuseCase<ApproveWorkspaceDTO, vo
         });
 
         await this.activityLogRepository.recordActivity({
-              occurredAt: new Date(),
-              action: "APPROVE_WORKSPACE",
-              actorId: data ? (data as any).actorId || (data as any).userId || (data as any).uploaderId || null : null,
-              organizationId: data ? (data as any).organizationId : undefined,
-              workspaceId: data ? (data as any).workspaceId || (data as any).roomId : undefined,
-              targetType: "APPROVE",
-              targetId: undefined,
-              metadata: {}
-            });
+          occurredAt: new Date(),
+          action: "APPROVE_WORKSPACE",
+          actorId: null,
+          workspaceId: data.workspaceId,
+          targetType: "WORKSPACE",
+          targetId: data.workspaceId,
+          metadata: { workspaceName: data.workspaceName, adminEmail: data.adminEmail },
+        });
     }
 }

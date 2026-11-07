@@ -31,7 +31,11 @@ export async function socketAuthMiddleware(
         throw new Error("Workspace access is unavailable");
       }
 
-      const workspaceQuery = user.role === UserRoles.WORKSPACE_ADMIN
+      const workspaceQuery: {
+        _id: string;
+        status: "active";
+        workspaceAdminEmail?: string;
+      } = user.role === UserRoles.WORKSPACE_ADMIN
         ? { _id: decoded.workspaceId, status: "active", workspaceAdminEmail: user.email }
         : { _id: decoded.workspaceId, status: "active" };
       const workspace = await WorkspaceModel.findOne(workspaceQuery).select("_id");

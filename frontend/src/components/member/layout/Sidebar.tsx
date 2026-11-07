@@ -5,7 +5,7 @@ import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
 import { API_ROUTES } from "../../../constants/Api_Routes";
 import { useUnreadCount } from "../../../hooks/useUnreadCount";
-import { useDirectChat } from "../../../context/DirectChatContext";
+import { useDirectChat } from "../../../context/useDirectChat";
 
 export default function MemberSidebar() {
   const location = useLocation();

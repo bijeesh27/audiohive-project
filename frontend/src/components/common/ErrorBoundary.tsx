@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 
 interface Props {
   children?: ReactNode;
@@ -18,9 +18,10 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // eslint-disable-next-line no-console
-    console.error("Uncaught error:", error, errorInfo);
+  public componentDidCatch(error: Error) {
+    if (typeof window !== "undefined" && typeof window.reportError === "function") {
+      window.reportError(error);
+    }
   }
 
   public render() {

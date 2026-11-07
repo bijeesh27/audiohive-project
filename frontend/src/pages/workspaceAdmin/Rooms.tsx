@@ -9,7 +9,7 @@ import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import { API_ROUTES } from "../../constants/Api_Routes";
 import ActionButton from "../../components/common/ActionButton";
-import {Eye} from "lucide-react";
+import { Eye, Users } from "lucide-react";
 
 interface Room {
   _id: string;
@@ -37,7 +37,6 @@ const Rooms = () => {
   const [editingRoom, setEditingRoom] = useState<Room | undefined>(undefined);
   
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [accessRoom, setAccessRoom] = useState<Room | undefined>(undefined);
 
 
@@ -121,6 +120,11 @@ const Rooms = () => {
 
   
 
+  const handleOpenAccessModal = (room: Room) => {
+    setAccessRoom(room);
+    setIsAccessModalOpen(true);
+  };
+
   const columns: Column<Room>[] = [
     {
       header: "Room Info",
@@ -168,13 +172,21 @@ const Rooms = () => {
     {
       header: "Actions",
       render: (room) => (
-        <div>
+        <div className="flex items-center gap-2">
           <ActionButton
-         icon={Eye}
-              label="View Room Details"
-              onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOM_DETAIL(room._id))}
-              colorClasses="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 focus:ring-indigo-300"/>
-        
+            icon={Eye}
+            label="View Room Details"
+            onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOM_DETAIL(room._id))}
+            colorClasses="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 focus:ring-indigo-300"
+          />
+          {room.type === "private" && (
+            <ActionButton
+              icon={Users}
+              label="Manage Room Access"
+              onClick={() => handleOpenAccessModal(room)}
+              colorClasses="bg-amber-50 text-amber-600 hover:bg-amber-100 focus:ring-amber-300"
+            />
+          )}
         </div>
       ),
     },

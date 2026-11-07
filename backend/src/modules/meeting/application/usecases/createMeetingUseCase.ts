@@ -6,6 +6,7 @@ import { CreateMeetingDTO } from "../dto/meetingDTO.js";
 import { IMeetingDocument } from "../../infrastructure/meetingSchema.js";
 import { AppError } from "../../../../common/Errors/AppError.js";
 import { HttpStatus } from "../../../../common/constant/httpStatus.js";
+import { MESSAGES } from "../../../../common/constant/messages.js";
 
 export class CreateMeetingUseCase
   implements IuseCase<CreateMeetingDTO, IMeetingDocument>
@@ -16,18 +17,18 @@ export class CreateMeetingUseCase
     const { title, description, startTime, endTime, hostId, workspaceId, participants } = input;
 
     if (!title || !title.trim()) {
-      throw new AppError("Meeting title is required", HttpStatus.BAD_REQUEST);
+      throw new AppError(MESSAGES.ERRORS.MEETING_TITLE_REQUIRED, HttpStatus.BAD_REQUEST);
     }
 
     const start = new Date(startTime);
     const end = new Date(endTime);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      throw new AppError("Invalid meeting start or end time", HttpStatus.BAD_REQUEST);
+      throw new AppError(MESSAGES.ERRORS.INVALID_MEETING_TIME, HttpStatus.BAD_REQUEST);
     }
 
     if (start >= end) {
-      throw new AppError("Meeting start time must be before end time", HttpStatus.BAD_REQUEST);
+      throw new AppError(MESSAGES.ERRORS.MEETING_START_BEFORE_END, HttpStatus.BAD_REQUEST);
     }
 
     const randomSuffix = crypto.randomBytes(4).toString("hex");

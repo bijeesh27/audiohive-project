@@ -1,4 +1,5 @@
 import { AppError } from "../../../../common/Errors/AppError";
+import { MESSAGES } from "../../../../common/constant/messages";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IuserDTO } from "../../../../shared/User.utils/userDTO";
 import { IuserRepository } from "../../domain/IuserRepository";
@@ -20,7 +21,7 @@ export class UpdateWorkspaceMemberUseCase
       input.workspaceId,
       { status: input.status },
     );
-    if (!user) throw new AppError("Member is not assigned to this workspace", 404);
+    if (!user) throw new AppError(MESSAGES.ERRORS.MEMBER_NOT_ASSIGNED_TO_WORKSPACE, 404);
     return user;
   }
 }

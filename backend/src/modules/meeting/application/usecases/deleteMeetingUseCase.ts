@@ -4,6 +4,7 @@ import { DeleteMeetingDTO } from "../dto/meetingDTO.js";
 import { AppError } from "../../../../common/Errors/AppError.js";
 import { HttpStatus } from "../../../../common/constant/httpStatus.js";
 import { UserRoles } from "../../../../common/constant/userRoles.js";
+import { MESSAGES } from "../../../../common/constant/messages.js";
 
 export class DeleteMeetingUseCase implements IuseCase<DeleteMeetingDTO, void> {
   constructor(private readonly meetingRepository: ImeetingRepository) {}
@@ -13,7 +14,7 @@ export class DeleteMeetingUseCase implements IuseCase<DeleteMeetingDTO, void> {
 
     const existing = await this.meetingRepository.findMeetingById(meetingId, workspaceId);
     if (!existing) {
-      throw new AppError("Meeting not found", HttpStatus.NOT_FOUND);
+      throw new AppError(MESSAGES.ERRORS.MEETING_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
     const isHost =
@@ -23,7 +24,7 @@ export class DeleteMeetingUseCase implements IuseCase<DeleteMeetingDTO, void> {
 
     if (!isHost && !isAdmin) {
       throw new AppError(
-        "You are not authorized to delete this meeting",
+        MESSAGES.ERRORS.UNAUTHORIZED_DELETE_MEETING,
         HttpStatus.FORBIDDEN
       );
     }

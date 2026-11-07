@@ -3,11 +3,15 @@ import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
 import { VerifyCheckoutSessionDTO, VerifyCheckoutSessionResultDTO } from "../dto/subcriptionDTOs";
 
-export class VerifyCheckoutSessionUseCase implements IuseCase<VerifyCheckoutSessionDTO, VerifyCheckoutSessionResultDTO> {
+export class VerifyCheckoutSessionUseCase
+  implements IuseCase<VerifyCheckoutSessionDTO, VerifyCheckoutSessionResultDTO>
+{
+  constructor(private readonly activityLogRepository: IactivityLogRepository) {}
+
   async execute({ sessionId }: VerifyCheckoutSessionDTO): Promise<VerifyCheckoutSessionResultDTO> {
     try {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      return {
+      const result: VerifyCheckoutSessionResultDTO = {
         status: session.payment_status,
         ownerEmail: session.metadata?.ownerEmail || "",
         companyName: session.metadata?.companyName || "",
@@ -15,6 +19,17 @@ export class VerifyCheckoutSessionUseCase implements IuseCase<VerifyCheckoutSess
         ownerName: session.metadata?.ownerName || "",
         planId: session.metadata?.planId || "",
       };
+
+      await this.activityLogRepository.recordActivity({
+        occurredAt: new Date(),
+        action: "VERIFY_CHECKOUT_SESSION",
+        actorId: null,
+        targetType: "SUBSCRIPTION",
+        targetId: sessionId,
+        metadata: { status: result.status, ownerEmail: result.ownerEmail },
+      });
+
+      return result;
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -24,19 +39,5 @@ export class VerifyCheckoutSessionUseCase implements IuseCase<VerifyCheckoutSess
         { cause: error }
       );
     }
-
-      await this.activityLogRepository.recordActivity({
-            occurredAt: new Date(),
-            action: "VERIFY_CHECKOUT_SESSION",
-            actorId: sessionId ? (sessionId as any).actorId || (sessionId as any).userId || (sessionId as any).uploaderId || null : null,
-            organizationId: sessionId ? (sessionId as any).organizationId : undefined,
-            workspaceId: sessionId ? (sessionId as any).workspaceId || (sessionId as any).roomId : undefined,
-            targetType: "VERIFY",
-            targetId: undefined,
-            metadata: {}
-          });
   }
-
-    constructor(private readonly activityLogRepository: IactivityLogRepository) {
-    }
 }

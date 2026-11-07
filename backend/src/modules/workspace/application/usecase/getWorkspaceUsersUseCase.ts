@@ -5,6 +5,7 @@ import { GetWorkspaceUsersDTO } from "../dto/workspaceDTOs";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
 import { IorganizaionRepository } from "../../../organization/domain/IorganizationRepository";
 import { AppError } from "../../../../common/Errors/AppError";
+import { MESSAGES } from "../../../../common/constant/messages";
 
 export class GetWorkspaceUsersUseCase implements IuseCase<GetWorkspaceUsersDTO, { users: IuserDTO[]; total: number } | null> {
   constructor(
@@ -19,7 +20,7 @@ export class GetWorkspaceUsersUseCase implements IuseCase<GetWorkspaceUsersDTO, 
       this.workspaceRepository.getWorkspaceById(data.workspaceId),
     ]);
     if (!organization || !workspace || workspace.organizationId.toString() !== organization._id.toString()) {
-      throw new AppError("You do not have permission to view this workspace's members", 403);
+      throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED_VIEW_WORKSPACE_MEMBERS, 403);
     }
     return await this.userRepository.getAllUsers(data.workspaceId, data.page, data.limit, data.search);
   }

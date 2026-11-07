@@ -337,7 +337,7 @@ export class AuthController {
         maxAge: parseInt(process.env.MAX_AGE!),
       });
 
-      return ApiResposne.success(res, "Workspace switched", {
+      return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_SWITCHED, {
         accessToken,
         userRole: user.role,
         workspaceId,

@@ -10,6 +10,7 @@ interface ConfirmModalProps {
   onCancel: () => void;
   isLoading?: boolean;
   isDanger?: boolean;
+  error?: string | null;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -22,6 +23,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onCancel,
   isLoading = false,
   isDanger = false,
+  error = null,
 }) => {
   if (!isOpen) return null;
 
@@ -29,8 +31,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm rounded-[10px] bg-white p-6 shadow-xl">
         <h3 className="text-[16px] font-semibold text-gray-900 mb-2">{title}</h3>
-        <p className="text-[14px] text-gray-500 mb-8">{message}</p>
+        <p className="text-[14px] text-gray-500 mb-6">{message}</p>
         
+        {error && (
+          <div className="mb-4 p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="flex justify-end gap-3">
           <button
             type="button"

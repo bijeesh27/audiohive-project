@@ -2,6 +2,7 @@ import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IChatMessageRepository } from "../../domain/IChatMessageRepository";
 import { socketService } from "../../../../socket/socketService";
 import { SOCKET_EVENTS } from "../../../../socket/socketEvents";
+import { MESSAGES } from "../../../../common/constant/messages";
 
 export class DeleteMessageUseCase
   implements IuseCase<{ messageId: string; userId: string; role: string }, boolean>
@@ -26,7 +27,7 @@ export class DeleteMessageUseCase
       role === "superadmin";
 
     if (!canDelete) {
-      throw new Error("Permission denied to delete message");
+      throw new Error(MESSAGES.ERRORS.PERMISSION_DENIED_DELETE_MESSAGE);
     }
 
     const deleted = await this.chatRepo.softDeleteMessage(messageId);

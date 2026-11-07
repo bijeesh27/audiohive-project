@@ -1,3 +1,18 @@
+export const BASE_API_ROUTES = {
+  AUTH: "/api/auth",
+  SUPER_ADMIN: "/api/super-admin",
+  WORKSPACE_ADMIN: "/api/workspaceadmin",
+  SUBSCRIPTION: "/api/subscription",
+  WORKSPACE: "/api/workspace",
+  ORGANIZATION: "/api/organization",
+  ROOM: "/api/room",
+  ANNOUNCEMENT: "/api/announcement",
+  ROOMS_DOCUMENTS: "/api/rooms",
+  CHAT: "/api/chat",
+  MEETING: "/api/meeting",
+  ACTIVITY_LOG: "/api/activitylog",
+};
+
 export const API_ROUTES = {
   AUTH: {
     REFRESH: "/refresh",
@@ -105,9 +120,20 @@ export const API_ROUTES = {
   },
 
   CHAT: {
+    DIRECT: "/direct",
     GET_MESSAGES: "/:roomId/messages",
     SEND_MESSAGE: "/:roomId/messages",
     DELETE_MESSAGE: "/:roomId/messages/:messageId",
+  },
+
+  DIRECT_CHAT: {
+    CONVERSATIONS: "/conversations",
+    CONVERSATION_MESSAGES: "/conversations/:conversationId/messages",
+    USER: "/users/:targetUserId",
+    MESSAGES: "/messages",
+    MARK_READ: "/conversations/:conversationId/read",
+    USERS: "/users",
+    UNREAD_COUNT: "/unread-count",
   },
 
   ACTIVITY: {

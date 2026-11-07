@@ -44,6 +44,49 @@ export const MESSAGES = {
 
     PLAN_ID_REQUIRED: "planId is required",
     SESSION_ID_REQUIRED: "sessionId is required",
+
+    AUTHENTICATION_REQUIRED: "Authentication required",
+    WORKSPACE_CONTEXT_MISSING: "Workspace context is missing",
+    WORKSPACE_ACCESS_DENIED: "You do not have access to this workspace",
+    WORKSPACE_UNAVAILABLE: "Workspace is unavailable",
+    MEMBER_NOT_FOUND: "Member not found",
+    MEMBER_NOT_IN_ORGANIZATION: "Member does not belong to this organization",
+    MEMBER_MUST_HAVE_WORKSPACE: "A member must have at least one workspace",
+    INVALID_WORKSPACE_IDS: "One or more workspace IDs are invalid",
+    CHOOSE_ACTIVE_WORKSPACES: "Choose active workspaces from your organization",
+    MEMBER_UPDATE_FAILED: "Member update failed",
+    MAX_WORKSPACE_LIMIT_REACHED: "Maximum workspace limit reached for your subscription plan",
+    MEMBER_ACCOUNT_UNAVAILABLE: "Member account is unavailable",
+    UNAUTHORIZED_VIEW_WORKSPACE_MEMBERS: "You do not have permission to view this workspace's members",
+    UNAUTHORIZED_REMOVE_WORKSPACE_MEMBERS: "You do not have permission to remove members from this workspace",
+    USER_NOT_FOUND_OR_UPDATE_FAILED: "User not found or update failed",
+    UNAUTHORIZED_ASSIGN_WORKSPACE_ADMIN: "You don't have permission to assign an admin for this workspace",
+    MEMBER_NOT_ASSIGNED_TO_WORKSPACE: "Member is not assigned to this workspace",
+    REPLACEMENT_WORKSPACE_REQUIRED: "Use the organization workspace manager to assign a replacement workspace before removing this member",
+    ORGANIZATION_INVITATION_NOT_FOUND: "Organization invitation not found",
+
+    MESSAGE_CONTENT_REQUIRED: "Message content or attachments required",
+    RECEIVER_AND_CONTENT_REQUIRED: "receiverId and content are required",
+    PERMISSION_DENIED_DELETE_MESSAGE: "Permission denied to delete message",
+
+    DOCUMENT_NOT_IN_ROOM: "Document not found in this room",
+    UNAUTHORIZED_DELETE_DOCUMENT: "Not authorized to delete this document",
+
+    MEETING_NOT_FOUND: "Meeting not found",
+    MEETING_TITLE_REQUIRED: "Meeting title is required",
+    INVALID_MEETING_TIME: "Invalid meeting start or end time",
+    MEETING_START_BEFORE_END: "Meeting start time must be before end time",
+    UNAUTHORIZED_UPDATE_MEETING: "You are not authorized to update this meeting",
+    UNAUTHORIZED_CANCEL_MEETING: "You are not authorized to cancel this meeting",
+    UNAUTHORIZED_DELETE_MEETING: "You are not authorized to delete this meeting",
+    INVALID_START_TIME: "Invalid start time",
+    INVALID_END_TIME: "Invalid end time",
+    FAILED_TO_UPDATE_MEETING: "Failed to update meeting",
+
+    SUBSCRIPTION_PLAN_NOT_FOUND: "Subscription plan not found",
+    STRIPE_PRICE_NOT_CONFIGURED: "Stripe price is not configured for this plan",
+    STRIPE_NO_CHECKOUT_URL: "Stripe did not return a checkout URL",
+    UNABLE_TO_CREATE_CHECKOUT: "Unable to create checkout session",
   },
 
   SUCCESS: {
@@ -111,5 +154,31 @@ export const MESSAGES = {
 
     CHECKOUT_SESSION_CREATED: "Checkout session created successfully",
     CHECKOUT_SESSION_VERIFIED: "Checkout session verified successfully",
+
+    WORKSPACE_SWITCHED: "Workspace switched successfully",
+
+    ACTIVITY_LOG_RECORDED: "Activity log recorded successfully",
+    WORKSPACE_ACTIVITY_LOGS_RETRIEVED: "Workspace activity logs retrieved successfully",
+    ORGANIZATION_ACTIVITY_LOGS_RETRIEVED: "Organization activity logs retrieved successfully",
+    SYSTEM_ACTIVITY_LOGS_RETRIEVED: "System activity logs retrieved successfully",
+
+    MESSAGES_RETRIEVED: "Messages retrieved successfully",
+    MESSAGE_SENT: "Message sent successfully",
+    MESSAGE_DELETED: "Message deleted successfully",
+    CONVERSATIONS_RETRIEVED: "Conversations retrieved successfully",
+    CONVERSATION_READY: "Conversation ready",
+    DIRECT_MESSAGE_SENT: "Direct message sent successfully",
+    MESSAGES_MARKED_AS_READ: "Messages marked as read successfully",
+    ELIGIBLE_USERS_RETRIEVED: "Eligible users retrieved successfully",
+    UNREAD_COUNT_RETRIEVED: "Unread count retrieved successfully",
+
+    DOWNLOAD_URL_GENERATED: "Download URL generated successfully",
+
+    MEETING_CREATED: "Meeting scheduled successfully",
+    MEETINGS_FETCHED: "Meetings fetched successfully",
+    MEETING_FETCHED: "Meeting details fetched successfully",
+    MEETING_UPDATED: "Meeting updated successfully",
+    MEETING_CANCELLED: "Meeting cancelled successfully",
+    MEETING_DELETED: "Meeting deleted successfully",
   },
 };

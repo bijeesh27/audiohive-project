@@ -8,7 +8,7 @@ import Meetings from "../pages/workspaceAdmin/Meetings";
 import Announcements from "../pages/workspaceAdmin/Announcements";
 import ActivityLog from "../pages/workspaceAdmin/ActivityLog";
 import DirectChatPage from "../pages/chat/DirectChatPage";
-import WorkspaceAdminLayout from "../components/workspaceAdmin/layout/WorkspaceAdminLayout";
+import WorkspaceAdminLayout from "../components/workspaceAdmin/layout/workspaceAdminLayout";
 
 const WorkspaceAdminRoutes = () => {
   return (

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AppError } from "../../../../common/Errors/AppError";
 import { UserRoles } from "../../../../common/constant/userRoles";
+import { MESSAGES } from "../../../../common/constant/messages";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { getUserWorkspaceIds } from "../../../../shared/User.utils/workspaceMembership";
 import { IuserDTO } from "../../../../shared/User.utils/userDTO";
@@ -22,11 +23,11 @@ export class SetUserWorkspacesUseCase
 
   async execute(input: SetUserWorkspacesDTO): Promise<IuserDTO> {
     const organization = await this.organizationRepository.findByOwnerEmail(input.ownerEmail);
-    if (!organization) throw new AppError("Organization not found", 404);
+    if (!organization) throw new AppError(MESSAGES.ERRORS.ORANIZATION_NOT_FOUND, 404);
 
     const user = await this.userRepository.findUserById(input.userId);
     if (!user || user.role !== UserRoles.MEMBER) {
-      throw new AppError("Member not found", 404);
+      throw new AppError(MESSAGES.ERRORS.MEMBER_NOT_FOUND, 404);
     }
 
     const existingWorkspaces = await this.workspaceRepository.getWorkspacesByIds(
@@ -36,15 +37,15 @@ export class SetUserWorkspacesUseCase
       .filter((workspace) => workspace.organizationId.toString() === organization._id.toString())
       .map((workspace) => workspace._id.toString());
     if (existingOrganizationWorkspaceIds.length === 0) {
-      throw new AppError("Member does not belong to this organization", 403);
+      throw new AppError(MESSAGES.ERRORS.MEMBER_NOT_IN_ORGANIZATION, 403);
     }
 
     const workspaceIds = Array.from(new Set(input.workspaceIds));
     if (workspaceIds.length === 0) {
-      throw new AppError("A member must have at least one workspace", 400);
+      throw new AppError(MESSAGES.ERRORS.MEMBER_MUST_HAVE_WORKSPACE, 400);
     }
     if (workspaceIds.some((id) => !mongoose.isValidObjectId(id))) {
-      throw new AppError("One or more workspace IDs are invalid", 400);
+      throw new AppError(MESSAGES.ERRORS.INVALID_WORKSPACE_IDS, 400);
     }
 
     const selectedWorkspaces = await this.workspaceRepository.getWorkspacesByIds(
@@ -57,7 +58,7 @@ export class SetUserWorkspacesUseCase
         (workspace) => workspace.organizationId.toString() !== organization._id.toString(),
       )
     ) {
-      throw new AppError("Choose active workspaces from your organization", 403);
+      throw new AppError(MESSAGES.ERRORS.CHOOSE_ACTIVE_WORKSPACES, 403);
     }
 
     const workspacesOutsideThisOrganization = getUserWorkspaceIds(user).filter(
@@ -67,7 +68,7 @@ export class SetUserWorkspacesUseCase
       input.userId,
       [...workspacesOutsideThisOrganization, ...workspaceIds],
     );
-    if (!updated) throw new AppError("Member update failed", 404);
+    if (!updated) throw new AppError(MESSAGES.ERRORS.MEMBER_UPDATE_FAILED, 404);
 
     await this.activityLogRepository.recordActivity({
       occurredAt: new Date(),

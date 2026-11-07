@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { getMyWorkspaces, inviteWorkspaceAdmin, updateWorkspace } from "../../services/workspaceServices";
 import { API_ROUTES } from "../../constants/Api_Routes";
@@ -6,7 +6,7 @@ import Button from "../../components/common/Button";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import ActionButton from "../../components/common/ActionButton";
-import { Eye } from "lucide-react";
+import { Eye, Pencil, UserPlus } from "lucide-react";
 
 interface IWorkspace {
   _id: string;
@@ -50,9 +50,11 @@ const Workspaces = () => {
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  const fetchWorkspaces = useCallback(() => {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const reloadWorkspaces = () => setRefreshKey((k) => k + 1);
+
+  useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     getMyWorkspaces(page, limit, debouncedSearch)
       .then((res) => {
         if (!cancelled) {
@@ -60,22 +62,17 @@ const Workspaces = () => {
           setTotalPages(Math.ceil(res.data.total / limit));
         }
       })
-      // eslint-disable-next-line no-console
-      .catch((err) => console.error("Failed to fetch workspaces:", err))
+      .catch(() => {
+        if (!cancelled) setWorkspaces([]);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-      
+
     return () => {
       cancelled = true;
     };
-  }, [page, limit, debouncedSearch]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    const cleanup = fetchWorkspaces();
-    return cleanup;
-  }, [fetchWorkspaces]);
+  }, [page, limit, debouncedSearch, refreshKey]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -89,7 +86,6 @@ const Workspaces = () => {
     navigate(API_ROUTES.ORGANIZATION_ADMIN.NAV.WORKSPACE_DETAIL(workspaceId));
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openInviteModal = (workspace: IWorkspace) => {
     setAssigningWorkspace(workspace);
     setAdminName("");
@@ -130,7 +126,7 @@ const Workspaces = () => {
       });
       setShowModal(false);
       setAssigningWorkspace(null);
-      fetchWorkspaces();
+      reloadWorkspaces();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       setInviteError(err?.response?.data?.message || "Failed to send invitation");
@@ -139,7 +135,6 @@ const Workspaces = () => {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openEditModal = (workspace: IWorkspace) => {
     setEditingWorkspace(workspace);
     setEditName(workspace.workspaceName);
@@ -172,7 +167,7 @@ const Workspaces = () => {
       });
       setShowEditModal(false);
       setEditingWorkspace(null);
-      fetchWorkspaces();
+      reloadWorkspaces();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       setEditError(err?.response?.data?.message || "Failed to update workspace");
@@ -245,6 +240,18 @@ const Workspaces = () => {
             label="View"
             onClick={() => goToDetails(ws._id)}
             colorClasses="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 focus:ring-indigo-300"
+          />
+          <ActionButton
+            icon={Pencil}
+            label="Edit Workspace"
+            onClick={() => openEditModal(ws)}
+            colorClasses="bg-amber-50 text-amber-600 hover:bg-amber-100 focus:ring-amber-300"
+          />
+          <ActionButton
+            icon={UserPlus}
+            label="Invite Admin"
+            onClick={() => openInviteModal(ws)}
+            colorClasses="bg-blue-50 text-blue-600 hover:bg-blue-100 focus:ring-blue-300"
           />
         </div>
       ),

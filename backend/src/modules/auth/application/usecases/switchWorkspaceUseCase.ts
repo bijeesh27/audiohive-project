@@ -1,5 +1,6 @@
 import { AppError } from "../../../../common/Errors/AppError";
 import { UserRoles } from "../../../../common/constant/userRoles";
+import { MESSAGES } from "../../../../common/constant/messages";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { getUserWorkspaceIds } from "../../../../shared/User.utils/workspaceMembership";
 import { IuserDTO } from "../../../../shared/User.utils/userDTO";
@@ -32,12 +33,12 @@ export class SwitchWorkspaceUseCase
       user.role !== UserRoles.MEMBER ||
       !getUserWorkspaceIds(user).includes(input.workspaceId)
     ) {
-      throw new AppError("You do not have access to this workspace", 403);
+      throw new AppError(MESSAGES.ERRORS.WORKSPACE_ACCESS_DENIED, 403);
     }
 
     const workspace = await this.workspaceRepository.getWorkspaceById(input.workspaceId);
     if (!workspace || workspace.status !== "active") {
-      throw new AppError("Workspace is unavailable", 403);
+      throw new AppError(MESSAGES.ERRORS.WORKSPACE_UNAVAILABLE, 403);
     }
 
     return { user, workspaceId: workspace._id.toString() };

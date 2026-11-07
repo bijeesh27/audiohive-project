@@ -15,6 +15,36 @@ import { UserRoles } from "../../../common/constant/userRoles.js";
 import { IDocumentRepository } from "../domain/IdocumentRepository.js";
 import { s3Service } from "../../../services/s3.service.js";
 
+function resolveMimeType(mimeType?: string, fileName?: string): string {
+  if (mimeType && mimeType !== "application/octet-stream" && mimeType.trim() !== "") {
+    return mimeType;
+  }
+  if (!fileName) return "application/octet-stream";
+  const ext = fileName.toLowerCase().split(".").pop();
+  const map: Record<string, string> = {
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    bmp: "image/bmp",
+    ico: "image/x-icon",
+    txt: "text/plain",
+    csv: "text/csv",
+    json: "application/json",
+    md: "text/markdown",
+    html: "text/html",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+  };
+  return (ext && map[ext]) || "application/octet-stream";
+}
+
 export class DocumentController {
   constructor(
     private readonly uploadDocumentUseCase: IuseCase<UploadDocumentDTO, IDocument>,
@@ -71,12 +101,13 @@ export class DocumentController {
       throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
     }
 
+    const mimeType = resolveMimeType(file.mimetype, file.originalname);
     const dto: UploadDocumentDTO = {
       roomId,
       uploaderId: userId,
       originalName: file.originalname,
       fileName: file.originalname,
-      mimeType: file.mimetype,
+      mimeType,
       size: file.size,
       buffer: file.buffer,
       workspaceId,
@@ -126,12 +157,19 @@ export class DocumentController {
         throw new AppError(MESSAGES.ERRORS.DOCUMENT_NOT_FOUND, HttpStatus.NOT_FOUND);
       }
 
-      const fileBuffer = await s3Service.downloadFile(document.url);
-      const encodedFileName = encodeURIComponent(document.originalName);
-      res.setHeader("Content-Type", document.mimeType || "application/octet-stream");
-      res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodedFileName}`);
-      res.setHeader("Content-Length", fileBuffer.length);
-      return res.status(HttpStatus.OK).send(fileBuffer);
+      const mimeType = resolveMimeType(document.mimeType, document.originalName);
+      const downloadUrl = await s3Service.getPresignedDownloadUrl(
+        document.url,
+        document.originalName,
+        mimeType,
+        900
+      );
+
+      return ApiResposne.success(res, MESSAGES.SUCCESS.DOWNLOAD_URL_GENERATED, {
+        downloadUrl,
+        fileName: document.originalName,
+        mimeType,
+      });
     } catch (error: unknown) {
       logger.error("Document file fetch error:", error);
       if (error instanceof AppError) {
