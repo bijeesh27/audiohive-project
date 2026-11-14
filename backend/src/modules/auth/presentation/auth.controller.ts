@@ -67,7 +67,7 @@ export class AuthController {
       void
     >,
     private readonly switchWorkspaceUseCase: IuseCase<SwitchWorkspaceInput, SwitchWorkspaceResult>
-  ) {}
+  ) { }
 
   async register(req: Request, res: Response, next: NextFunction) {
     try {
@@ -84,14 +84,14 @@ export class AuthController {
   async verifyOtp(req: Request, res: Response, next: NextFunction) {
     try {
       const userData = await this.otpUseCase.execute(req.body);
-      
+
       if (req.body.purpose === "forget") {
-         const resetToken = jwt.sign(
-           { email: (userData as IuserDTO).email, type: "reset" },
-           process.env.JWT_SECRET!,
-           { expiresIn: "15m" }
-         );
-         return ApiResposne.success(res, MESSAGES.SUCCESS.OTP_VERIFIED, { resetToken });
+        const resetToken = jwt.sign(
+          { email: (userData as IuserDTO).email, type: "reset" },
+          process.env.JWT_SECRET!,
+          { expiresIn: "15m" }
+        );
+        return ApiResposne.success(res, MESSAGES.SUCCESS.OTP_VERIFIED, { resetToken });
       }
 
       return ApiResposne.success(res, MESSAGES.SUCCESS.OTP_VERIFIED, userData);
@@ -173,7 +173,7 @@ export class AuthController {
             username: user.username,
             email: user.email,
           },
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       return ApiResposne.success(res, MESSAGES.SUCCESS.LOGIN_SUCCESS, {
@@ -210,7 +210,7 @@ export class AuthController {
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const { token, password } = req.body;
-      
+
       let decoded: jwt.JwtPayload;
 
       try {
@@ -266,10 +266,10 @@ export class AuthController {
         const currentIsAssigned = Boolean(workspaceId && workspaceIds.includes(workspaceId));
         const currentWorkspace = currentIsAssigned
           ? await WorkspaceModel.findOne(
-              role === UserRoles.WORKSPACE_ADMIN
-                ? { _id: workspaceId, status: "active", workspaceAdminEmail: user.email }
-                : { _id: workspaceId, status: "active" },
-            ).select("_id")
+            role === UserRoles.WORKSPACE_ADMIN
+              ? { _id: workspaceId, status: "active", workspaceAdminEmail: user.email }
+              : { _id: workspaceId, status: "active" },
+          ).select("_id")
           : null;
         if (currentWorkspace) {
           workspaceId = currentWorkspace._id.toString();

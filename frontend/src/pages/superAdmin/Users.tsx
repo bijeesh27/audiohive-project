@@ -4,6 +4,7 @@ import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import ActionButton from "../../components/common/ActionButton";
 import { ShieldBan, ShieldCheck } from "lucide-react";
+import { getAllusers } from "../../services/superAdminServices";
 interface User {
   _id: string;
   username: string;
@@ -30,7 +31,7 @@ const Users = () => {
   useEffect(() => {
     let cancelled = false;
 
-    getUsers(page, limit, debouncedSearch)
+    getAllusers(page, limit, debouncedSearch)
       .then((res) => {
         if (!cancelled) {
           setUsers(res.data.users);
@@ -48,6 +49,7 @@ const Users = () => {
       cancelled = true;
     };
   }, [page, limit, debouncedSearch]);
+
 
   useEffect(() => {
     const timer = setTimeout(() => {

@@ -7,6 +7,7 @@ import { RoomRepository } from "../modules/room/infrastructure/roomRepository.js
 import { ValidateRoomAccessUseCase } from "../modules/room/application/usecases/validateRoomAccessUseCase.js";
 import { MeetingRepository } from "../modules/meeting/infrastructure/meetingRepository.js";
 import { ValidateCallAccessUseCase } from "../modules/meeting/application/usecases/validateCallAccessUseCase.js";
+import { WhiteboardRepository } from "../modules/whiteboard/infrastructure/whiteboardRepository.js";
 
 export interface CallParticipantSession {
   peerId: string;
@@ -18,6 +19,7 @@ export interface CallParticipantSession {
 }
 
 const roomPresence = new Map<string, Map<string, { userId: string; username: string }>>();
+const whiteboardPresence = new Map<string, Map<string, { userId: string; username: string }>>();
 const callRooms = new Map<string, Map<string, CallParticipantSession>>();
 const socketCallRoom = new Map<string, string>(); // socketId -> roomId
 const onlineUsers = new Map<string, number>();
@@ -29,6 +31,7 @@ const validateCallAccessUseCase = new ValidateCallAccessUseCase(
   roomRepository,
   meetingRepository
 );
+const whiteboardRepository = new WhiteboardRepository();
 
 let io: SocketIOServer;
 
@@ -182,6 +185,288 @@ export const socketService = {
           roomId,
         });
       });
+
+      // ── Collaborative Whiteboard ─────────────────────────────────
+      socket.on(SOCKET_EVENTS.WHITEBOARD_JOIN, async (roomId: string) => {
+        try {
+          const room = await roomRepository.findRoom(roomId);
+          if (!room) {
+            socket.emit(SOCKET_EVENTS.WHITEBOARD_ERROR, { message: "Room not found" });
+            return;
+          }
+
+          const effectiveWorkspaceId =
+            workspaceId || room.workspaceId?.toString() || "";
+
+          const isAllowed = await validateRoomAccessUseCase.execute({
+            roomId,
+            workspaceId: effectiveWorkspaceId,
+            userId: user.id,
+            role: user.role,
+          });
+
+          if (!isAllowed) {
+            socket.emit(SOCKET_EVENTS.WHITEBOARD_ERROR, { message: "Whiteboard access denied" });
+            return;
+          }
+
+          socket.join(`whiteboard:${roomId}`);
+
+          if (!whiteboardPresence.has(roomId)) {
+            whiteboardPresence.set(roomId, new Map());
+          }
+          whiteboardPresence.get(roomId)!.set(socket.id, {
+            userId: user.id,
+            username: user.username ?? user.userEmail ?? user.id,
+          });
+
+          const collaborators = Array.from(whiteboardPresence.get(roomId)!.values());
+          io.to(`whiteboard:${roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_PRESENCE, collaborators);
+
+          const notes = await whiteboardRepository.findByRoomId(roomId);
+          socket.emit(SOCKET_EVENTS.WHITEBOARD_INITIAL_STATE, notes);
+          logger.info(`[Whiteboard] User ${user.id} joined whiteboard:${roomId}`);
+        } catch (err) {
+          logger.error(`[Whiteboard] Error joining whiteboard:${roomId}`, err);
+          socket.emit(SOCKET_EVENTS.WHITEBOARD_ERROR, { message: "Failed to join whiteboard" });
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.WHITEBOARD_LEAVE, (roomId: string) => {
+        if (!socket.rooms.has(`whiteboard:${roomId}`)) return;
+        socket.leave(`whiteboard:${roomId}`);
+        whiteboardPresence.get(roomId)?.delete(socket.id);
+
+        const collaborators = Array.from(whiteboardPresence.get(roomId)?.values() ?? []);
+        io.to(`whiteboard:${roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_PRESENCE, collaborators);
+        if (whiteboardPresence.get(roomId)?.size === 0) whiteboardPresence.delete(roomId);
+        logger.info(`[Whiteboard] User ${user.id} left whiteboard:${roomId}`);
+      });
+
+      socket.on(
+        SOCKET_EVENTS.WHITEBOARD_NOTE_CREATE,
+        async (data: {
+          roomId: string;
+          content?: string;
+          positionX?: number;
+          positionY?: number;
+          color?: string;
+        }) => {
+          try {
+            const room = await roomRepository.findRoom(data.roomId);
+            if (!room) return;
+
+            const effectiveWorkspaceId =
+              workspaceId || room.workspaceId?.toString() || "";
+
+            const isAllowed = await validateRoomAccessUseCase.execute({
+              roomId: data.roomId,
+              workspaceId: effectiveWorkspaceId,
+              userId: user.id,
+              role: user.role,
+            });
+            if (!isAllowed) return;
+
+            const defaultColors = [
+              "#fef08a",
+              "#fed7aa",
+              "#bbf7d0",
+              "#bae6fd",
+              "#e9d5ff",
+              "#fbcfe8",
+            ];
+            const color =
+              data.color || defaultColors[Math.floor(Math.random() * defaultColors.length)];
+            const posX =
+              typeof data.positionX === "number"
+                ? data.positionX
+                : Math.round(80 + Math.random() * 200);
+            const posY =
+              typeof data.positionY === "number"
+                ? data.positionY
+                : Math.round(80 + Math.random() * 150);
+
+            const newNote = await whiteboardRepository.create({
+              roomId: data.roomId,
+              workspaceId: effectiveWorkspaceId,
+              content: data.content || "",
+              positionX: posX,
+              positionY: posY,
+              color,
+              createdBy: {
+                userId: user.id,
+                username: user.username ?? user.userEmail ?? user.id,
+                email: user.userEmail,
+              },
+              version: 1,
+              isDeleted: false,
+            });
+
+            io.to(`whiteboard:${data.roomId}`).emit(
+              SOCKET_EVENTS.WHITEBOARD_NOTE_CREATED,
+              newNote
+            );
+          } catch (err) {
+            logger.error("[Whiteboard] Failed to create sticky note", err);
+          }
+        }
+      );
+
+      socket.on(
+        SOCKET_EVENTS.WHITEBOARD_NOTE_UPDATE,
+        async (data: {
+          roomId: string;
+          noteId: string;
+          content?: string;
+          positionX?: number;
+          positionY?: number;
+          color?: string;
+          expectedVersion?: number;
+        }) => {
+          try {
+            const isAllowed = await validateRoomAccessUseCase.execute({
+              roomId: data.roomId,
+              workspaceId,
+              userId: user.id,
+              role: user.role,
+            });
+            if (!isAllowed) return;
+
+            const updatedNote = await whiteboardRepository.update(
+              data.noteId,
+              {
+                content: data.content,
+                positionX: data.positionX,
+                positionY: data.positionY,
+                color: data.color,
+                updatedBy: {
+                  userId: user.id,
+                  username: user.username ?? user.userEmail ?? user.id,
+                },
+              },
+              data.expectedVersion
+            );
+
+            if (updatedNote) {
+              io.to(`whiteboard:${data.roomId}`).emit(
+                SOCKET_EVENTS.WHITEBOARD_NOTE_UPDATED,
+                updatedNote
+              );
+            }
+          } catch (err) {
+            logger.error("[Whiteboard] Failed to update sticky note", err);
+          }
+        }
+      );
+
+      socket.on(
+        SOCKET_EVENTS.WHITEBOARD_NOTE_MOVE,
+        async (data: {
+          roomId: string;
+          noteId: string;
+          positionX: number;
+          positionY: number;
+        }) => {
+          try {
+            const isAllowed = await validateRoomAccessUseCase.execute({
+              roomId: data.roomId,
+              workspaceId,
+              userId: user.id,
+              role: user.role,
+            });
+            if (!isAllowed) return;
+
+            const updatedNote = await whiteboardRepository.update(data.noteId, {
+              positionX: data.positionX,
+              positionY: data.positionY,
+              updatedBy: {
+                userId: user.id,
+                username: user.username ?? user.userEmail ?? user.id,
+              },
+            });
+
+            if (updatedNote) {
+              io.to(`whiteboard:${data.roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_NOTE_MOVED, {
+                noteId: updatedNote.id,
+                positionX: updatedNote.positionX,
+                positionY: updatedNote.positionY,
+                updatedBy: updatedNote.updatedBy,
+                version: updatedNote.version,
+              });
+            }
+          } catch (err) {
+            logger.error("[Whiteboard] Failed to move sticky note", err);
+          }
+        }
+      );
+
+      socket.on(
+        SOCKET_EVENTS.WHITEBOARD_NOTE_COLOR,
+        async (data: {
+          roomId: string;
+          noteId: string;
+          color: string;
+        }) => {
+          try {
+            const isAllowed = await validateRoomAccessUseCase.execute({
+              roomId: data.roomId,
+              workspaceId,
+              userId: user.id,
+              role: user.role,
+            });
+            if (!isAllowed) return;
+
+            const updatedNote = await whiteboardRepository.update(data.noteId, {
+              color: data.color,
+              updatedBy: {
+                userId: user.id,
+                username: user.username ?? user.userEmail ?? user.id,
+              },
+            });
+
+            if (updatedNote) {
+              io.to(`whiteboard:${data.roomId}`).emit(
+                SOCKET_EVENTS.WHITEBOARD_NOTE_COLOR_UPDATED,
+                {
+                  noteId: updatedNote.id,
+                  color: updatedNote.color,
+                  updatedBy: updatedNote.updatedBy,
+                  version: updatedNote.version,
+                }
+              );
+            }
+          } catch (err) {
+            logger.error("[Whiteboard] Failed to update sticky note color", err);
+          }
+        }
+      );
+
+      socket.on(
+        SOCKET_EVENTS.WHITEBOARD_NOTE_DELETE,
+        async (data: {
+          roomId: string;
+          noteId: string;
+        }) => {
+          try {
+            const isAllowed = await validateRoomAccessUseCase.execute({
+              roomId: data.roomId,
+              workspaceId,
+              userId: user.id,
+              role: user.role,
+            });
+            if (!isAllowed) return;
+
+            const deleted = await whiteboardRepository.delete(data.noteId);
+            if (deleted) {
+              io.to(`whiteboard:${data.roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_NOTE_DELETED, {
+                noteId: data.noteId,
+              });
+            }
+          } catch (err) {
+            logger.error("[Whiteboard] Failed to delete sticky note", err);
+          }
+        }
+      );
 
       // ── Call / WebRTC (Audio & Video) ──────────────────────────
       const handleLeaveCall = (socketId: string) => {
@@ -377,6 +662,16 @@ export const socketService = {
             const online = Array.from(members.values());
             io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
             if (members.size === 0) roomPresence.delete(roomId);
+          }
+        });
+
+        // ── Clean up whiteboard presence ──
+        whiteboardPresence.forEach((members, roomId) => {
+          if (members.has(socket.id)) {
+            members.delete(socket.id);
+            const collaborators = Array.from(members.values());
+            io.to(`whiteboard:${roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_PRESENCE, collaborators);
+            if (members.size === 0) whiteboardPresence.delete(roomId);
           }
         });
 

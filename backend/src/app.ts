@@ -15,6 +15,7 @@ import documentRouter from "./modules/document/presentation/documentRoutes.ts";
 import activityLogRouter from "./modules/activityLog/presentation/activity.routes.ts";
 import chatRouter from "./modules/chat/presentation/chat.routes.ts";
 import meetingRouter from "./modules/meeting/presentation/meeting.route.ts";
+import whiteboardRouter from "./modules/whiteboard/presentation/whiteboard.routes.ts";
 import { BASE_API_ROUTES } from "./common/constant/ApiRoutes.ts";
 import { globelErrorHandler } from "./middleware/errorMiddleware.ts";
 import cors from "cors";
@@ -60,6 +61,7 @@ export function connectApp() {
   app.use(BASE_API_ROUTES.CHAT, chatRouter);
   app.use(BASE_API_ROUTES.MEETING, meetingRouter);
   app.use(BASE_API_ROUTES.ACTIVITY_LOG, activityLogRouter);
+  app.use(BASE_API_ROUTES.WHITEBOARD, whiteboardRouter);
 
   app.use(globelErrorHandler);
 

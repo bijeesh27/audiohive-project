@@ -15,11 +15,12 @@ export class ValidateRoomAccessUseCase
     const room = await this.roomRepository.findRoom(roomId);
     if (!room) return false;
 
-    if (workspaceId && room.workspaceId.toString() !== workspaceId) {
+    const roomWorkspaceId = room.workspaceId?.toString();
+    if (workspaceId && roomWorkspaceId && roomWorkspaceId !== workspaceId) {
       return false;
     }
 
-    if (role !== UserRoles.MEMBER) {
+    if (role && role !== UserRoles.MEMBER) {
       return true;
     }
 
@@ -27,6 +28,10 @@ export class ValidateRoomAccessUseCase
       return true;
     }
 
-    return room.allowedUsers.some((id) => id.toString() === userId);
+    if (!room.allowedUsers || !Array.isArray(room.allowedUsers)) {
+      return false;
+    }
+
+    return room.allowedUsers.some((id) => id && id.toString() === userId);
   }
 }
