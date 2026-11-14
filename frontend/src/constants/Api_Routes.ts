@@ -153,7 +153,7 @@ export const API_ENDPOINTS = {
     UPDATE_USER: (userId: string) => `/api/auth/users/${userId}`,
   },
   SUPER_ADMIN: {
-    GET_USERS: "/api/superadmin/users",
+    GET_USERS: "/api/super-admin/get-users",
     BLOCK_USER: (userId: string) => `/api/superadmin/users/${userId}/block`,
     UNBLOCK_USER: (userId: string) => `/api/superadmin/users/${userId}/unblock`,
     UPDATE_USER: (userId: string) => `/api/superadmin/users/${userId}/status`,
@@ -277,5 +277,13 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/api/meeting/${id}`,
     CANCEL: (id: string) => `/api/meeting/${id}/cancel`,
     DELETE: (id: string) => `/api/meeting/${id}`,
+  },
+  WHITEBOARD: {
+    GET_NOTES: (roomId: string) => `/api/whiteboard/${roomId}`,
+    CREATE_NOTE: (roomId: string) => `/api/whiteboard/${roomId}/notes`,
+    UPDATE_NOTE: (roomId: string, noteId: string) => `/api/whiteboard/${roomId}/notes/${noteId}`,
+    MOVE_NOTE: (roomId: string, noteId: string) => `/api/whiteboard/${roomId}/notes/${noteId}/move`,
+    UPDATE_COLOR: (roomId: string, noteId: string) => `/api/whiteboard/${roomId}/notes/${noteId}/color`,
+    DELETE_NOTE: (roomId: string, noteId: string) => `/api/whiteboard/${roomId}/notes/${noteId}`,
   },
 };

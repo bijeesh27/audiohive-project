@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { worspaceAdminGetUsers, updateWorkspaceUser } from "../../services/authServices";
+import { useDirectChat } from "../../context/useDirectChat";
 import InviteUserModal from "../../components/workspaceAdmin/InviteUserModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Table from "../../components/common/Table";
@@ -16,6 +17,7 @@ interface User {
 }
 
 const Users = () => {
+  const { isUserOnline } = useDirectChat();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,14 +104,47 @@ const Users = () => {
   const columns: Column<User>[] = [
     {
       header: "Username",
-      render: (user) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-sm font-medium">
-            {user.username.charAt(0).toUpperCase()}
+      render: (user) => {
+        const online = isUserOnline(user._id);
+        return (
+          <div className="flex items-center gap-3">
+            <div className="relative flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-sm font-medium">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+                  online ? "bg-emerald-500" : "bg-gray-300"
+                }`}
+                title={online ? "Online" : "Offline"}
+              />
+            </div>
+            <span className="text-sm font-medium text-gray-900">{user.username}</span>
           </div>
-          <span className="text-sm font-medium text-gray-900">{user.username}</span>
-        </div>
-      ),
+        );
+      },
+    },
+    {
+      header: "Presence",
+      render: (user) => {
+        const online = isUserOnline(user._id);
+        return (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+              online
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-gray-50 text-gray-500 border-gray-200"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                online ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+              }`}
+            />
+            {online ? "Online" : "Offline"}
+          </span>
+        );
+      },
     },
     {
       header: "Email",

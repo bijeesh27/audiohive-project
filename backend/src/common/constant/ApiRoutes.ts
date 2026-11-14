@@ -11,6 +11,7 @@ export const BASE_API_ROUTES = {
   CHAT: "/api/chat",
   MEETING: "/api/meeting",
   ACTIVITY_LOG: "/api/activitylog",
+  WHITEBOARD: "/api/whiteboard",
 };
 
 export const API_ROUTES = {
@@ -153,5 +154,14 @@ export const API_ROUTES = {
     UPDATE_MEETING: "/:id",
     CANCEL_MEETING: "/:id/cancel",
     DELETE_MEETING: "/:id",
+  },
+
+  WHITEBOARD: {
+    GET_NOTES: "/:roomId",
+    CREATE_NOTE: "/:roomId/notes",
+    UPDATE_NOTE: "/:roomId/notes/:noteId",
+    MOVE_NOTE: "/:roomId/notes/:noteId/move",
+    UPDATE_COLOR: "/:roomId/notes/:noteId/color",
+    DELETE_NOTE: "/:roomId/notes/:noteId",
   },
 };

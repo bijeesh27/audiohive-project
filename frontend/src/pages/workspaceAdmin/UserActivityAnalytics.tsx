@@ -289,8 +289,8 @@ export default function UserActivityAnalytics() {
             data
               ? data.activityTrends.reduce((sum, t) => sum + t.activityCount, 0)
               : loading
-              ? "..."
-              : 0
+                ? "..."
+                : 0
           }
           subtext={`${data?.activityTrends.reduce((sum, t) => sum + t.loginCount, 0) ?? 0} total logins in range`}
           icon={Activity}
@@ -337,9 +337,8 @@ export default function UserActivityAnalytics() {
                       {user.username.slice(0, 2).toUpperCase()}
                     </div>
                     <span
-                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                        user.isOnline ? "bg-emerald-500" : "bg-gray-300"
-                      }`}
+                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${user.isOnline ? "bg-emerald-500" : "bg-gray-300"
+                        }`}
                     />
                   </div>
                   <div>
@@ -552,9 +551,8 @@ export default function UserActivityAnalytics() {
                             {row.username.slice(0, 2).toUpperCase()}
                           </div>
                           <span
-                            className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                              row.isOnline ? "bg-emerald-500" : "bg-gray-300"
-                            }`}
+                            className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${row.isOnline ? "bg-emerald-500" : "bg-gray-300"
+                              }`}
                             title={row.isOnline ? "Online" : "Offline"}
                           />
                         </div>
@@ -569,11 +567,10 @@ export default function UserActivityAnalytics() {
                     <td className="py-3 px-3">
                       <div className="space-y-1">
                         <span
-                          className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            row.status
+                          className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${row.status
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                               : "bg-gray-100 text-gray-600"
-                          }`}
+                            }`}
                         >
                           {row.status ? "Active" : "Disabled"}
                         </span>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getRoom,
@@ -28,12 +28,17 @@ import {
   UserCog,
   UserMinus,
   Wifi,
+  WifiOff,
+  Video,
+  Layout,
+  FileText,
 } from "lucide-react";
 import { updateWorkspaceUser } from "../../services/authServices";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { VideoCallPanel } from "../../components/room/VideoCallPanel";
 import { RoomDocuments } from "./RoomDocuments";
+import { Whiteboard } from "../../components/whiteboard/Whiteboard";
 
 interface Room {
   _id: string;
@@ -164,6 +169,7 @@ const AdminRoomDetail = () => {
   // from load errors so an action failure never masquerades as
   // "Room not found" or an empty table.
   const [actionError, setActionError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"meeting" | "whiteboard" | "details" | "documents">("meeting");
 
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [userActionLoading, setUserActionLoading] = useState(false);
@@ -174,6 +180,44 @@ const AdminRoomDetail = () => {
 
   const { socket } = useSocket();
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; username: string }[]>([]);
+  const [presenceFilter, setPresenceFilter] = useState<"all" | "online" | "offline">("all");
+
+  const onlineUserIdSet = useMemo(() => new Set(onlineUsers.map((u) => u.userId)), [onlineUsers]);
+
+  const presenceMembers = useMemo(() => {
+    const map = new Map<string, { id: string; username: string; email?: string; role?: string; isOnline: boolean }>();
+
+    users.forEach((u) => {
+      map.set(u._id, {
+        id: u._id,
+        username: u.username,
+        email: u.email,
+        role: u.role,
+        isOnline: onlineUserIdSet.has(u._id),
+      });
+    });
+
+    onlineUsers.forEach((u) => {
+      if (!map.has(u.userId)) {
+        map.set(u.userId, {
+          id: u.userId,
+          username: u.username,
+          isOnline: true,
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [users, onlineUserIdSet, onlineUsers]);
+
+  const onlineCount = useMemo(() => presenceMembers.filter((m) => m.isOnline).length, [presenceMembers]);
+  const offlineCount = useMemo(() => presenceMembers.filter((m) => !m.isOnline).length, [presenceMembers]);
+
+  const filteredPresenceMembers = useMemo(() => {
+    if (presenceFilter === "online") return presenceMembers.filter((m) => m.isOnline);
+    if (presenceFilter === "offline") return presenceMembers.filter((m) => !m.isOnline);
+    return presenceMembers;
+  }, [presenceMembers, presenceFilter]);
 
   const [confirmModal, setConfirmModal] = useState<ConfirmState>(CLOSED_CONFIRM);
 
@@ -441,16 +485,49 @@ const AdminRoomDetail = () => {
   const columns: Column<User>[] = [
     {
       header: "Username",
-      render: (user) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-sm font-medium">
-            {user.username.charAt(0).toUpperCase()}
+      render: (user) => {
+        const isOnline = onlineUserIdSet.has(user._id);
+        return (
+          <div className="flex items-center gap-3">
+            <div className="relative flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-sm font-medium">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+                  isOnline ? "bg-emerald-500" : "bg-gray-300"
+                }`}
+                title={isOnline ? "Online" : "Offline"}
+              />
+            </div>
+            <span className="text-sm font-medium text-gray-900">
+              {user.username}
+            </span>
           </div>
-          <span className="text-sm font-medium text-gray-900">
-            {user.username}
+        );
+      },
+    },
+    {
+      header: "Presence",
+      render: (user) => {
+        const isOnline = onlineUserIdSet.has(user._id);
+        return (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+              isOnline
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-gray-50 text-gray-500 border-gray-200"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+              }`}
+            />
+            {isOnline ? "Online" : "Offline"}
           </span>
-        </div>
-      ),
+        );
+      },
     },
     {
       header: "Email",
@@ -553,227 +630,344 @@ const AdminRoomDetail = () => {
         </div>
       )}
 
-      {/* Prominent Video Conference Hub (Full Screen Experience) */}
-      <VideoCallPanel
-        roomId={room._id}
-        roomName={room.name}
-        roomType={room.type}
-        currentUsername={username ?? "Admin"}
-      />
+      {/* Room Navigation Tabs - underline style */}
+      <div className="flex items-center gap-0 border-b border-gray-200 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setActiveTab("meeting")}
+          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "meeting" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
+        >
+          <Video className="w-4 h-4" />
+          <span>Meeting & Video</span>
+          {activeTab === "meeting" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("whiteboard")}
+          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "whiteboard" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
+        >
+          <Layout className="w-4 h-4" />
+          <span>Collaborative Whiteboard</span>
+          {activeTab === "whiteboard" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("details")}
+          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "details" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
+        >
+          <UserCog className="w-4 h-4" />
+          <span>Room Details & Members</span>
+          {activeTab === "details" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("documents")}
+          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "documents" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Documents</span>
+          {activeTab === "documents" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
+        </button>
+      </div>
 
-      {/* Main Content: Room details & actions, documents, online users, participants table (Clean full-width layout) */}
-      <div className="space-y-6">
+      {/* meeting tab */}
+      <div className={activeTab === "meeting" ? "block" : "hidden"}>
+        <VideoCallPanel roomId={room._id} roomName={room.name} roomType={room.type} currentUsername={username ?? "Admin"} />
+      </div>
+
+      {/* whiteboard tab */}
+      <div className={activeTab === "whiteboard" ? "block h-[82vh] rounded-xl overflow-hidden border border-gray-200 shadow-lg" : "hidden"}>
+        <Whiteboard roomId={room._id} />
+      </div>
+
+      {/* documents tab */}
+      <div className={activeTab === "documents" ? "block space-y-6" : "hidden"}>
+        <RoomDocuments roomId={room._id} />
+      </div>
+
+      {/* details tab */}
+      <div className={activeTab === "details" ? "block space-y-6" : "hidden"}>
         {/* MAIN GRID: Room Card & Actions */}
         <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-6 items-start">
-            {/* ROOM CARD */}
-            <div className="w-full min-w-0 bg-white border border-gray-200 rounded-xl shadow-sm px-6 py-6">
-              <div className="flex items-start justify-between gap-4">
-                {/* LEFT SIDE */}
-                <div className="flex items-start gap-4 min-w-0 flex-1">
-                  {/* ROOM ICON */}
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                      room.type === "public" ? "bg-indigo-50" : "bg-orange-50"
-                    }`}
-                  >
-                    {room.type === "public" ? (
-                      <Globe className="w-6 h-6 text-indigo-600" />
-                    ) : (
-                      <Lock className="w-6 h-6 text-orange-600" />
-                    )}
-                  </div>
-
-                  {/* NAME + BADGES */}
-                  <div className="min-w-0 pt-0.5">
-                    <h1 className="text-xl font-bold text-gray-900 truncate">
-                      {room.name}
-                    </h1>
-
-                    <div className="flex items-center flex-wrap gap-2 mt-2">
-                      {/* TYPE */}
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          room.type === "public"
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "bg-orange-50 text-orange-700"
-                        }`}
-                      >
-                        {room.type === "public" ? (
-                          <Globe className="w-3 h-3" />
-                        ) : (
-                          <Lock className="w-3 h-3" />
-                        )}
-                        {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
-                      </span>
-
-                      {/* STATUS */}
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          room.status === "active"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* RIGHT SIDE INFO */}
-                <div className="shrink-0 text-right pt-0.5">
-                  <p className="text-xs text-gray-400 whitespace-nowrap">
-                    Created{" "}
-                    {new Date(room.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              {room.description && (
-                <p
-                  className="mt-4 text-xs text-gray-600 leading-relaxed"
-                  title={room.description}
+          {/* ROOM CARD */}
+          <div className="w-full min-w-0 bg-white border border-gray-200 rounded-xl shadow-sm px-6 py-6">
+            <div className="flex items-start justify-between gap-4">
+              {/* LEFT SIDE */}
+              <div className="flex items-start gap-4 min-w-0 flex-1">
+                {/* ROOM ICON */}
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                    room.type === "public" ? "bg-indigo-50" : "bg-orange-50"
+                  }`}
                 >
-                  {room.description}
+                  {room.type === "public" ? (
+                    <Globe className="w-6 h-6 text-indigo-600" />
+                  ) : (
+                    <Lock className="w-6 h-6 text-orange-600" />
+                  )}
+                </div>
+
+                {/* NAME + BADGES */}
+                <div className="min-w-0 pt-0.5">
+                  <h1 className="text-xl font-bold text-gray-900 truncate">
+                    {room.name}
+                  </h1>
+
+                  <div className="flex items-center flex-wrap gap-2 mt-2">
+                    {/* TYPE */}
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        room.type === "public"
+                          ? "bg-indigo-50 text-indigo-700"
+                          : "bg-orange-50 text-orange-700"
+                      }`}
+                    >
+                      {room.type === "public" ? (
+                        <Globe className="w-3 h-3" />
+                      ) : (
+                        <Lock className="w-3 h-3" />
+                      )}
+                      {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
+                    </span>
+
+                    {/* STATUS */}
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        room.status === "active"
+                          ? "bg-green-50 text-green-700"
+                          : "bg-red-50 text-red-600"
+                      }`}
+                    >
+                      {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT SIDE INFO */}
+              <div className="shrink-0 text-right pt-0.5">
+                <p className="text-xs text-gray-400 whitespace-nowrap">
+                  Created{" "}
+                  {new Date(room.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </p>
-              )}
+              </div>
             </div>
 
-            {/* ACTIONS CARD */}
-            <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-5">
-              <h2 className="text-xs font-semibold text-gray-700 text-center mb-4">
-                Room Actions
-              </h2>
-
-              <div
-                className={`grid gap-3 justify-items-center ${
-                  room.type === "private" ? "grid-cols-2" : "grid-cols-1"
-                }`}
+            {room.description && (
+              <p
+                className="mt-4 text-xs text-gray-600 leading-relaxed"
+                title={room.description}
               >
-                {room.type === "private" && (
-                  <ActionButton
-                    icon={UserCog}
-                    label="Manage Access"
-                    onClick={() => setIsAccessModalOpen(true)}
-                    colorClasses="bg-blue-50 text-blue-600 hover:bg-blue-100 focus:ring-blue-300"
-                  />
-                )}
-
-                <ActionButton
-                  icon={Pencil}
-                  label="Edit Room"
-                  onClick={() => setIsRoomModalOpen(true)}
-                  colorClasses="bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-300"
-                />
-
-                <ActionButton
-                  icon={room.status === "active" ? ShieldBan : ShieldCheck}
-                  label={room.status === "active" ? "Block Room" : "Unblock Room"}
-                  onClick={() =>
-                    setConfirmModal({
-                      isOpen: true,
-                      kind: "room",
-                      actionType: room.status === "active" ? "block" : "unblock",
-                    })
-                  }
-                  colorClasses={
-                    room.status === "active"
-                      ? "bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-300"
-                      : "bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-300"
-                  }
-                  disabled={actionLoading}
-                />
-
-                <ActionButton
-                  icon={Trash2}
-                  label="Delete Room"
-                  onClick={() =>
-                    setConfirmModal({
-                      isOpen: true,
-                      kind: "room",
-                      actionType: "delete",
-                    })
-                  }
-                  colorClasses="bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-300"
-                  disabled={actionLoading}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ROOM DOCUMENTS */}
-          <RoomDocuments roomId={room._id} />
-
-          {/* ONLINE NOW */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-              <div className="p-2 rounded-lg bg-green-50">
-                <Wifi className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-gray-800">Online Now</h2>
-                <p className="text-xs text-gray-400">
-                  {onlineUsers.length} user{onlineUsers.length !== 1 ? "s" : ""} currently in this room
-                </p>
-              </div>
-            </div>
-
-            {onlineUsers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                <Wifi className="w-7 h-7 mb-2 text-gray-300" />
-                <p className="text-sm text-gray-500">No one else is here right now</p>
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {onlineUsers.map((u) => (
-                  <li key={u.userId} className="flex items-center gap-3 px-6 py-3">
-                    <div className="relative flex-shrink-0">
-                      <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-                        <span className="text-xs font-semibold text-green-700">
-                          {u.username.slice(0, 2).toUpperCase()}
-                        </span>
-                      </div>
-                      {/* Online dot */}
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-white" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-900">{u.username}</p>
-                  </li>
-                ))}
-              </ul>
+                {room.description}
+              </p>
             )}
           </div>
 
-          {/* PARTICIPANTS TABLE */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-gray-800 mb-4">Participants</h2>
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Search username or email..."
-                aria-label="Search participants"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          {/* ACTIONS CARD */}
+          <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-5">
+            <h2 className="text-xs font-semibold text-gray-700 text-center mb-4">
+              Room Actions
+            </h2>
+
+            <div
+              className={`grid gap-3 justify-items-center ${
+                room.type === "private" ? "grid-cols-2" : "grid-cols-1"
+              }`}
+            >
+              {room.type === "private" && (
+                <ActionButton
+                  icon={UserCog}
+                  label="Manage Access"
+                  onClick={() => setIsAccessModalOpen(true)}
+                  colorClasses="bg-blue-50 text-blue-600 hover:bg-blue-100 focus:ring-blue-300"
+                />
+              )}
+
+              <ActionButton
+                icon={Pencil}
+                label="Edit Room"
+                onClick={() => setIsRoomModalOpen(true)}
+                colorClasses="bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-300"
+              />
+
+              <ActionButton
+                icon={room.status === "active" ? ShieldBan : ShieldCheck}
+                label={room.status === "active" ? "Block Room" : "Unblock Room"}
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    kind: "room",
+                    actionType: room.status === "active" ? "block" : "unblock",
+                  })
+                }
+                colorClasses={
+                  room.status === "active"
+                    ? "bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-300"
+                    : "bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-300"
+                }
+                disabled={actionLoading}
+              />
+
+              <ActionButton
+                icon={Trash2}
+                label="Delete Room"
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    kind: "room",
+                    actionType: "delete",
+                  })
+                }
+                colorClasses="bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-300"
+                disabled={actionLoading}
               />
             </div>
-
-            <Table
-              columns={columns}
-              data={users}
-              keyExtractor={(u) => u._id}
-              loading={participantsLoading}
-              error={participantsError}
-              emptyMessage="No users found."
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
           </div>
         </div>
+
+        {/* Room Presence (Online & Offline) */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                <Wifi className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-800">Room Presence</h2>
+                <p className="text-xs text-gray-400">
+                  <span className="text-emerald-600 font-medium">{onlineCount} online</span>
+                  {" • "}
+                  <span>{offlineCount} offline</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg text-xs">
+              <button
+                type="button"
+                onClick={() => setPresenceFilter("all")}
+                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  presenceFilter === "all"
+                    ? "bg-white text-gray-900 shadow-xs"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                All ({presenceMembers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresenceFilter("online")}
+                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  presenceFilter === "online"
+                    ? "bg-white text-emerald-700 shadow-xs"
+                    : "text-gray-500 hover:text-emerald-700"
+                }`}
+              >
+                Online ({onlineCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresenceFilter("offline")}
+                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  presenceFilter === "offline"
+                    ? "bg-white text-gray-800 shadow-xs"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                Offline ({offlineCount})
+              </button>
+            </div>
+          </div>
+
+          {filteredPresenceMembers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+              <WifiOff className="w-8 h-8 mb-2 text-gray-300" />
+              <p className="text-sm text-gray-500">
+                {presenceFilter === "online"
+                  ? "No users currently online in this room"
+                  : presenceFilter === "offline"
+                  ? "All participants are online"
+                  : "No presence records"}
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+              {filteredPresenceMembers.map((u) => (
+                <li key={u.id} className="flex items-center justify-between gap-3 px-6 py-3 hover:bg-gray-50/60 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative flex-shrink-0">
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold ${
+                          u.isOnline ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {u.username.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span
+                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+                          u.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-300"
+                        }`}
+                        title={u.isOnline ? "Online" : "Offline"}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{u.username}</p>
+                      {u.email && <p className="text-xs text-gray-400 truncate">{u.email}</p>}
+                    </div>
+                  </div>
+
+                  <span
+                    className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${
+                      u.isOnline
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-gray-50 text-gray-500 border-gray-200"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        u.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+                      }`}
+                    />
+                    {u.isOnline ? "Online" : "Offline"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* PARTICIPANTS TABLE */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-sm font-semibold text-gray-800 mb-4">Participants</h2>
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search username or email..."
+              aria-label="Search participants"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+
+          <Table
+            columns={columns}
+            data={users}
+            keyExtractor={(u) => u._id}
+            loading={participantsLoading}
+            error={participantsError}
+            emptyMessage="No users found."
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      </div>
 
       {/* ROOM MODAL */}
       <RoomModal
