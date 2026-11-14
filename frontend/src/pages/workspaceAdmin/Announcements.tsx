@@ -23,10 +23,12 @@ import {
   Users,
 } from "lucide-react";
 
-const TYPE_CONFIG = {
+const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; border: string }> = {
   info: { label: "Info", icon: Info, color: "bg-blue-50 text-blue-700", border: "border-l-blue-500" },
   warning: { label: "Warning", icon: AlertTriangle, color: "bg-amber-50 text-amber-700", border: "border-l-amber-500" },
+  important: { label: "Warning", icon: AlertTriangle, color: "bg-amber-50 text-amber-700", border: "border-l-amber-500" },
   critical: { label: "Critical", icon: Zap, color: "bg-red-50 text-red-700", border: "border-l-red-500" },
+  urgent: { label: "Critical", icon: Zap, color: "bg-red-50 text-red-700", border: "border-l-red-500" },
   event: { label: "Event", icon: CalendarDays, color: "bg-green-50 text-green-700", border: "border-l-green-500" },
 };
 
@@ -203,7 +205,7 @@ export default function AdminAnnouncements() {
       ) : (
         <div className="space-y-3">
           {filtered.map((a) => {
-            const cfg = TYPE_CONFIG[a.type];
+            const cfg = TYPE_CONFIG[a.type] || TYPE_CONFIG.info;
             const Icon = cfg.icon;
             return (
               <div

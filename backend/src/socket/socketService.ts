@@ -55,6 +55,17 @@ export const socketService = {
         ? String(user.workspaceId)
         : undefined;
 
+      const emitRoomPresenceChanged = (targetRoomId: string) => {
+        if (!workspaceId) return;
+        const liveParticipants = socketService.getRoomLiveParticipants(targetRoomId);
+        io.to(`workspace:${workspaceId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_CHANGED, {
+          roomId: targetRoomId,
+          participantCount: liveParticipants.length,
+          isLive: liveParticipants.length > 0,
+          participants: liveParticipants.slice(0, 3),
+        });
+      };
+
       // Join individual user room for private/direct messaging & notifications
       socket.join(`user:${userId}`);
 
@@ -135,6 +146,7 @@ export const socketService = {
 
         io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
         socket.emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+        emitRoomPresenceChanged(roomId);
 
         logger.info(`[Socket] User ${user.id} joined room:${roomId} — ${online.length} online`);
       });
@@ -162,6 +174,7 @@ export const socketService = {
 
         const online = Array.from(roomPresence.get(roomId)?.values() ?? []);
         io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+        emitRoomPresenceChanged(roomId);
 
         if (roomPresence.get(roomId)?.size === 0) {
           roomPresence.delete(roomId);
@@ -484,6 +497,7 @@ export const socketService = {
           }
         }
         socket.leave(`call:${roomId}`);
+        emitRoomPresenceChanged(roomId);
         logger.info(`[Call] Peer ${socketId} left call in room:${roomId}`);
       };
 
@@ -534,6 +548,7 @@ export const socketService = {
         socket.to(`call:${roomId}`).emit(SOCKET_EVENTS.VOICE_USER_JOINED, participant);
 
         callMap.set(socket.id, participant);
+        emitRoomPresenceChanged(roomId);
 
         logger.info(
           `[Call] User ${user.id} (${participant.username}) joined call in room:${roomId} — ${callMap.size} in call`
@@ -661,6 +676,7 @@ export const socketService = {
             members.delete(socket.id);
             const online = Array.from(members.values());
             io.to(`room:${roomId}`).emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
+            emitRoomPresenceChanged(roomId);
             if (members.size === 0) roomPresence.delete(roomId);
           }
         });
@@ -697,6 +713,31 @@ export const socketService = {
 
   getOnlineUserIds(): string[] {
     return Array.from(onlineUsers.keys());
+  },
+
+  getRoomLiveParticipants(roomId: string): { userId: string; username: string }[] {
+    const presenceUsers = Array.from(roomPresence.get(roomId)?.values() ?? []);
+    const callUsers = Array.from(callRooms.get(roomId)?.values() ?? []).map((p) => ({
+      userId: p.userId,
+      username: p.username,
+    }));
+    const map = new Map<string, { userId: string; username: string }>();
+    for (const u of presenceUsers) map.set(u.userId, u);
+    for (const u of callUsers) map.set(u.userId, u);
+    return Array.from(map.values());
+  },
+
+  getAllRoomPresences(): Record<string, { userId: string; username: string }[]> {
+    const result: Record<string, { userId: string; username: string }[]> = {};
+    roomPresence.forEach((_, roomId) => {
+      result[roomId] = this.getRoomLiveParticipants(roomId);
+    });
+    callRooms.forEach((_, roomId) => {
+      if (!result[roomId]) {
+        result[roomId] = this.getRoomLiveParticipants(roomId);
+      }
+    });
+    return result;
   },
 
   emitToWorkspace(workspaceId: string, event: string, payload: unknown) {

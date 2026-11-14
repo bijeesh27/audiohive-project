@@ -1,181 +1,220 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getRooms } from "../../services/roomServices";
-import { DoorOpen, Lock, Globe, ArrowRight } from "lucide-react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_ROUTES } from "../../constants/Api_Routes";
+import { getMemberRooms } from "../../services/roomServices";
+import { useSocket } from "../../context/SocketContext";
+import { RoomSearch } from "../../components/member/rooms/RoomSearch";
+import { RoomFilters } from "../../components/member/rooms/RoomFilters";
+import { RoomGrid } from "../../components/member/rooms/RoomGrid";
+import { RoomCardSkeleton } from "../../components/member/rooms/RoomCardSkeleton";
+import { EmptyState } from "../../components/member/rooms/EmptyState";
+import type {
+  MemberRoom,
+  RoomTypeFilter,
+  RoomSortOption,
+  RoomTabCounts,
+} from "../../types/rooms";
 
-interface Room {
-  _id: string;
-  name: string;
-  description: string;
-  type: "public" | "private";
-  status: "active" | "blocked";
-}
+const DEFAULT_COUNTS: RoomTabCounts = { all: 0, public: 0, private: 0, live: 0 };
+const PAGE_LIMIT = 12;
 
-const Rooms = () => {
+const Rooms: React.FC = () => {
   const navigate = useNavigate();
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { socket } = useSocket();
+
+  // Read URL state
+  const qParam = searchParams.get("q") || "";
+  const typeParam = (searchParams.get("type") as RoomTypeFilter) || "all";
+  const sortParam = (searchParams.get("sort") as RoomSortOption) || "active";
+  const pageParam = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+
+  const [rooms, setRooms] = useState<MemberRoom[]>([]);
+  const [counts, setCounts] = useState<RoomTabCounts>(DEFAULT_COUNTS);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const limit = 12;
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(true);
+  // Helper to update search params while preserving other params
+  const updateParams = useCallback(
+    (newParams: Record<string, string | null>) => {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          Object.entries(newParams).forEach(([key, val]) => {
+            if (val === null || val === "" || (key === "page" && val === "1") || (key === "type" && val === "all") || (key === "sort" && val === "active")) {
+              updated.delete(key);
+            } else {
+              updated.set(key, val);
+            }
+          });
+          return updated;
+        },
+        { replace: false }
+      );
+    },
+    [setSearchParams]
+  );
+
+  // Fetch rooms from backend
+  const fetchRooms = useCallback(
+    async (isBackground = false) => {
+      if (!isBackground) setLoading(true);
       setError(null);
-      getRooms(page, limit, search)
-        .then((res) => {
-          const responseData = res.data.data || res.data;
-          setRooms(responseData.rooms || []);
-          setTotalPages(Math.ceil((responseData.total || 0) / limit));
-        })
-        .catch((err) => {
-          setError(err?.response?.data?.message || "Failed to load rooms");
-        })
-        .finally(() => {
-          setLoading(false);
+
+      try {
+        const res = await getMemberRooms({
+          q: qParam || undefined,
+          type: typeParam,
+          sort: sortParam,
+          page: pageParam,
+          limit: PAGE_LIMIT,
         });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [page, search]);
+
+        const data = res.data?.data || res.data;
+        const fetchedRooms: MemberRoom[] = data.rooms || [];
+        setRooms(fetchedRooms);
+        setTotalPages(data.totalPages || 1);
+        if (data.counts) {
+          setCounts(data.counts);
+        }
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to load rooms";
+        setError(msg);
+      } finally {
+        if (!isBackground) setLoading(false);
+      }
+    },
+    [qParam, typeParam, sortParam, pageParam]
+  );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage(1);
-  }, [search]);
+    fetchRooms();
+  }, [fetchRooms]);
+
+  // Real-time updates via socket without a full refetch
+  useEffect(() => {
+    if (!socket) return;
+
+    interface PresenceChangedPayload {
+      roomId: string;
+      participantCount: number;
+      isLive: boolean;
+      participants: { userId: string; username: string }[];
+    }
+
+    const handlePresenceChanged = (payload: PresenceChangedPayload) => {
+      setRooms((prevRooms) =>
+        prevRooms.map((r) => {
+          if (r.id === payload.roomId || r._id === payload.roomId) {
+            return {
+              ...r,
+              isLive: payload.isLive,
+              participantCount: payload.participantCount,
+              participants: payload.participants,
+            };
+          }
+          return r;
+        })
+      );
+
+      // Update Live count in tabs
+      setCounts((prev) => {
+        const matchingRoom = rooms.find((r) => r.id === payload.roomId || r._id === payload.roomId);
+        if (!matchingRoom) return prev;
+        const wasLive = matchingRoom.isLive;
+        const isNowLive = payload.isLive;
+        if (wasLive === isNowLive) return prev;
+        return {
+          ...prev,
+          live: Math.max(0, prev.live + (isNowLive ? 1 : -1)),
+        };
+      });
+    };
+
+    socket.on("room:presence-changed", handlePresenceChanged);
+    return () => {
+      socket.off("room:presence-changed", handlePresenceChanged);
+    };
+  }, [socket, rooms]);
+
+  // Polling fallback every 30s while tab is visible
+  const fetchRoomsRef = useRef(fetchRooms);
+  fetchRoomsRef.current = fetchRooms;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchRoomsRef.current(true);
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleJoinRoom = (roomId: string) => {
+    navigate(API_ROUTES.MEMBER.NAV.ROOM_DETAIL(roomId));
+  };
+
+  const handleClearFilters = () => {
+    setSearchParams(new URLSearchParams());
+  };
+
+  const isFilterActive = Boolean(qParam || typeParam !== "all");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Rooms</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Rooms</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {loading ? "Loading..." : `Page ${page} of ${totalPages || 1}`}
+            Join a conversation or browse rooms you have access to
           </p>
         </div>
-        <input
-          type="text"
-          placeholder="Search rooms..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+
+        <RoomSearch
+          initialValue={qParam}
+          onSearchChange={(query) => updateParams({ q: query, page: "1" })}
         />
       </div>
 
-      {error && (
-        <div className="rounded-md bg-red-50 p-4 text-sm text-red-600">{error}</div>
-      )}
+      {/* 2. Filter Bar */}
+      <RoomFilters
+        currentTab={typeParam}
+        currentSort={sortParam}
+        counts={counts}
+        onTabChange={(tab) => updateParams({ type: tab, page: "1" })}
+        onSortChange={(sort) => updateParams({ sort, page: "1" })}
+      />
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm animate-pulse">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-200"></div>
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-              </div>
-              <div className="h-3 bg-gray-100 rounded w-full mb-2"></div>
-              <div className="h-3 bg-gray-100 rounded w-2/3"></div>
-            </div>
-          ))}
-        </div>
+      {/* 3. Main Content States */}
+      {error ? (
+        <EmptyState
+          type="error"
+          errorMessage={error}
+          onRetry={() => fetchRooms()}
+        />
+      ) : loading ? (
+        <RoomCardSkeleton count={6} />
       ) : rooms.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <DoorOpen className="w-12 h-12 mb-3" />
-          <p className="text-base font-medium">No rooms available</p>
-          {/* eslint-disable-next-line react/no-unescaped-entities */}
-          <p className="text-sm mt-1">You don't have access to any rooms yet.</p>
-        </div>
+        <EmptyState
+          type={isFilterActive ? "no-results" : "no-rooms"}
+          searchQuery={qParam}
+          onClearFilters={handleClearFilters}
+        />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rooms.map((room) => (
-            <div
-              key={room._id}
-              onClick={() => navigate(API_ROUTES.MEMBER.NAV.ROOM_DETAIL(room._id))}
-              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      room.type === "public" ? "bg-indigo-50" : "bg-orange-50"
-                    }`}
-                  >
-                    {room.type === "public" ? (
-                      <Globe className="w-5 h-5 text-indigo-600" />
-                    ) : (
-                      <Lock className="w-5 h-5 text-orange-600" />
-                    )}
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900">{room.name}</h3>
-                </div>
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    room.status === "active"
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-600"
-                  }`}
-                >
-                  {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                </span>
-              </div>
-
-              <p className="text-xs text-gray-500 line-clamp-2 mb-4">
-                {room.description || "No description provided."}
-              </p>
-
-              <div className="flex items-center justify-between">
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    room.type === "public"
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "bg-orange-50 text-orange-700"
-                  }`}
-                >
-                  {room.type === "public" ? (
-                    <Globe className="w-3 h-3" />
-                  ) : (
-                    <Lock className="w-3 h-3" />
-                  )}
-                  {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
-                </span>
-                <span className="flex items-center gap-1 text-xs text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  Enter <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {!loading && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-4">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="rounded-md px-3 py-1.5 text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-gray-600">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="rounded-md px-3 py-1.5 text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
+        <RoomGrid
+          rooms={rooms}
+          currentPage={pageParam}
+          totalPages={totalPages}
+          onPageChange={(page) => updateParams({ page: String(page) })}
+          onJoinRoom={handleJoinRoom}
+          onCardClick={handleJoinRoom}
+        />
       )}
     </div>
   );
 };
 
 export default Rooms;
-

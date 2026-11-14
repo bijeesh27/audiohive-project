@@ -46,6 +46,19 @@ export const DirectChatContextProvider = ({ children }: { children: React.ReactN
     };
   }, [isAuthenticated]);
 
+  // Update document title dynamically to reflect unread chat count
+  useEffect(() => {
+    if (!isAuthenticated) {
+      document.title = "AudioHive";
+      return;
+    }
+    if (unreadCount > 0) {
+      document.title = `(${unreadCount}) AudioHive`;
+    } else {
+      document.title = "AudioHive";
+    }
+  }, [isAuthenticated, unreadCount]);
+
   useEffect(() => {
     if (!socket || !isConnected) return;
 

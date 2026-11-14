@@ -15,12 +15,12 @@ import { API_ROUTES } from "../../../common/constant/ApiRoutes.js";
 
 const router = express.Router();
 
-// Repositories & Infrastructure
+
 const roomRepo = new RoomRepository();
 const whiteboardRepo = new WhiteboardRepository();
 const whiteboardBroadcaster = new WhiteboardSocketBroadcaster();
 
-// Use cases
+
 const validateRoomAccessUseCase = new ValidateRoomAccessUseCase(roomRepo);
 const getNotesUseCase = new GetWhiteboardNotesUseCase(whiteboardRepo, validateRoomAccessUseCase);
 const createNoteUseCase = new CreateStickyNoteUseCase(whiteboardRepo, validateRoomAccessUseCase, roomRepo);
@@ -29,7 +29,6 @@ const moveNoteUseCase = new MoveStickyNoteUseCase(whiteboardRepo, validateRoomAc
 const updateColorUseCase = new UpdateStickyNoteColorUseCase(whiteboardRepo, validateRoomAccessUseCase);
 const deleteNoteUseCase = new DeleteStickyNoteUseCase(whiteboardRepo, validateRoomAccessUseCase);
 
-// Controller wired with use cases and decoupled broadcaster
 const controller = new WhiteboardController(
   getNotesUseCase,
   createNoteUseCase,

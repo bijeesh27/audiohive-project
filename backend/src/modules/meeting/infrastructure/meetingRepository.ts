@@ -57,16 +57,20 @@ export class MeetingRepository
     page = 1,
     limit = 20,
     status?: string,
-    userId?: string
-  ): Promise<{ meetings: IMeetingDocument[]; total: number }> {
-    const query: Record<string, unknown> = { workspaceId };
-
-    if (status && status !== "all") {
-      query.status = status;
-    }
+    userId?: string,
+    tab?: string,
+    q?: string
+  ): Promise<{
+    meetings: IMeetingDocument[];
+    total: number;
+    totalPages?: number;
+    page?: number;
+    counts?: { upcoming: number; past: number; cancelled: number };
+  }> {
+    const baseQuery: Record<string, unknown> = { workspaceId };
 
     if (userId) {
-      query.$or = [
+      baseQuery.$or = [
         { hostId: userId },
         { participants: userId },
         { participants: { $size: 0 } },
@@ -74,23 +78,95 @@ export class MeetingRepository
       ];
     }
 
-    const skip = (page - 1) * limit;
+    if (q && q.trim()) {
+      const regex = { $regex: q.trim(), $options: "i" };
+      baseQuery.$and = [
+        {
+          $or: [{ title: regex }, { meetingCode: regex }, { description: regex }],
+        },
+      ];
+    }
 
-    const [meetings, total] = await Promise.all([
-      this.model
-        .find(query)
-        .sort({ startTime: status === "completed" || status === "cancelled" ? -1 : 1 })
-        .skip(skip)
-        .limit(limit)
-        .populate([
-          { path: "hostId", select: "username email" },
-          { path: "participants", select: "username email" },
-        ])
-        .exec(),
-      this.model.countDocuments(query),
+    const now = new Date();
+
+    // Query builder per tab
+    const upcomingCondition = {
+      ...baseQuery,
+      status: { $nin: ["cancelled", "completed"] },
+      endTime: { $gte: now },
+    };
+
+    const pastCondition = {
+      ...baseQuery,
+      $or: [
+        { status: "completed" },
+        { endTime: { $lt: now }, status: { $ne: "cancelled" } },
+      ],
+    };
+
+    const cancelledCondition = {
+      ...baseQuery,
+      status: "cancelled",
+    };
+
+    // Calculate counts for all 3 tabs under current search filter
+    const [upcomingCount, pastCount, cancelledCount] = await Promise.all([
+      this.model.countDocuments(upcomingCondition),
+      this.model.countDocuments(pastCondition),
+      this.model.countDocuments(cancelledCondition),
     ]);
 
-    return { meetings, total };
+    const counts = {
+      upcoming: upcomingCount,
+      past: pastCount,
+      cancelled: cancelledCount,
+    };
+
+    let activeQuery: Record<string, unknown>;
+    let sortOrder: Record<string, 1 | -1>;
+
+    if (tab === "past") {
+      activeQuery = pastCondition;
+      sortOrder = { startTime: -1 }; // newest first
+    } else if (tab === "cancelled") {
+      activeQuery = cancelledCondition;
+      sortOrder = { startTime: -1 }; // newest first
+    } else if (tab === "upcoming") {
+      activeQuery = upcomingCondition;
+      sortOrder = { startTime: 1 }; // earliest first
+    } else if (status && status !== "all") {
+      activeQuery = { ...baseQuery, status };
+      sortOrder = { startTime: status === "completed" || status === "cancelled" ? -1 : 1 };
+    } else {
+      activeQuery = upcomingCondition;
+      sortOrder = { startTime: 1 };
+    }
+
+    const total =
+      tab === "past"
+        ? pastCount
+        : tab === "cancelled"
+        ? cancelledCount
+        : tab === "upcoming"
+        ? upcomingCount
+        : await this.model.countDocuments(activeQuery);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const skip = (safePage - 1) * limit;
+
+    const meetings = await this.model
+      .find(activeQuery)
+      .sort(sortOrder)
+      .skip(skip)
+      .limit(limit)
+      .populate([
+        { path: "hostId", select: "username email" },
+        { path: "participants", select: "username email" },
+      ])
+      .exec();
+
+    return { meetings, total, totalPages, page: safePage, counts };
   }
 
   async updateMeeting(

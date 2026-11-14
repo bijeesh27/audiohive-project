@@ -12,6 +12,7 @@ export const BASE_API_ROUTES = {
   MEETING: "/api/meeting",
   ACTIVITY_LOG: "/api/activitylog",
   WHITEBOARD: "/api/whiteboard",
+  MEMBER: "/api/member",
 };
 
 export const API_ROUTES = {
@@ -56,7 +57,10 @@ export const API_ROUTES = {
     USER_ACTIVITY_HISTORY: "/users/:userId/activities",
   },
 
-  MEMBER: {},
+  MEMBER: {
+    DASHBOARD_SUMMARY: "/dashboard-summary",
+    ROOMS: "/rooms",
+  },
 
   SUBSCRIPTION: {
     CREATE_SUBSCRIPTION: "/createsubcription",
@@ -114,6 +118,8 @@ export const API_ROUTES = {
     GET_ALL: "/",
     GET_ONE: "/:id",
     MARK_READ: "/:id/read",
+    MARK_UNREAD: "/:id/unread",
+    READ_ALL: "/read-all",
   },
 
   DOCUMENT: {
@@ -151,6 +157,7 @@ export const API_ROUTES = {
     CREATE_MEETING: "/",
     GET_ALL_MEETINGS: "/",
     GET_MEETING: "/:id",
+    VALIDATE_CODE: "/validate-code/:code",
     UPDATE_MEETING: "/:id",
     CANCEL_MEETING: "/:id/cancel",
     DELETE_MEETING: "/:id",

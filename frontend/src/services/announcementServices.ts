@@ -20,10 +20,59 @@ export interface UpdateAnnouncementData {
   expiresAt?: string;
 }
 
-export const getAnnouncements = (page = 1, limit = 20, status?: string, search?: string) => {
-  return axiosInstance.get(API_ENDPOINTS.ANNOUNCEMENT.GET_ALL, {
-    params: { page, limit, status, search },
-  });
+export interface AnnouncementAuthor {
+  id: string;
+  name: string;
+  avatar?: string;
+}
+
+export interface MemberAnnouncement {
+  id: string;
+  _id?: string;
+  title: string;
+  content: string;
+  type: "info" | "important" | "urgent" | "event" | "warning" | "critical";
+  isPinned: boolean;
+  isRead: boolean;
+  readBy?: string[];
+  author: AnnouncementAuthor;
+  audience: string;
+  createdAt: string;
+}
+
+export interface GetAnnouncementsParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+  q?: string;
+  tab?: "all" | "unread" | "pinned" | string;
+  type?: string;
+  range?: string;
+  sort?: "newest" | "oldest" | string;
+}
+
+export interface PaginatedAnnouncementsResponse {
+  announcements: MemberAnnouncement[];
+  total: number;
+  page: number;
+  totalPages: number;
+  unreadCount: number;
+  pinnedCount: number;
+}
+
+export const getAnnouncements = (
+  pageOrParams: number | GetAnnouncementsParams = 1,
+  limit = 20,
+  status?: string,
+  search?: string
+) => {
+  const params =
+    typeof pageOrParams === "object"
+      ? pageOrParams
+      : { page: pageOrParams, limit, status, search };
+
+  return axiosInstance.get(API_ENDPOINTS.ANNOUNCEMENT.GET_ALL, { params });
 };
 
 export const getAnnouncement = (id: string) => {
@@ -48,6 +97,14 @@ export const pinAnnouncement = (id: string, isPinned: boolean) => {
 
 export const markAsRead = (id: string) => {
   return axiosInstance.patch(API_ENDPOINTS.ANNOUNCEMENT.MARK_READ(id));
+};
+
+export const markAsUnread = (id: string) => {
+  return axiosInstance.patch(API_ENDPOINTS.ANNOUNCEMENT.MARK_UNREAD(id));
+};
+
+export const markAllAsRead = () => {
+  return axiosInstance.patch(API_ENDPOINTS.ANNOUNCEMENT.READ_ALL);
 };
 
 export const getUnreadCount = () => {

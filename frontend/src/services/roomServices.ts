@@ -1,5 +1,6 @@
 import axiosInstance from "../config/axios";
 import { API_ENDPOINTS } from "../constants/Api_Routes";
+import type { MemberRoomsParams } from "../types/rooms";
 
 export interface CreateRoomData {
   name: string;
@@ -17,6 +18,12 @@ export interface UpdateRoomData {
 export const getRooms = (page: number, limit: number, search?: string) => {
   return axiosInstance.get(API_ENDPOINTS.ROOM.GET_ALL, {
     params: { page, limit, search },
+  });
+};
+
+export const getMemberRooms = (params?: MemberRoomsParams) => {
+  return axiosInstance.get(API_ENDPOINTS.MEMBER.ROOMS, {
+    params,
   });
 };
 

@@ -75,7 +75,7 @@ export class DirectMessageController {
       const user = this.getAuthenticatedUser(req);
       const conversationId = req.params.conversationId as string;
       const limit = parseInt(req.query.limit as string, 10) || 50;
-      const before = (req.query.before as string) || undefined;
+      const before = (req.query.before as string) || (req.query.cursor as string) || undefined;
 
       const result = await this.getDirectMessagesUseCase.execute({
         conversationId,
@@ -113,6 +113,14 @@ export class DirectMessageController {
 
       if (!receiverId || !content?.trim()) {
         throw new AppError(MESSAGES.ERRORS.RECEIVER_AND_CONTENT_REQUIRED, HttpStatus.BAD_REQUEST);
+      }
+
+      if (receiverId === user.id) {
+        throw new AppError("You cannot send a message to yourself", HttpStatus.BAD_REQUEST);
+      }
+
+      if (content.trim().length > 2000) {
+        throw new AppError("Message content cannot exceed 2000 characters", HttpStatus.BAD_REQUEST);
       }
 
       const result = await this.sendDirectMessageUseCase.execute({

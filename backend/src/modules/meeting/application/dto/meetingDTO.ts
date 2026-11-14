@@ -30,6 +30,8 @@ export interface GetMeetingsDTO {
   page?: number;
   limit?: number;
   status?: string;
+  tab?: "upcoming" | "past" | "cancelled" | string;
+  q?: string;
 }
 
 export interface GetMeetingByIdDTO {

@@ -22,6 +22,10 @@ export class GetOrCreateConversationWithUserUseCase
     targetUserId: string;
     workspaceId?: string;
   }): Promise<ConversationResponseDTO> {
+    if (userId === targetUserId) {
+      throw new AccessDeniedError("You cannot start a conversation with yourself");
+    }
+
     const canMessage = await this.dmRepository.verifyUsersCanMessage(
       userId,
       targetUserId,

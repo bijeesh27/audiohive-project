@@ -1,249 +1,244 @@
-import React, { useEffect, useState, useMemo } from "react";
-import {
-  Calendar,
-  Plus,
-  Search,
-  Video,
-  X,
-} from "lucide-react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Plus, Video, X, CheckCircle, AlertCircle } from "lucide-react";
 import {
   getMeetings,
-  getMeeting,
   cancelMeeting,
   deleteMeeting,
-  type Meeting,
 } from "../../services/meetingServices";
 import { useAuth } from "../../context/AuthContext";
-import { MeetingCard } from "../../components/meeting/MeetingCard";
+import { JoinByCode } from "../../components/meeting/JoinByCode";
+import { MeetingTabs } from "../../components/meeting/MeetingTabs";
+import { MeetingSearch } from "../../components/meeting/MeetingSearch";
+import { MeetingGroup } from "../../components/meeting/MeetingGroup";
+import { MeetingCardSkeleton } from "../../components/meeting/MeetingCardSkeleton";
+import { MeetingEmptyState } from "../../components/meeting/MeetingEmptyState";
+import { ConfirmDialog } from "../../components/meeting/ConfirmDialog";
 import { ScheduleMeetingModal } from "../../components/meeting/ScheduleMeetingModal";
 import { VideoCallPanel } from "../../components/room/VideoCallPanel";
-import ConfirmModal from "../../components/common/ConfirmModal";
+import type {
+  MeetingItem,
+  MeetingTab,
+  MeetingTabCounts,
+} from "../../types/meetings";
+
+const DEFAULT_COUNTS: MeetingTabCounts = { upcoming: 0, past: 0, cancelled: 0 };
 
 export const MeetingsPage: React.FC = () => {
-  const { accessToken, username, userRole } = useAuth();
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const { username } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read URL params
+  const tabParam = (searchParams.get("tab") as MeetingTab) || "upcoming";
+  const qParam = searchParams.get("q") || "";
+
+  const [meetings, setMeetings] = useState<MeetingItem[]>([]);
+  const [counts, setCounts] = useState<MeetingTabCounts>(DEFAULT_COUNTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past" | "cancelled">("upcoming");
-  const [search, setSearch] = useState("");
+
+  // Time-aware tick refreshed every 30 seconds
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Modal and Active Meeting Call states
+  const [activeMeetingCall, setActiveMeetingCall] = useState<MeetingItem | null>(null);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [selectedMeetingForEdit, setSelectedMeetingForEdit] = useState<Meeting | null>(null);
-  const [joinCodeInput, setJoinCodeInput] = useState("");
+  const [editingMeeting, setEditingMeeting] = useState<MeetingItem | null>(null);
 
-  // Active in-meeting call session
-  const [activeMeetingCall, setActiveMeetingCall] = useState<Meeting | null>(null);
+  // Toast notification
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Extract current user ID from JWT token
-  const currentUserId = useMemo(() => {
-    if (!accessToken) return null;
-    try {
-      const payload = accessToken.split(".")[1];
-      if (!payload) return null;
-      const decoded = JSON.parse(atob(payload));
-      return decoded?.id ?? null;
-    } catch {
-      return null;
-    }
-  }, [accessToken]);
-
-  // Confirmation modal state for cancel and delete
-  const [confirmModal, setConfirmModal] = useState<{
+  // Confirmation dialog
+  const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
     type: "cancel" | "delete" | null;
-    meeting: Meeting | null;
+    meeting: MeetingItem | null;
+    isLoading: boolean;
+    error: string | null;
   }>({
     isOpen: false,
     type: null,
     meeting: null,
+    isLoading: false,
+    error: null,
   });
-  const [actionLoading, setActionLoading] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
 
-  const fetchMeetings = () => {
-    setLoading(true);
-    setError(null);
-    getMeetings({ page: 1, limit: 50 })
-      .then((res) => {
-        const data = res.data.data;
-        setMeetings(data?.meetings || []);
-      })
-      .catch((err) => {
-        setError(err?.response?.data?.message || "Failed to load meetings.");
-      })
-      .finally(() => setLoading(false));
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
   };
+
+  // Sync URL parameters
+  const updateParams = useCallback(
+    (newParams: Record<string, string | null>) => {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          Object.entries(newParams).forEach(([k, v]) => {
+            if (v === null || v === "" || (k === "tab" && v === "upcoming")) {
+              updated.delete(k);
+            } else {
+              updated.set(k, v);
+            }
+          });
+          return updated;
+        },
+        { replace: false }
+      );
+    },
+    [setSearchParams]
+  );
+
+  // Fetch meetings with server-side filters
+  const fetchMeetings = useCallback(
+    async (isBackground = false) => {
+      if (!isBackground) setLoading(true);
+      setError(null);
+
+      try {
+        const res = await getMeetings({
+          tab: tabParam,
+          q: qParam || undefined,
+          limit: 50,
+        });
+
+        const data = res.data?.data || res.data;
+        setMeetings(data.meetings || []);
+        if (data.counts) setCounts(data.counts);
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to load meetings.";
+        setError(msg);
+      } finally {
+        if (!isBackground) setLoading(false);
+      }
+    },
+    [tabParam, qParam]
+  );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMeetings();
+  }, [fetchMeetings]);
+
+  // Refresh current time every 30s
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(timer);
   }, []);
 
-  const handleOpenCancelModal = (meeting: Meeting) => {
-    setActionError(null);
-    setConfirmModal({
-      isOpen: true,
-      type: "cancel",
-      meeting,
-    });
-  };
+  // Background refetch every 30s when tab is visible
+  const fetchRef = useRef(fetchMeetings);
+  fetchRef.current = fetchMeetings;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchRef.current(true);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleOpenDeleteModal = (meeting: Meeting) => {
-    setActionError(null);
-    setConfirmModal({
-      isOpen: true,
-      type: "delete",
-      meeting,
-    });
-  };
-
-  const handleCloseConfirmModal = () => {
-    if (actionLoading) return;
-    setConfirmModal({
-      isOpen: false,
-      type: null,
-      meeting: null,
-    });
-    setActionError(null);
-  };
-
+  // Optimistic UI for Cancel and Delete
   const handleConfirmAction = async () => {
-    if (!confirmModal.meeting || !confirmModal.type) return;
+    const { meeting, type } = confirmState;
+    if (!meeting || !type) return;
 
-    setActionLoading(true);
-    setActionError(null);
+    const previousMeetings = [...meetings];
+    const previousCounts = { ...counts };
+
+    // Optimistically update local state
+    if (type === "cancel") {
+      setMeetings((prev) =>
+        prev.map((m) =>
+          m.id === meeting.id || m._id === meeting._id ? { ...m, status: "cancelled" } : m
+        )
+      );
+      setCounts((prev) => ({
+        ...prev,
+        upcoming: Math.max(0, prev.upcoming - 1),
+        cancelled: prev.cancelled + 1,
+      }));
+    } else {
+      setMeetings((prev) => prev.filter((m) => m.id !== meeting.id && m._id !== meeting._id));
+      setCounts((prev) => ({
+        ...prev,
+        [tabParam]: Math.max(0, prev[tabParam] - 1),
+      }));
+    }
+
+    setConfirmState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      if (confirmModal.type === "cancel") {
-        await cancelMeeting(confirmModal.meeting._id);
+      if (type === "cancel") {
+        await cancelMeeting(meeting.id || meeting._id);
+        showToast(`Meeting "${meeting.title}" cancelled.`);
       } else {
-        await deleteMeeting(confirmModal.meeting._id);
+        await deleteMeeting(meeting.id || meeting._id);
+        showToast(`Meeting "${meeting.title}" deleted.`);
       }
-      setConfirmModal({
-        isOpen: false,
-        type: null,
-        meeting: null,
-      });
-      fetchMeetings();
+      setConfirmState({ isOpen: false, type: null, meeting: null, isLoading: false, error: null });
+      fetchMeetings(true);
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      setActionError(msg || `Failed to ${confirmModal.type} meeting. Please try again.`);
-    } finally {
-      setActionLoading(false);
+      // Rollback on failure
+      setMeetings(previousMeetings);
+      setCounts(previousCounts);
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || `Failed to ${type} meeting.`;
+      setConfirmState((prev) => ({ ...prev, isLoading: false, error: msg }));
+      showToast(msg, "error");
     }
   };
-
-  const handleJoinByCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = joinCodeInput.trim();
-    if (!code) return;
-
-    // Check local list first
-    const matched = meetings.find(
-      (m) =>
-        m.meetingCode.toLowerCase() === code.toLowerCase() ||
-        m._id === code
-    );
-    if (matched) {
-      setActiveMeetingCall(matched);
-      setJoinCodeInput("");
-      return;
-    }
-
-    // Fetch from backend by code/id
-    try {
-      const res = await getMeeting(code);
-      const meetingData = res.data.data;
-      if (meetingData) {
-        setActiveMeetingCall(meetingData);
-        setJoinCodeInput("");
-        return;
-      }
-    } catch {
-      alert("Meeting not found or you do not have permission to join.");
-    }
-  };
-
-  // Filter meetings by tab and search
-  const filteredMeetings = useMemo(() => {
-    const now = new Date();
-    return meetings.filter((m) => {
-      // Search filter
-      const matchesSearch =
-        m.title.toLowerCase().includes(search.toLowerCase()) ||
-        m.meetingCode.toLowerCase().includes(search.toLowerCase());
-      if (!matchesSearch) return false;
-
-      const endTime = new Date(m.endTime);
-
-      if (activeTab === "cancelled") {
-        return m.status === "cancelled";
-      }
-
-      if (activeTab === "past") {
-        return m.status === "completed" || (endTime < now && m.status !== "cancelled");
-      }
-
-      // Upcoming
-      return m.status !== "cancelled" && m.status !== "completed" && endTime >= now;
-    });
-  }, [meetings, activeTab, search]);
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner: Title & Primary CTA */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Toast Alert */}
+      {toast && (
+        <div
+          role="status"
+          className={`fixed top-5 right-5 z-50 flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold shadow-lg transition-all animate-fade-in ${
+            toast.type === "success" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle className="w-4 h-4" />
+          ) : (
+            <AlertCircle className="w-4 h-4" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* 1. Header Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Meetings</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Schedule, manage, and join video conferences with your team.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {/* Quick Join Code Form */}
-          <form onSubmit={handleJoinByCode} className="flex items-center gap-1.5">
-            <input
-              type="text"
-              value={joinCodeInput}
-              onChange={(e) => setJoinCodeInput(e.target.value)}
-              placeholder="Enter code (meet-...)"
-              className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-36 sm:w-44"
-            />
-            <button
-              type="submit"
-              disabled={!joinCodeInput.trim()}
-              className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium disabled:opacity-40 transition-colors"
-            >
-              Join
-            </button>
-          </form>
-
-          {/* Schedule Meeting Button */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <JoinByCode onJoinMeeting={(m) => setActiveMeetingCall(m)} />
           <button
             type="button"
             onClick={() => {
-              setSelectedMeetingForEdit(null);
+              setEditingMeeting(null);
               setIsScheduleOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4" aria-hidden="true" />
             <span>Schedule Meeting</span>
           </button>
         </div>
       </div>
 
-      {/* Active Live Call Session (if joined a meeting) */}
+      {/* Active Video Call Session */}
       {activeMeetingCall && (
-        <div className="relative">
-          <div className="flex items-center justify-between pb-2 mb-2">
-            <div className="flex items-center gap-2 text-gray-900 text-sm font-semibold">
-              <Video className="w-4 h-4 text-violet-600" />
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm space-y-3 animate-fade-in">
+          <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <Video className="w-4 h-4 text-indigo-600" />
               <span>{activeMeetingCall.title}</span>
-              <span className="text-xs text-gray-500 font-normal">({activeMeetingCall.meetingCode})</span>
+              <span className="text-xs text-gray-400 font-normal">({activeMeetingCall.meetingCode})</span>
             </div>
             <button
               type="button"
@@ -254,9 +249,8 @@ export const MeetingsPage: React.FC = () => {
               <X className="w-4 h-4" />
             </button>
           </div>
-
           <VideoCallPanel
-            roomId={activeMeetingCall._id}
+            roomId={activeMeetingCall.id || activeMeetingCall._id}
             roomName={activeMeetingCall.title}
             roomType="public"
             currentUsername={username || "User"}
@@ -264,147 +258,93 @@ export const MeetingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Tabs and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab("upcoming")}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === "upcoming"
-                ? "bg-indigo-50 text-indigo-700 shadow-xs"
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-            }`}
-          >
-            Upcoming
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("past")}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === "past"
-                ? "bg-indigo-50 text-indigo-700 shadow-xs"
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-            }`}
-          >
-            Past Meetings
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("cancelled")}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === "cancelled"
-                ? "bg-indigo-50 text-indigo-700 shadow-xs"
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-            }`}
-          >
-            Cancelled
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search meetings by title or code..."
-            className="w-full sm:w-64 pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-          />
-        </div>
+      {/* 2. Toolbar: Tabs & Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-gray-100 shadow-xs">
+        <MeetingTabs
+          currentTab={tabParam}
+          counts={counts}
+          onTabChange={(tab) => updateParams({ tab })}
+        />
+        <MeetingSearch
+          initialValue={qParam}
+          onSearchChange={(q) => updateParams({ q })}
+        />
       </div>
 
-      {/* Meeting Cards Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-pulse">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-48 bg-white border border-gray-200 rounded-2xl p-5 space-y-4"
-            >
-              <div className="h-5 bg-gray-200 rounded w-28" />
-              <div className="h-4 bg-gray-100 rounded w-full" />
-              <div className="h-4 bg-gray-100 rounded w-2/3" />
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 text-sm text-red-500">
-          {error}
-        </div>
-      ) : filteredMeetings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-gray-200/80 text-center p-6">
-          <div className="w-14 h-14 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-3">
-            <Calendar className="w-7 h-7" />
-          </div>
-          <h3 className="text-sm font-semibold text-gray-800">No {activeTab} meetings found</h3>
-          <p className="text-xs text-gray-400 max-w-sm mt-1 mb-5">
-            {activeTab === "upcoming"
-              ? "You have no upcoming sessions scheduled. Coordinate with your team and create a new meeting."
-              : "No meeting records match your search or filter."}
-          </p>
-          {activeTab === "upcoming" && (
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedMeetingForEdit(null);
-                setIsScheduleOpen(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl shadow-sm transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              Schedule First Meeting
-            </button>
-          )}
-        </div>
+      {/* 3. Meetings Content States */}
+      {error ? (
+        <MeetingEmptyState
+          type="error"
+          errorMessage={error}
+          onRetry={() => fetchMeetings()}
+        />
+      ) : loading ? (
+        <MeetingCardSkeleton count={6} />
+      ) : meetings.length === 0 ? (
+        <MeetingEmptyState
+          type={qParam ? "no-results" : "tab-empty"}
+          tab={tabParam}
+          searchQuery={qParam}
+          onClearSearch={() => updateParams({ q: "" })}
+          onSchedule={() => {
+            setEditingMeeting(null);
+            setIsScheduleOpen(true);
+          }}
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredMeetings.map((meeting) => (
-            <MeetingCard
-              key={meeting._id}
-              meeting={meeting}
-              currentUserId={currentUserId}
-              userRole={userRole}
-              onEdit={(m) => {
-                setSelectedMeetingForEdit(m);
-                setIsScheduleOpen(true);
-              }}
-              onCancel={handleOpenCancelModal}
-              onDelete={handleOpenDeleteModal}
-              onJoin={(m) => setActiveMeetingCall(m)}
-            />
-          ))}
-        </div>
+        <MeetingGroup
+          tab={tabParam}
+          meetings={meetings}
+          currentTime={currentTime}
+          onEdit={(m) => {
+            setEditingMeeting(m);
+            setIsScheduleOpen(true);
+          }}
+          onCancel={(m) =>
+            setConfirmState({
+              isOpen: true,
+              type: "cancel",
+              meeting: m,
+              isLoading: false,
+              error: null,
+            })
+          }
+          onDelete={(m) =>
+            setConfirmState({
+              isOpen: true,
+              type: "delete",
+              meeting: m,
+              isLoading: false,
+              error: null,
+            })
+          }
+          onJoin={(m) => setActiveMeetingCall(m)}
+        />
       )}
 
-      {/* Schedule / Edit Meeting Modal */}
+      {/* Schedule / Edit Modal */}
       <ScheduleMeetingModal
         isOpen={isScheduleOpen}
+        initialMeeting={editingMeeting as unknown as import("../../services/meetingServices").Meeting}
         onClose={() => {
           setIsScheduleOpen(false);
-          setSelectedMeetingForEdit(null);
+          setEditingMeeting(null);
         }}
-        onSuccess={() => fetchMeetings()}
-        initialMeeting={selectedMeetingForEdit}
+        onSuccess={() => {
+          showToast(editingMeeting ? "Meeting updated successfully!" : "Meeting scheduled successfully!");
+          fetchMeetings();
+        }}
       />
 
-      {/* Confirm Cancel / Delete Modal */}
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.type === "cancel" ? "Cancel Meeting" : "Delete Meeting"}
-        message={
-          confirmModal.type === "cancel"
-            ? `Are you sure you want to cancel "${confirmModal.meeting?.title || "this meeting"}"? Participants will no longer be able to join.`
-            : `Are you sure you want to permanently delete "${confirmModal.meeting?.title || "this meeting"}"? This action cannot be undone.`
-        }
-        confirmLabel={confirmModal.type === "cancel" ? "Cancel Meeting" : "Delete Meeting"}
-        cancelLabel="Keep Meeting"
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        type={confirmState.type}
+        meetingTitle={confirmState.meeting?.title || "this meeting"}
+        isLoading={confirmState.isLoading}
+        error={confirmState.error}
         onConfirm={handleConfirmAction}
-        onCancel={handleCloseConfirmModal}
-        isLoading={actionLoading}
-        isDanger={true}
-        error={actionError}
+        onClose={() => setConfirmState((p) => ({ ...p, isOpen: false }))}
       />
     </div>
   );
