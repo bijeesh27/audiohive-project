@@ -9,6 +9,7 @@ import {
   MarkReadDTO,
   PinAnnouncementInputDTO,
   UpdateAnnouncementDTO,
+  PaginatedAnnouncementsResultDTO,
 } from "../application/dto/announcementDTO.js";
 import { ResolveWorkspaceDTO, ResolvedWorkspaceDTO } from "../../workspace/application/dto/workspaceDTOs.js";
 import { ApiResposne } from "../../../common/Response/Response.js";
@@ -22,13 +23,15 @@ export class AnnouncementController {
     private readonly createAnnouncementUseCase: IuseCase<CreateAnnouncementDTO, AnnouncementResponseDTO>,
     private readonly updateAnnouncementUseCase: IuseCase<{ id: string; data: UpdateAnnouncementDTO }, void>,
     private readonly deleteAnnouncementUseCase: IuseCase<DeleteAnnouncementDTO, void>,
-    private readonly getAllAnnouncementsUseCase: IuseCase<GetAnnouncementsQueryDTO, { announcements: AnnouncementResponseDTO[]; total: number }>,
+    private readonly getAllAnnouncementsUseCase: IuseCase<GetAnnouncementsQueryDTO, PaginatedAnnouncementsResultDTO>,
     private readonly getAnnouncementUseCase: IuseCase<GetAnnouncementInput, AnnouncementResponseDTO | null>,
     private readonly pinAnnouncementUseCase: IuseCase<PinAnnouncementInputDTO, void>,
     private readonly markAsReadUseCase: IuseCase<MarkReadDTO, void>,
     private readonly getUnreadCountFn: (workspaceId: string, userId: string) => Promise<number>,
     private readonly getByRoomFn: (roomId: string, workspaceId: string) => Promise<AnnouncementResponseDTO[]>,
-    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>
+    private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>,
+    private readonly markAsUnreadFn?: (id: string, workspaceId: string, userId: string) => Promise<void>,
+    private readonly markAllAsReadFn?: (workspaceId: string, userId: string) => Promise<number>
   ) {}
 
   private async resolveWorkspace(req: AuthRequest) {
@@ -64,7 +67,7 @@ export class AnnouncementController {
         ...req.body,
         workspaceId,
         organizationId,
-        actorId: req.user?.id
+        actorId: req.user?.id,
       };
       await this.updateAnnouncementUseCase.execute({ id, data });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_UPDATED);
@@ -88,12 +91,31 @@ export class AnnouncementController {
     try {
       const { workspaceId } = await this.resolveWorkspace(req);
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const limit = parseInt(req.query.limit as string) || 10;
       const rawStatus = req.query.status;
       const rawSearch = req.query.search;
+      const rawQ = req.query.q;
       const status = (Array.isArray(rawStatus) ? rawStatus[0] : rawStatus) as string | undefined;
       const search = (Array.isArray(rawSearch) ? rawSearch[0] : rawSearch) as string | undefined;
-      const data = await this.getAllAnnouncementsUseCase.execute({ workspaceId, page, limit, status, search });
+      const q = (Array.isArray(rawQ) ? rawQ[0] : rawQ) as string | undefined;
+      const tab = req.query.tab as string | undefined;
+      const type = req.query.type as string | undefined;
+      const range = req.query.range as string | undefined;
+      const sort = req.query.sort as string | undefined;
+
+      const data = await this.getAllAnnouncementsUseCase.execute({
+        workspaceId,
+        userId: req.user?.id,
+        page,
+        limit,
+        status,
+        search,
+        q: q || search,
+        tab,
+        type,
+        range,
+        sort,
+      });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENTS_FETCHED, data);
     } catch (error) {
       next(error);
@@ -133,6 +155,34 @@ export class AnnouncementController {
       const { workspaceId } = await this.resolveWorkspace(req);
       await this.markAsReadUseCase.execute({ announcementId, userId, workspaceId });
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENT_READ);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  markAsUnread = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.id as string;
+      const announcementId = req.params.id as string;
+      const { workspaceId } = await this.resolveWorkspace(req);
+      if (this.markAsUnreadFn) {
+        await this.markAsUnreadFn(announcementId, workspaceId, userId);
+      }
+      return ApiResposne.success(res, "Announcement marked as unread");
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  markAllAsRead = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.id as string;
+      const { workspaceId } = await this.resolveWorkspace(req);
+      let count = 0;
+      if (this.markAllAsReadFn) {
+        count = await this.markAllAsReadFn(workspaceId, userId);
+      }
+      return ApiResposne.success(res, "All announcements marked as read", { modifiedCount: count });
     } catch (error) {
       next(error);
     }

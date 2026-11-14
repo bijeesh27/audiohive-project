@@ -15,8 +15,16 @@ export interface ImeetingRepository {
     page?: number,
     limit?: number,
     status?: string,
-    userId?: string
-  ): Promise<{ meetings: IMeetingDocument[]; total: number }>;
+    userId?: string,
+    tab?: string,
+    q?: string
+  ): Promise<{
+    meetings: IMeetingDocument[];
+    total: number;
+    totalPages?: number;
+    page?: number;
+    counts?: { upcoming: number; past: number; cancelled: number };
+  }>;
   updateMeeting(
     meetingId: string,
     workspaceId: string,

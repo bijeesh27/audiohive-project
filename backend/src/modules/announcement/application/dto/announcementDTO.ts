@@ -72,9 +72,42 @@ export interface PinAnnouncementInputDTO {
 
 export interface GetAnnouncementsQueryDTO {
   workspaceId: string;
+  userId?: string;
   page: number;
   limit: number;
   status?: string;
   search?: string;
+  q?: string;
+  tab?: string;
+  type?: string;
+  range?: string;
+  sort?: string;
+}
+
+export interface AnnouncementAuthorDTO {
+  id: string;
+  name: string;
+  avatar?: string;
+}
+
+export interface MemberAnnouncementDTO {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  isPinned: boolean;
+  isRead: boolean;
+  author: AnnouncementAuthorDTO;
+  audience: string;
+  createdAt: string | Date;
+}
+
+export interface PaginatedAnnouncementsResultDTO {
+  announcements: (AnnouncementResponseDTO | MemberAnnouncementDTO)[];
+  total: number;
+  page?: number;
+  totalPages?: number;
+  unreadCount?: number;
+  pinnedCount?: number;
 }
 

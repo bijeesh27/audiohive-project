@@ -8,6 +8,7 @@ export interface IRoomDocument extends Document {
   type: "public" | "private";
   isPrivate: boolean;
   status: "active" | "blocked";
+  capacity?: number;
   allowedUsers: Types.ObjectId[];
   createdBy: Types.ObjectId;
   createdAt: Date;
@@ -58,6 +59,11 @@ const roomSchema = new Schema<IRoomDocument>(
       type: String,
       enum: ["active", "blocked"],
       default: "active",
+    },
+
+    capacity: {
+      type: Number,
+      default: 25,
     },
 
     allowedUsers: [

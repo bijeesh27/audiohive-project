@@ -98,6 +98,13 @@ const announcementSchema = new Schema<IAnnouncementDocument>(
   }
 );
 
+// Compound indexes for filter, sort and pagination queries
+announcementSchema.index({ workspaceId: 1, status: 1, createdAt: -1 });
+announcementSchema.index({ workspaceId: 1, isPinned: -1, createdAt: -1 });
+announcementSchema.index({ workspaceId: 1, type: 1, createdAt: -1 });
+announcementSchema.index({ workspaceId: 1, readBy: 1 });
+announcementSchema.index({ organizationId: 1, status: 1, createdAt: -1 });
+
 export const AnnouncementModel = model<IAnnouncementDocument>(
   "Announcement",
   announcementSchema

@@ -6,6 +6,7 @@ export const SOCKET_EVENTS = {
   ROOM_JOIN: "room:join",
   ROOM_LEAVE: "room:leave",
   ROOM_PRESENCE_UPDATE: "room:presence-update",
+  ROOM_PRESENCE_CHANGED: "room:presence-changed",
   ROOM_GET_PRESENCE: "room:get-presence",
   // ── Room Chat ───────────────────────────────────────────────
   CHAT_SEND_MESSAGE: "chat:send-message",

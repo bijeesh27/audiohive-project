@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { X, Calendar, Clock, Loader2, AlertCircle, Hash, Pencil } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { X, Calendar, Clock, Loader2, AlertCircle, Pencil, Sparkles } from "lucide-react";
 import {
   createMeeting,
   updateMeeting,
   type Meeting,
 } from "../../services/meetingServices";
-import ConfirmModal from "../common/ConfirmModal";
 
 interface ScheduleMeetingModalProps {
   isOpen: boolean;
@@ -27,15 +26,20 @@ const formatLocalTime = (d: Date) => {
   return `${hours}:${minutes}`;
 };
 
+const addMinutes = (timeStr: string, minutesToAdd: number) => {
+  const [h, m] = timeStr.split(":").map(Number);
+  const totalM = (h || 0) * 60 + (m || 0) + minutesToAdd;
+  const newH = Math.floor(totalM / 60) % 24;
+  const newM = totalM % 60;
+  return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
+};
+
 const getDefaultDateTime = () => {
   const now = new Date();
   now.setHours(now.getHours() + 1, 0, 0, 0);
   const dateStr = formatLocalDate(now);
   const startStr = formatLocalTime(now);
-
-  const end = new Date(now.getTime() + 30 * 60000);
-  const endStr = formatLocalTime(end);
-
+  const endStr = addMinutes(startStr, 30);
   return { dateStr, startStr, endStr };
 };
 
@@ -55,16 +59,14 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({
   const [endTime, setEndTime] = useState(initial.endStr);
   const [status, setStatus] = useState<"scheduled" | "live" | "completed" | "cancelled">("scheduled");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Pre-fill form when editing an existing meeting
   useEffect(() => {
     if (initialMeeting && isOpen) {
       setTitle(initialMeeting.title || "");
       setDescription(initialMeeting.description || "");
       setStatus(initialMeeting.status || "scheduled");
-
       if (initialMeeting.startTime) {
         const s = new Date(initialMeeting.startTime);
         setDate(formatLocalDate(s));
@@ -74,7 +76,8 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({
         const e = new Date(initialMeeting.endTime);
         setEndTime(formatLocalTime(e));
       }
-      setError(null);
+      setFieldErrors({});
+      setFormError(null);
     } else if (!initialMeeting && isOpen) {
       const def = getDefaultDateTime();
       setTitle("");
@@ -83,53 +86,63 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({
       setStartTime(def.startStr);
       setEndTime(def.endStr);
       setStatus("scheduled");
-      setError(null);
+      setFieldErrors({});
+      setFormError(null);
     }
   }, [initialMeeting, isOpen]);
 
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setError(null);
-  };
-
-  const handleAttemptClose = () => {
-    if (title.trim() || description.trim()) {
-      setShowDiscardConfirm(true);
-    } else {
-      resetForm();
-      onClose();
-    }
-  };
+  // Live duration calculation
+  const durationInfo = useMemo(() => {
+    if (!date || !startTime || !endTime) return null;
+    const start = new Date(`${date}T${startTime}`);
+    const end = new Date(`${date}T${endTime}`);
+    const diffMs = end.getTime() - start.getTime();
+    if (diffMs <= 0) return { isValid: false, text: "Invalid duration" };
+    const mins = Math.round(diffMs / 60000);
+    const text = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60 ? `${mins % 60}m` : ""}`.trim() : `${mins} min`;
+    return { isValid: true, text, minutes: mins };
+  }, [date, startTime, endTime]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) {
-      setError("Please enter a meeting title.");
-      return;
+  const handlePresetDuration = (minutes: number) => {
+    setEndTime(addMinutes(startTime, minutes));
+    if (fieldErrors.time) setFieldErrors((prev) => ({ ...prev, time: "" }));
+  };
+
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!title.trim()) errors.title = "Meeting title is required.";
+
+    const now = new Date();
+    const startDateTime = new Date(`${date}T${startTime}`);
+    const endDateTime = new Date(`${date}T${endTime}`);
+
+    if (!isEditing && startDateTime.getTime() < now.getTime() - 2 * 60000) {
+      errors.date = "Start time cannot be in the past.";
     }
 
-    if (!date || !startTime || !endTime) {
-      setError("Please select date, start time, and end time.");
-      return;
+    if (endDateTime.getTime() <= startDateTime.getTime()) {
+      errors.time = "End time must be after start time.";
     }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate() || submitting) return;
 
     const startDateTime = new Date(`${date}T${startTime}`);
     const endDateTime = new Date(`${date}T${endTime}`);
 
-    if (startDateTime >= endDateTime) {
-      setError("Start time must be before end time.");
-      return;
-    }
-
     setSubmitting(true);
-    setError(null);
+    setFormError(null);
 
     try {
       if (isEditing && initialMeeting) {
-        await updateMeeting(initialMeeting._id, {
+        await updateMeeting(initialMeeting._id || (initialMeeting as unknown as { id: string }).id, {
           title: title.trim(),
           description: description.trim(),
           startTime: startDateTime.toISOString(),
@@ -145,22 +158,20 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({
           participants: [],
         });
       }
-
       onSuccess();
       onClose();
     } catch (err: unknown) {
       const msg =
-        err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      setError(msg || (isEditing ? "Failed to update meeting." : "Failed to schedule meeting."));
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Failed to save meeting.";
+      setFormError(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
@@ -172,97 +183,94 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({
               <h2 className="text-base font-semibold text-gray-900">
                 {isEditing ? "Edit Scheduled Meeting" : "Schedule Meeting"}
               </h2>
-              <p className="text-xs text-gray-500">
-                {isEditing
-                  ? `Editing ${initialMeeting?.meetingCode ? `code: ${initialMeeting.meetingCode}` : "meeting session"}`
-                  : "Plan a session — anyone with the code can join"}
-              </p>
+              <p className="text-xs text-gray-500">Plan a session — anyone with the code can join</p>
             </div>
           </div>
           <button
             type="button"
-            onClick={handleAttemptClose}
+            onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-600">
+        {formError && (
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2 text-xs text-red-600">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+            <span>{formError}</span>
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-              Meeting Title *
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              Title *
             </label>
             <input
               type="text"
-              required
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Weekly Sync, Sprint Planning, Client Review"
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (fieldErrors.title) setFieldErrors((p) => ({ ...p, title: "" }));
+              }}
+              placeholder="e.g., Weekly Sync, Sprint Planning"
+              className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 ${
+                fieldErrors.title
+                  ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+                  : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-500/20"
+              }`}
             />
+            {fieldErrors.title && (
+              <p className="text-[11px] text-red-600 mt-1">{fieldErrors.title}</p>
+            )}
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
               Agenda & Notes
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add key discussion topics or agenda items..."
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
+              placeholder="Add key discussion topics..."
+              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-indigo-500 resize-none"
             />
           </div>
 
-          {/* Date and Times */}
+          {/* Date & Times */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                Date
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-gray-400" /> Date
               </label>
               <input
                 type="date"
-                required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-gray-400" />
-                Start Time
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-gray-400" /> Start
               </label>
               <input
                 type="time"
-                required
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-gray-400" />
-                End Time
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-gray-400" /> End
               </label>
               <input
                 type="time"
-                required
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-indigo-500"
@@ -270,47 +278,40 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({
             </div>
           </div>
 
-          {/* Status Selector (When Editing) */}
-          {isEditing && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                Meeting Status
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as "scheduled" | "live" | "completed" | "cancelled")}
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              >
-                <option value="scheduled">Scheduled</option>
-                <option value="live">Live Now</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
+          {(fieldErrors.date || fieldErrors.time) && (
+            <p className="text-[11px] text-red-600">
+              {fieldErrors.date || fieldErrors.time}
+            </p>
           )}
 
-          {/* Meeting Code Badge Notice */}
-          <div className="p-3.5 bg-indigo-50/70 rounded-xl border border-indigo-100 flex items-start gap-3 text-xs text-indigo-900">
-            <div className="p-1 rounded-lg bg-indigo-100 text-indigo-600 mt-0.5">
-              <Hash className="w-3.5 h-3.5" />
+          {/* Duration Presets & Live Indicator */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-500 font-medium">Quick duration:</span>
+              {[15, 30, 45, 60].map((mins) => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => handlePresetDuration(mins)}
+                  className="px-2 py-1 rounded-lg bg-white border border-gray-200 hover:border-indigo-300 hover:text-indigo-600 text-[11px] font-semibold text-gray-700 transition-colors cursor-pointer"
+                >
+                  {mins}m
+                </button>
+              ))}
             </div>
-            <div className="flex-1">
-              <p className="font-semibold text-indigo-950">
-                {isEditing ? `Meeting Code: ${initialMeeting?.meetingCode}` : "Join with Meeting Code"}
-              </p>
-              <p className="text-[11px] text-indigo-700 mt-0.5 leading-relaxed">
-                {isEditing
-                  ? "Participants can continue to join using this existing meeting code."
-                  : "No individual invites required. A unique meeting code will be generated and workspace members can join directly."}
-              </p>
-            </div>
+            {durationInfo && (
+              <span className="font-semibold text-indigo-600 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                {durationInfo.text}
+              </span>
+            )}
           </div>
 
-          {/* Footer Actions */}
+          {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
             <button
               type="button"
-              onClick={handleAttemptClose}
+              onClick={onClose}
               disabled={submitting}
               className="px-4 py-2 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
             >
@@ -319,39 +320,20 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-60 cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all disabled:opacity-60 cursor-pointer"
             >
               {submitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  {isEditing ? "Saving Changes..." : "Scheduling..."}
+                  <span>Saving...</span>
                 </>
               ) : (
-                <>
-                  {isEditing ? <Pencil className="w-3.5 h-3.5" /> : <Calendar className="w-3.5 h-3.5" />}
-                  {isEditing ? "Save Changes" : "Schedule Meeting"}
-                </>
+                <span>{isEditing ? "Save Changes" : "Schedule Meeting"}</span>
               )}
             </button>
           </div>
         </form>
       </div>
-
-      {/* Discard Confirmation Modal */}
-      <ConfirmModal
-        isOpen={showDiscardConfirm}
-        title="Discard Changes?"
-        message="You have unsaved changes in this form. Are you sure you want to cancel and discard them?"
-        confirmLabel="Discard Changes"
-        cancelLabel="Keep Editing"
-        onConfirm={() => {
-          setShowDiscardConfirm(false);
-          resetForm();
-          onClose();
-        }}
-        onCancel={() => setShowDiscardConfirm(false)}
-        isDanger={true}
-      />
     </div>
   );
 };

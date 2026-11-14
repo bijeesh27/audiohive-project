@@ -45,21 +45,23 @@ const controller = new AnnouncementController(
   markAsReadUseCase,
   announcementRepository.getUnreadCount.bind(announcementRepository),
   announcementRepository.getByRoom.bind(announcementRepository),
-  resolveWorkspaceUseCase
+  resolveWorkspaceUseCase,
+  announcementRepository.markAsUnread.bind(announcementRepository),
+  announcementRepository.markAllAsRead.bind(announcementRepository)
 );
-
 
 router.post(API_ROUTES.ANNOUNCEMENT.CREATE_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.createAnnouncement.bind(controller));
 router.put(API_ROUTES.ANNOUNCEMENT.UPDATE_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.updateAnnouncement.bind(controller));
 router.delete(API_ROUTES.ANNOUNCEMENT.DELETE_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.deleteAnnouncement.bind(controller));
 router.patch(API_ROUTES.ANNOUNCEMENT.PIN_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.pinAnnouncement.bind(controller));
 
+router.patch(API_ROUTES.ANNOUNCEMENT.READ_ALL, authMiddleware, roleMiddleware([UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN]), controller.markAllAsRead.bind(controller));
 router.get(API_ROUTES.ANNOUNCEMENT.UNREAD_COUNT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getUnreadCount.bind(controller));
 router.get(API_ROUTES.ANNOUNCEMENT.GET_BY_ROOM, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getByRoom.bind(controller));
 router.get(API_ROUTES.ANNOUNCEMENT.GET_ALL, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAllAnnouncements.bind(controller));
 router.get(API_ROUTES.ANNOUNCEMENT.GET_ONE, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAnnouncement.bind(controller));
 
-
-router.patch(API_ROUTES.ANNOUNCEMENT.MARK_READ, authMiddleware, roleMiddleware([UserRoles.MEMBER]), controller.markAsRead.bind(controller));
+router.patch(API_ROUTES.ANNOUNCEMENT.MARK_READ, authMiddleware, roleMiddleware([UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN]), controller.markAsRead.bind(controller));
+router.patch(API_ROUTES.ANNOUNCEMENT.MARK_UNREAD, authMiddleware, roleMiddleware([UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN]), controller.markAsUnread.bind(controller));
 
 export default router;

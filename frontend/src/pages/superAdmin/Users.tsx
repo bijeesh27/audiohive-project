@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getUsers, updateUser } from "../../services/authServices";
+import { updateUser } from "../../services/authServices";
 import Table from "../../components/common/Table";
 import type { Column } from "../../components/common/Table";
 import ActionButton from "../../components/common/ActionButton";

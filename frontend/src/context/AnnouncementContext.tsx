@@ -6,6 +6,7 @@ interface AnnouncementContextType {
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   decrementUnread: () => void;
+  markAllAsReadOptimistic: () => void;
 }
 
 const AnnouncementContext = createContext<AnnouncementContextType | null>(null);
@@ -43,9 +44,12 @@ const AnnouncementContextProvider = ({ children }: { children: React.ReactNode }
   }, [socket]);
 
   const decrementUnread = () => setUnreadCount((c) => Math.max(0, c - 1));
+  const markAllAsReadOptimistic = () => setUnreadCount(0);
 
   return (
-    <AnnouncementContext.Provider value={{ unreadCount, setUnreadCount, decrementUnread }}>
+    <AnnouncementContext.Provider
+      value={{ unreadCount, setUnreadCount, decrementUnread, markAllAsReadOptimistic }}
+    >
       {children}
     </AnnouncementContext.Provider>
   );

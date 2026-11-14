@@ -7,7 +7,7 @@ export const getSuperAdminDashboardStats = () => {
     .then((res) => res.data);
 };
 
-export const getAllusers=(page, limit, search)=>{
+export const getAllusers = (page: number = 1, limit: number = 10, search?: string) => {
  let url = `${API_ENDPOINTS.SUPER_ADMIN.GET_USERS}?page=${page}&limit=${limit}`;
   if (search) {
     url += `&search=${encodeURIComponent(search)}`;

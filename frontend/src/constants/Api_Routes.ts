@@ -241,6 +241,8 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/api/announcement/${id}`,
     PIN: (id: string) => `/api/announcement/${id}/pin`,
     MARK_READ: (id: string) => `/api/announcement/${id}/read`,
+    MARK_UNREAD: (id: string) => `/api/announcement/${id}/unread`,
+    READ_ALL: "/api/announcement/read-all",
     UNREAD_COUNT: "/api/announcement/unread-count",
     BY_ROOM: (roomId: string) => `/api/announcement/room/${roomId}`,
   },
@@ -273,6 +275,7 @@ export const API_ENDPOINTS = {
   MEETING: {
     GET_ALL: "/api/meeting",
     GET_ONE: (id: string) => `/api/meeting/${id}`,
+    VALIDATE_CODE: (code: string) => `/api/meeting/validate-code/${code}`,
     CREATE: "/api/meeting",
     UPDATE: (id: string) => `/api/meeting/${id}`,
     CANCEL: (id: string) => `/api/meeting/${id}/cancel`,
@@ -285,5 +288,9 @@ export const API_ENDPOINTS = {
     MOVE_NOTE: (roomId: string, noteId: string) => `/api/whiteboard/${roomId}/notes/${noteId}/move`,
     UPDATE_COLOR: (roomId: string, noteId: string) => `/api/whiteboard/${roomId}/notes/${noteId}/color`,
     DELETE_NOTE: (roomId: string, noteId: string) => `/api/whiteboard/${roomId}/notes/${noteId}`,
+  },
+  MEMBER: {
+    DASHBOARD_SUMMARY: "/api/member/dashboard-summary",
+    ROOMS: "/api/member/rooms",
   },
 };
