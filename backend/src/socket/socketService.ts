@@ -1,13 +1,18 @@
 import { Server as HttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import mongoose from "mongoose";
 import { socketAuthMiddleware } from "./socketMiddleware.js";
 import { SOCKET_EVENTS } from "./socketEvents.js";
 import logger from "../shared/utils/logger.js";
 import { RoomRepository } from "../modules/room/infrastructure/roomRepository.js";
 import { ValidateRoomAccessUseCase } from "../modules/room/application/usecases/validateRoomAccessUseCase.js";
 import { MeetingRepository } from "../modules/meeting/infrastructure/meetingRepository.js";
+import { MeetingModel } from "../modules/meeting/infrastructure/meetingSchema.js";
+import { ActivityLogModel } from "../modules/activityLog/infrastructure/activitylogSchema.js";
 import { ValidateCallAccessUseCase } from "../modules/meeting/application/usecases/validateCallAccessUseCase.js";
 import { WhiteboardRepository } from "../modules/whiteboard/infrastructure/whiteboardRepository.js";
+import { loungeMusicManager } from "../modules/room/infrastructure/loungeMusicManager.js";
+import { UserRoles } from "../common/constant/userRoles.js";
 
 export interface CallParticipantSession {
   peerId: string;
@@ -16,6 +21,7 @@ export interface CallParticipantSession {
   isMuted: boolean;
   isVideoOff: boolean;
   isScreenSharing?: boolean;
+  joinedAt?: Date;
 }
 
 const roomPresence = new Map<string, Map<string, { userId: string; username: string }>>();
@@ -148,6 +154,12 @@ export const socketService = {
         socket.emit(SOCKET_EVENTS.ROOM_PRESENCE_UPDATE, online);
         emitRoomPresenceChanged(roomId);
 
+        // Instantly push live music playback state to late joiner so they hear current song
+        const liveMusicSnapshot = loungeMusicManager.getSnapshot(roomId, user.id, online.length);
+        if (liveMusicSnapshot && liveMusicSnapshot.currentTrack) {
+          socket.emit(SOCKET_EVENTS.MUSIC_STATE, liveMusicSnapshot);
+        }
+
         logger.info(`[Socket] User ${user.id} joined room:${roomId} — ${online.length} online`);
       });
 
@@ -181,6 +193,137 @@ export const socketService = {
         }
 
         logger.info(`[Socket] User ${user.id} left room:${roomId} — ${online.length} online`);
+      });
+
+      // ── Lounge Music Synchronization (Feature-flagged with In-Memory Permission Cache) ──
+      const loungeAccessCache = new Map<string, { isLounge: boolean; musicEnabled: boolean; expiresAt: number }>();
+
+      const verifyLoungeMusicAccess = async (targetRoomId: string) => {
+        const cached = loungeAccessCache.get(targetRoomId);
+        if (cached && cached.expiresAt > Date.now()) {
+          return cached.isLounge && cached.musicEnabled;
+        }
+        const room = await roomRepository.findRoom(targetRoomId);
+        if (!room) return false;
+        const isLounge = Boolean(room.isDefault || room.type === "lounge");
+        const musicEnabled = room.settings?.music?.enabled !== false;
+        loungeAccessCache.set(targetRoomId, {
+          isLounge,
+          musicEnabled,
+          expiresAt: Date.now() + 60000, // cache for 60 seconds
+        });
+        return isLounge && musicEnabled;
+      };
+
+      const getActiveListenerCount = (targetRoomId: string) => {
+        return Math.max(1, roomPresence.get(targetRoomId)?.size || 1);
+      };
+
+      socket.on(SOCKET_EVENTS.MUSIC_GET_STATE, async (targetRoomId: string) => {
+        try {
+          const allowed = await verifyLoungeMusicAccess(targetRoomId);
+          if (!allowed) return;
+          const listeners = getActiveListenerCount(targetRoomId);
+          const snapshot = loungeMusicManager.getSnapshot(targetRoomId, user.id, listeners);
+          socket.emit(SOCKET_EVENTS.MUSIC_STATE, snapshot);
+        } catch (err) {
+          logger.error(`[Socket] Error getting music state for ${targetRoomId}`, err);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MUSIC_PLAY, async (targetRoomId: string) => {
+        try {
+          const allowed = await verifyLoungeMusicAccess(targetRoomId);
+          if (!allowed) return;
+          loungeMusicManager.play(targetRoomId);
+          const listeners = getActiveListenerCount(targetRoomId);
+          const snapshot = loungeMusicManager.getSnapshot(targetRoomId, undefined, listeners);
+          io.to(`room:${targetRoomId}`).emit(SOCKET_EVENTS.MUSIC_STATE, snapshot);
+        } catch (err) {
+          logger.error(`[Socket] Error playing music in ${targetRoomId}`, err);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MUSIC_PAUSE, async (targetRoomId: string) => {
+        try {
+          const allowed = await verifyLoungeMusicAccess(targetRoomId);
+          if (!allowed) return;
+          loungeMusicManager.pause(targetRoomId);
+          const listeners = getActiveListenerCount(targetRoomId);
+          const snapshot = loungeMusicManager.getSnapshot(targetRoomId, undefined, listeners);
+          io.to(`room:${targetRoomId}`).emit(SOCKET_EVENTS.MUSIC_STATE, snapshot);
+        } catch (err) {
+          logger.error(`[Socket] Error pausing music in ${targetRoomId}`, err);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MUSIC_SEEK, async ({ roomId: targetRoomId, position }: { roomId: string; position: number }) => {
+        try {
+          const allowed = await verifyLoungeMusicAccess(targetRoomId);
+          if (!allowed) return;
+          loungeMusicManager.seek(targetRoomId, position);
+          const listeners = getActiveListenerCount(targetRoomId);
+          const snapshot = loungeMusicManager.getSnapshot(targetRoomId, undefined, listeners);
+          io.to(`room:${targetRoomId}`).emit(SOCKET_EVENTS.MUSIC_STATE, snapshot);
+        } catch (err) {
+          logger.error(`[Socket] Error seeking music in ${targetRoomId}`, err);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MUSIC_ADD_QUEUE, async ({ roomId: targetRoomId, track }: { roomId: string; track: any }) => {
+        try {
+          const allowed = await verifyLoungeMusicAccess(targetRoomId);
+          if (!allowed) return;
+          loungeMusicManager.addToQueue(targetRoomId, track, {
+            userId: user.id,
+            username: user.username ?? user.userEmail ?? "Member",
+          });
+          const listeners = getActiveListenerCount(targetRoomId);
+          const snapshot = loungeMusicManager.getSnapshot(targetRoomId, undefined, listeners);
+          io.to(`room:${targetRoomId}`).emit(SOCKET_EVENTS.MUSIC_STATE, snapshot);
+        } catch (err) {
+          logger.error(`[Socket] Error adding music to queue in ${targetRoomId}`, err);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MUSIC_VOTE_SKIP, async (targetRoomId: string) => {
+        try {
+          const allowed = await verifyLoungeMusicAccess(targetRoomId);
+          if (!allowed) return;
+          const listeners = getActiveListenerCount(targetRoomId);
+          loungeMusicManager.voteSkip(targetRoomId, user.id, listeners);
+          const snapshot = loungeMusicManager.getSnapshot(targetRoomId, undefined, listeners);
+          io.to(`room:${targetRoomId}`).emit(SOCKET_EVENTS.MUSIC_STATE, snapshot);
+        } catch (err) {
+          logger.error(`[Socket] Error voting skip in ${targetRoomId}`, err);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MUSIC_ADMIN_SKIP, async (targetRoomId: string) => {
+        try {
+          const allowed = await verifyLoungeMusicAccess(targetRoomId);
+          if (!allowed) return;
+          const isAdmin = user.role === UserRoles.WORKSPACE_ADMIN || user.role === UserRoles.ORGANIZATION_OWNER;
+          if (!isAdmin) {
+            socket.emit(SOCKET_EVENTS.MUSIC_ERROR, { message: "Only workspace admins can override skip" });
+            return;
+          }
+          loungeMusicManager.adminSkip(targetRoomId);
+          const listeners = getActiveListenerCount(targetRoomId);
+          const snapshot = loungeMusicManager.getSnapshot(targetRoomId, undefined, listeners);
+          io.to(`room:${targetRoomId}`).emit(SOCKET_EVENTS.MUSIC_STATE, snapshot);
+        } catch (err) {
+          logger.error(`[Socket] Error admin skipping music in ${targetRoomId}`, err);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MUSIC_GET_LIBRARY, async () => {
+        try {
+          const library = await loungeMusicManager.getAudioLibrary();
+          socket.emit(SOCKET_EVENTS.MUSIC_LIBRARY, library);
+        } catch (err) {
+          logger.error("[Socket] Error fetching audio library", err);
+        }
       });
 
       // ── Room Chat Typing Indicators ────────────────────────────
@@ -399,7 +542,7 @@ export const socketService = {
             });
 
             if (updatedNote) {
-              io.to(`whiteboard:${data.roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_NOTE_MOVED, {
+              socket.to(`whiteboard:${data.roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_NOTE_MOVED, {
                 noteId: updatedNote.id,
                 positionX: updatedNote.positionX,
                 positionY: updatedNote.positionY,
@@ -469,6 +612,18 @@ export const socketService = {
             });
             if (!isAllowed) return;
 
+            const existingNote = await whiteboardRepository.findById(data.noteId);
+            if (!existingNote) return;
+
+            const isAuthor = existingNote.createdBy?.userId === user.id;
+            const isAdmin = user.role === "workspaceAdmin" || user.role === "admin";
+            if (!isAuthor && !isAdmin) {
+              socket.emit(SOCKET_EVENTS.WHITEBOARD_ERROR, {
+                message: "Only the note author or an admin can delete this note",
+              });
+              return;
+            }
+
             const deleted = await whiteboardRepository.delete(data.noteId);
             if (deleted) {
               io.to(`whiteboard:${data.roomId}`).emit(SOCKET_EVENTS.WHITEBOARD_NOTE_DELETED, {
@@ -481,6 +636,19 @@ export const socketService = {
         }
       );
 
+      // Whiteboard Note Realtime Editing indicator
+      socket.on(
+        "whiteboard:note:editing",
+        (data: { roomId: string; noteId: string; isEditing: boolean; username?: string }) => {
+          socket.to(`whiteboard:${data.roomId}`).emit("whiteboard:note:editing", {
+            noteId: data.noteId,
+            isEditing: data.isEditing,
+            username: data.username || user.username || "Someone",
+            userId: user.id,
+          });
+        }
+      );
+
       // ── Call / WebRTC (Audio & Video) ──────────────────────────
       const handleLeaveCall = (socketId: string) => {
         const roomId = socketCallRoom.get(socketId);
@@ -489,6 +657,47 @@ export const socketService = {
         socketCallRoom.delete(socketId);
         const callMap = callRooms.get(roomId);
         if (callMap) {
+          const participant = callMap.get(socketId);
+          if (participant) {
+            const durationSeconds = participant.joinedAt
+              ? Math.max(0, Math.round((Date.now() - participant.joinedAt.getTime()) / 1000))
+              : 0;
+            const durationMinutes = Math.round(durationSeconds / 60);
+
+            // Record attendance and update meeting if applicable
+            (async () => {
+              try {
+                if (workspaceId) {
+                  const query = mongoose.Types.ObjectId.isValid(roomId)
+                    ? { _id: roomId }
+                    : { meetingCode: roomId };
+
+                  await MeetingModel.updateOne(query, {
+                    $addToSet: { participants: new mongoose.Types.ObjectId(participant.userId) },
+                    $set: { status: callMap.size <= 1 ? "completed" : "live" },
+                  });
+
+                  if (durationSeconds >= 5) {
+                    await ActivityLogModel.create({
+                      action: "CALL_ATTENDED",
+                      actorId: participant.userId,
+                      workspaceId,
+                      targetType: "CALL",
+                      targetId: roomId,
+                      occurredAt: new Date(),
+                      metadata: {
+                        durationMinutes,
+                        durationSeconds,
+                      },
+                    });
+                  }
+                }
+              } catch (err) {
+                logger.error(`[Call] Error recording meeting attendance: ${err}`);
+              }
+            })();
+          }
+
           callMap.delete(socketId);
           io.to(`call:${roomId}`).emit(SOCKET_EVENTS.CALL_USER_LEFT, { peerId: socketId });
           io.to(`call:${roomId}`).emit(SOCKET_EVENTS.VOICE_USER_LEFT, { peerId: socketId });
@@ -498,6 +707,13 @@ export const socketService = {
         }
         socket.leave(`call:${roomId}`);
         emitRoomPresenceChanged(roomId);
+        const remainingCallUsers = Array.from(callRooms.get(roomId)?.values() ?? []);
+        io.to(`room:${roomId}`).emit("call:status", {
+          roomId,
+          inCallUsers: remainingCallUsers,
+          count: remainingCallUsers.length,
+          isLive: remainingCallUsers.length > 0,
+        });
         logger.info(`[Call] Peer ${socketId} left call in room:${roomId}`);
       };
 
@@ -536,7 +752,25 @@ export const socketService = {
           username: user.username ?? user.userEmail ?? user.id,
           isMuted: mediaState?.isMuted ?? false,
           isVideoOff: mediaState?.isVideoOff ?? false,
+          joinedAt: new Date(),
         };
+
+        // Asynchronously update meeting status to live and add participant
+        if (workspaceId) {
+          (async () => {
+            try {
+              const query = mongoose.Types.ObjectId.isValid(roomId)
+                ? { _id: roomId }
+                : { meetingCode: roomId };
+              await MeetingModel.updateOne(query, {
+                $addToSet: { participants: new mongoose.Types.ObjectId(user.id) },
+                $set: { status: "live" },
+              });
+            } catch (err) {
+              logger.error(`[Call] Error updating meeting status on join: ${err}`);
+            }
+          })();
+        }
 
         // Send existing participants to the newly joined peer
         const existingParticipants = Array.from(callMap.values());
@@ -549,6 +783,13 @@ export const socketService = {
 
         callMap.set(socket.id, participant);
         emitRoomPresenceChanged(roomId);
+
+        io.to(`room:${roomId}`).emit("call:status", {
+          roomId,
+          inCallUsers: Array.from(callMap.values()),
+          count: callMap.size,
+          isLive: callMap.size > 0,
+        });
 
         logger.info(
           `[Call] User ${user.id} (${participant.username}) joined call in room:${roomId} — ${callMap.size} in call`
@@ -589,6 +830,17 @@ export const socketService = {
 
       socket.on(SOCKET_EVENTS.VOICE_LEAVE, () => {
         handleLeaveCall(socket.id);
+      });
+
+      socket.on("call:get-status", (roomId: string) => {
+        const callMap = callRooms.get(roomId);
+        const inCallUsers = Array.from(callMap?.values() ?? []);
+        socket.emit("call:status", {
+          roomId,
+          inCallUsers,
+          count: inCallUsers.length,
+          isLive: inCallUsers.length > 0,
+        });
       });
 
       // Media state toggle (mic / video / screen share)
@@ -713,6 +965,20 @@ export const socketService = {
 
   getOnlineUserIds(): string[] {
     return Array.from(onlineUsers.keys());
+  },
+
+  getUserCurrentRoom(userId: string): string | null {
+    for (const [roomId, members] of roomPresence.entries()) {
+      for (const m of members.values()) {
+        if (m.userId === userId) return roomId;
+      }
+    }
+    for (const [roomId, members] of callRooms.entries()) {
+      for (const m of members.values()) {
+        if (m.userId === userId) return roomId;
+      }
+    }
+    return null;
   },
 
   getRoomLiveParticipants(roomId: string): { userId: string; username: string }[] {

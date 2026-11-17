@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Lock, Globe, ArrowRight, Loader2, Users } from "lucide-react";
+import { Lock, Globe, ArrowRight, Loader2, Users, Sparkles, Radio } from "lucide-react";
 import type { MemberRoom } from "../../../types/rooms";
 
 interface RoomCardProps {
@@ -19,6 +19,7 @@ const AVATAR_BG_COLORS = [
 export const RoomCard: React.FC<RoomCardProps> = ({ room, onJoin, onCardClick }) => {
   const [isJoining, setIsJoining] = useState(false);
 
+  const isLounge = room.isDefault || room.type === "lounge";
   const isPrivate = room.type === "private";
   const isLive = room.isLive || room.participantCount > 0;
   const isFull = room.capacity > 0 && room.participantCount >= room.capacity;
@@ -49,10 +50,14 @@ export const RoomCard: React.FC<RoomCardProps> = ({ room, onJoin, onCardClick })
       tabIndex={0}
       onClick={() => onCardClick(room.id)}
       onKeyDown={handleCardKeyDown}
-      aria-label={`Room: ${room.name}. ${isPrivate ? "Private" : "Public"}. ${
+      aria-label={`Room: ${room.name}. ${isLounge ? "Default Lounge" : isPrivate ? "Private" : "Public"}. ${
         isLive ? `${room.participantCount} participants online` : "Idle"
       }`}
-      className="group relative flex flex-col justify-between h-[232px] rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+      className={`group relative flex flex-col justify-between h-[232px] rounded-2xl border p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
+        isLounge
+          ? "border-purple-200 bg-gradient-to-b from-purple-50/20 to-white hover:border-purple-300 hover:shadow-md"
+          : "border-gray-100 bg-white hover:border-indigo-200 hover:shadow-md"
+      }`}
     >
       {/* Top Section */}
       <div>
@@ -61,25 +66,39 @@ export const RoomCard: React.FC<RoomCardProps> = ({ room, onJoin, onCardClick })
             {/* Room Icon */}
             <div
               className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors ${
-                isPrivate
+                isLounge
+                  ? "bg-purple-100 text-purple-700 ring-1 ring-purple-200"
+                  : isPrivate
                   ? "bg-amber-50 text-amber-600 ring-1 ring-amber-100"
                   : "bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"
               }`}
             >
-              {isPrivate ? (
+              {isLounge ? (
+                <Sparkles className="h-5 w-5" aria-hidden="true" />
+              ) : isPrivate ? (
                 <Lock className="h-5 w-5" aria-hidden="true" />
               ) : (
                 <Globe className="h-5 w-5" aria-hidden="true" />
               )}
             </div>
 
-            {/* Room Name */}
-            <h3
-              title={room.name}
-              className="text-base font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors"
-            >
-              {room.name}
-            </h3>
+            {/* Room Name & Badge */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3
+                  title={room.name}
+                  className="text-base font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors"
+                >
+                  {room.name}
+                </h3>
+                {isLounge && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-200 shrink-0">
+                    <Radio className="w-2.5 h-2.5 text-purple-600 animate-pulse" />
+                    Lounge
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Status Indicator */}
@@ -111,7 +130,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({ room, onJoin, onCardClick })
             room.description ? "text-gray-600" : "text-gray-400 italic font-light"
           }`}
         >
-          {room.description || "No description yet"}
+          {room.description || (isLounge ? "Default social space for music & updates" : "No description yet")}
         </p>
       </div>
 

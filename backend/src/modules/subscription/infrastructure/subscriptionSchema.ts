@@ -6,6 +6,7 @@ export interface ISubscriptionDocument extends Document {
   price: number;
   description: string;
   maxWorkspaces: number;
+  maxRooms?: number;
   features: string[];
   isActive: boolean;
   stripePriceId?: string;
@@ -32,6 +33,12 @@ const subscriptionSchema = new Schema<ISubscriptionDocument>(
     maxWorkspaces: {
       type: Number,
       required: true,
+      min: 1,
+    },
+    maxRooms: {
+      type: Number,
+      required: false,
+      default: 10,
       min: 1,
     },
     features: {

@@ -24,7 +24,8 @@ export class ValidateRoomAccessUseCase
       return true;
     }
 
-    if (room.type === "public") {
+    // Default lounge or open room is accessible to any workspace member
+    if (room.isDefault || room.type === "lounge" || room.type === "public" || !room.isPrivate) {
       return true;
     }
 

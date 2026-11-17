@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import Dashboard from "../pages/workspaceAdmin/Dashboard";
 import { API_ROUTES } from "../constants/Api_Routes";
 import Users from "../pages/workspaceAdmin/Users";
@@ -7,7 +7,6 @@ import AdminRoomDetail from "../pages/workspaceAdmin/AdminRoomDetail";
 import Meetings from "../pages/workspaceAdmin/Meetings";
 import Announcements from "../pages/workspaceAdmin/Announcements";
 import ActivityLog from "../pages/workspaceAdmin/ActivityLog";
-import UserActivityAnalytics from "../pages/workspaceAdmin/UserActivityAnalytics";
 import DirectChatPage from "../pages/chat/DirectChatPage";
 import WorkspaceAdminLayout from "../components/workspaceAdmin/layout/workspaceAdminLayout";
 
@@ -22,7 +21,7 @@ const WorkspaceAdminRoutes = () => {
           />
           <Route
             path={API_ROUTES.WORKSPACE_ADMIN.USER_ANALYTICS}
-            element={<UserActivityAnalytics />}
+            element={<Navigate replace to={API_ROUTES.WORKSPACE_ADMIN.NAV.DASHBOARD} />}
           />
           <Route
             path={API_ROUTES.WORKSPACE_ADMIN.GET_USERS}

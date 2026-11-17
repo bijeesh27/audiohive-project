@@ -1,20 +1,25 @@
 import { BaseRepository } from "../../../shared/common/baseRepository";
 import { IroomRepository } from "../domain/IroomRepository";
 import { IRoomDocument, RoomModel } from "./roomSchema";
-import { FilterQuery } from "mongoose";
+import { ClientSession, FilterQuery } from "mongoose";
 import { UserRoles } from "../../../common/constant/userRoles";
 import { UserModel } from "../../../shared/User.utils/userSchema";
+import { AppError } from "../../../common/Errors/AppError";
+import { HttpStatus } from "../../../common/constant/httpStatus";
 
 export class RoomRepository
   extends BaseRepository<IRoomDocument>
-  implements IroomRepository
-{
+  implements IroomRepository {
   constructor() {
     super(RoomModel);
   }
 
-  async createRoom(data: IRoomDocument): Promise<IRoomDocument> {
-   return await this.model.create(data);
+  async createRoom(data: Partial<IRoomDocument>, session?: ClientSession): Promise<IRoomDocument> {
+    if (session) {
+      const created = await this.model.create([data as IRoomDocument], { session });
+      return created[0];
+    }
+    return await this.model.create(data as IRoomDocument);
   }
 
   async updateRoom(
@@ -29,32 +34,71 @@ export class RoomRepository
   }
 
   async deleteRoom(roomId: string, workspaceId: string): Promise<void> {
+    const room = await this.model.findOne({ _id: roomId, workspaceId });
+    if (room?.isDefault || room?.name === "Lounge" || room?.name === "Office Common Room") {
+      throw new AppError("System default rooms (Lounge, Office Common Room) cannot be deleted", HttpStatus.FORBIDDEN);
+    }
     await this.model.deleteOne({
       _id: roomId,
       workspaceId,
     });
   }
+
   async findRoom(roomId: string): Promise<IRoomDocument | null> {
     return await this.model.findById(roomId);
   }
 
-  async getAllRooms(workspaceId: string, page: number, limit: number, search?: string, userId?: string, role?: string): Promise<{ rooms: IRoomDocument[], total: number }> {
+  async findDefaultRoom(workspaceId: string): Promise<IRoomDocument | null> {
+    return await this.model.findOne({ workspaceId, isDefault: true });
+  }
+
+  async countNonDefaultRooms(workspaceId: string): Promise<number> {
+    return await this.model.countDocuments({ workspaceId, isDefault: { $ne: true } });
+  }
+
+  async getAllRooms(
+    workspaceId: string,
+    page: number,
+    limit: number,
+    search?: string,
+    userId?: string,
+    role?: string,
+    type?: string,
+    status?: string
+  ): Promise<{ rooms: IRoomDocument[]; total: number }> {
     const skip = (page - 1) * limit;
     const query: FilterQuery<IRoomDocument> = { workspaceId };
-    
+
     if (search) {
       query.name = { $regex: search, $options: "i" };
+    }
+
+    if (type && type !== "all") {
+      if (type === "lounge") {
+        query.$or = [{ type: "lounge" }, { isDefault: true }, { name: "Lounge" }];
+      } else if (type === "public") {
+        query.type = "public";
+      } else if (type === "private") {
+        query.type = "private";
+      }
+    }
+
+    if (status && status !== "all") {
+      query.status = status;
     }
 
     if (role === UserRoles.MEMBER && userId) {
       query.$or = [
         { type: "public" },
+        { type: "lounge" },
+        { isDefault: true },
+        { isPrivate: false },
         { type: "private", allowedUsers: userId }
       ];
     }
 
     const [rooms, total] = await Promise.all([
-      this.model.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+      this.model.find(query).skip(skip).limit(limit).sort({ isDefault: -1, createdAt: -1 }),
       this.model.countDocuments(query),
     ]);
 
@@ -75,19 +119,36 @@ export class RoomRepository
     limit: number = 10,
     search?: string
   ): Promise<{ participants: { _id: string; username: string; email: string; role: string; status: boolean }[]; total: number }> {
-    const room = await this.model.findOne({ _id: roomId, workspaceId }).populate<{
-      allowedUsers: { _id: string; username: string; email: string; role: string; status: boolean }[];
-    }>("allowedUsers", "username email role status");
+    const room = await this.model.findOne({ _id: roomId, workspaceId })
+      .populate<{
+        allowedUsers: { _id: string; username: string; email: string; role: string; status: boolean; createdAt?: Date }[];
+      }>("allowedUsers", "username email role status createdAt")
+      .populate<{
+        createdBy: { _id: string; username: string; email: string; role: string; status: boolean; createdAt?: Date };
+      }>("createdBy", "username email role status createdAt");
 
-    type Participant = { _id: string; username: string; email: string; role: string; status: boolean };
+    if (!room) {
+      return { participants: [], total: 0 };
+    }
+
+    type Participant = { _id: string; username: string; email: string; role: string; status: boolean; createdAt?: Date };
     let users: Participant[];
 
-    if (room?.type === "public") {
+    const ownerId = room?.createdBy?._id?.toString() || (typeof room?.createdBy === "string" ? room?.createdBy : "");
+
+    const isPublicOrLounge =
+      room.type === "public" ||
+      room.type === "lounge" ||
+      room.isDefault ||
+      room.name === "Office Common Room" ||
+      room.name === "Lounge";
+
+    if (isPublicOrLounge) {
+      // Return ALL workspace users (members and workspace admins), resolving the presence vs participants disconnect
       const workspaceMembers = await UserModel.find({
-        role: UserRoles.MEMBER,
         $or: [{ workspaceIds: workspaceId }, { workspaceId }],
       })
-        .select("_id username email role status")
+        .select("_id username email role status createdAt")
         .sort({ username: 1 })
         .lean();
 
@@ -95,17 +156,40 @@ export class RoomRepository
         _id: user._id?.toString() ?? "",
         username: user.username,
         email: user.email,
-        role: user.role ?? UserRoles.MEMBER,
+        role: user._id?.toString() === ownerId ? "owner" : (user.role ?? UserRoles.MEMBER),
         status: user.status ?? true,
+        createdAt: (user as any).createdAt,
       }));
     } else {
-      users = (room?.allowedUsers ?? []).map((user) => ({
-        _id: user._id.toString(),
-        username: user.username,
-        email: user.email,
-        role: user.role ?? UserRoles.MEMBER,
-        status: user.status ?? true,
-      }));
+      const userMap = new Map<string, Participant>();
+
+      (room.allowedUsers ?? []).forEach((user) => {
+        const uid = user._id.toString();
+        userMap.set(uid, {
+          _id: uid,
+          username: user.username,
+          email: user.email,
+          role: uid === ownerId ? "owner" : (user.role ?? UserRoles.MEMBER),
+          status: user.status ?? true,
+          createdAt: (user as any).createdAt,
+        });
+      });
+
+      if (room?.createdBy && typeof room.createdBy === "object" && room.createdBy._id) {
+        const creatorId = room.createdBy._id.toString();
+        if (!userMap.has(creatorId)) {
+          userMap.set(creatorId, {
+            _id: creatorId,
+            username: room.createdBy.username,
+            email: room.createdBy.email,
+            role: "owner",
+            status: room.createdBy.status ?? true,
+            createdAt: room.createdBy.createdAt,
+          });
+        }
+      }
+
+      users = Array.from(userMap.values());
     }
 
     if (search) {

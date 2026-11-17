@@ -66,6 +66,8 @@ export class MemberDashboardController {
       if (role === UserRoles.MEMBER) {
         roomQuery.$or = [
           { type: "public" },
+          { type: "lounge" },
+          { isDefault: true },
           { type: "private", allowedUsers: new Types.ObjectId(userId) },
           { type: "private", allowedUsers: userId },
         ];
@@ -278,6 +280,8 @@ export class MemberDashboardController {
         const userObjId = Types.ObjectId.isValid(userId) ? new Types.ObjectId(userId) : userId;
         baseFilter.$or = [
           { type: "public" },
+          { type: "lounge" },
+          { isDefault: true },
           { type: "private", allowedUsers: userObjId },
           { type: "private", allowedUsers: userId },
         ];
@@ -306,7 +310,9 @@ export class MemberDashboardController {
           _id: room._id.toString(),
           name: room.name,
           description: room.description || "",
-          type: room.type as "public" | "private",
+          type: room.type,
+          isDefault: Boolean(room.isDefault),
+          settings: room.settings,
           isLive,
           participantCount,
           capacity: (room as unknown as { capacity?: number }).capacity || 25,
@@ -321,7 +327,7 @@ export class MemberDashboardController {
       // Calculate tab counts under the current search scope
       const counts = {
         all: roomsWithPresence.length,
-        public: roomsWithPresence.filter((r) => r.type === "public").length,
+        public: roomsWithPresence.filter((r) => r.type === "public" || r.type === "lounge" || r.isDefault).length,
         private: roomsWithPresence.filter((r) => r.type === "private").length,
         live: roomsWithPresence.filter((r) => r.isLive).length,
       };
@@ -329,27 +335,30 @@ export class MemberDashboardController {
       // Filter by type: all | public | private | live
       let filtered = roomsWithPresence;
       if (type === "public") {
-        filtered = filtered.filter((r) => r.type === "public");
+        filtered = filtered.filter((r) => r.type === "public" || r.type === "lounge" || r.isDefault);
       } else if (type === "private") {
         filtered = filtered.filter((r) => r.type === "private");
       } else if (type === "live") {
         filtered = filtered.filter((r) => r.isLive);
       }
 
-      // Sort: active (most active first) | newest | name (A-Z)
-      if (sort === "name") {
-        filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-      } else if (sort === "newest") {
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      } else {
-        // default "active"
-        filtered.sort((a, b) => {
+      // Sort with isDefault (Lounge) ALWAYS pinned to the top
+      filtered.sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+
+        if (sort === "name") {
+          return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+        } else if (sort === "newest") {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        } else {
+          // default "active"
           if (b.participantCount !== a.participantCount) {
             return b.participantCount - a.participantCount;
           }
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-      }
+        }
+      });
 
       const total = filtered.length;
       const totalPages = Math.max(1, Math.ceil(total / limit));

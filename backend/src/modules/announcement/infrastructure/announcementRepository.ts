@@ -4,15 +4,21 @@ import { AnnouncementModel } from "./announcementSchema.js";
 import {
   AnnouncementResponseDTO,
   PaginatedAnnouncementsResultDTO,
-  MemberAnnouncementDTO,
+  AnnouncementItemDTO,
 } from "../application/dto/announcementDTO.js";
+import { UserModel } from "../../../shared/User.utils/userSchema.js";
+import { buildWorkspaceMemberFilter } from "../../../shared/User.utils/workspaceMembership.js";
+import { AppError } from "../../../common/Errors/AppError.js";
+
+function escapeRegex(s: string): string {
+  return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
 
 export class AnnouncementRepository
   extends BaseRepository<AnnouncementResponseDTO>
-  implements IAnnouncementRepository
-{
+  implements IAnnouncementRepository {
   constructor() {
-    super(AnnouncementModel);
+    super(AnnouncementModel as any);
   }
 
   async createAnnouncement(
@@ -35,7 +41,10 @@ export class AnnouncementRepository
   }
 
   async findAnnouncement(id: string, workspaceId: string): Promise<AnnouncementResponseDTO | null> {
-    return await this.model.findOne({ _id: id, workspaceId }).lean<AnnouncementResponseDTO>();
+    return await this.model
+      .findOne({ _id: id, workspaceId })
+      .populate("createdBy", "username email")
+      .lean<AnnouncementResponseDTO>();
   }
 
   async getAllAnnouncements(
@@ -56,41 +65,14 @@ export class AnnouncementRepository
     const skip = (page - 1) * limit;
     const query: Record<string, unknown> = { workspaceId };
 
-    if (status && status !== "all") {
-      query.status = status;
-    } else if (!status) {
-      query.status = "published";
-    }
-
-    // Active (not expired)
-    const andConditions: Record<string, unknown>[] = [
-      {
-        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
-      },
-    ];
-
-    // Search query
-    const searchQuery = filters?.q || search;
+    // Search query: debounced server-side regex matching across title and content
+    const searchQuery = (filters?.q || search || "").trim();
     if (searchQuery) {
-      andConditions.push({
-        $or: [
-          { title: { $regex: searchQuery, $options: "i" } },
-          { content: { $regex: searchQuery, $options: "i" } },
-        ],
-      });
-    }
-
-    // Date range
-    if (filters?.range && filters.range !== "all") {
-      let days = 0;
-      if (filters.range === "7d") days = 7;
-      else if (filters.range === "30d") days = 30;
-      else if (filters.range === "90d") days = 90;
-      if (days > 0) {
-        andConditions.push({
-          createdAt: { $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) },
-        });
-      }
+      const escaped = escapeRegex(searchQuery);
+      query.$or = [
+        { title: { $regex: escaped, $options: "i" } },
+        { content: { $regex: escaped, $options: "i" } },
+      ];
     }
 
     // Type filter
@@ -105,42 +87,109 @@ export class AnnouncementRepository
       }
     }
 
-    // Tab filter: all | unread | pinned
+    // Date range filter
+    if (filters?.range && filters.range !== "all") {
+      let days = 0;
+      if (filters.range === "7d") days = 7;
+      else if (filters.range === "30d") days = 30;
+      else if (filters.range === "90d") days = 90;
+      if (days > 0) {
+        query.createdAt = { $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) };
+      }
+    }
+
+    // Tab / status filter: all | published | draft | archived | pinned
+    const currentTab = (filters?.tab || status || "all").toLowerCase();
     const userId = filters?.userId;
-    if (filters?.tab === "unread" && userId) {
-      query.readBy = { $ne: userId };
-    } else if (filters?.tab === "pinned") {
+
+    if (currentTab === "pinned") {
       query.isPinned = true;
+    } else if (currentTab === "published") {
+      query.status = "published";
+    } else if (currentTab === "draft") {
+      query.status = "draft";
+    } else if (currentTab === "archived") {
+      query.status = "archived";
+    } else if (currentTab === "unread" && userId) {
+      query.status = "published";
+      query.readBy = { $ne: userId };
     }
 
-    if (andConditions.length > 0) {
-      query.$and = andConditions;
+    // Backend counts for tabs & workspace total members count
+    const memberFilter = buildWorkspaceMemberFilter(workspaceId);
+    const [countAll, countPublished, countDraft, countArchived, countPinned, totalMembersCount] =
+      await Promise.all([
+        this.model.countDocuments({ workspaceId }),
+        this.model.countDocuments({ workspaceId, status: "published" }),
+        this.model.countDocuments({ workspaceId, status: "draft" }),
+        this.model.countDocuments({ workspaceId, status: "archived" }),
+        this.model.countDocuments({ workspaceId, isPinned: true }),
+        UserModel.countDocuments(memberFilter),
+      ]);
+
+    // Pinned announcements group for page 1 of "all" tab
+    let rawPinnedDocs: any[] = [];
+    const isAllTab = currentTab === "all" || currentTab === "";
+    if (page === 1 && isAllTab) {
+      const pinnedQuery: Record<string, unknown> = { workspaceId, isPinned: true };
+      if (query.$or) pinnedQuery.$or = query.$or;
+      if (query.type) pinnedQuery.type = query.type;
+      rawPinnedDocs = await this.model
+        .find(pinnedQuery)
+        .sort({ createdAt: -1 })
+        .populate("createdBy", "username email")
+        .lean();
     }
 
-    // Sort order
-    const sortField: Record<string, 1 | -1> =
-      filters?.sort === "oldest" ? { createdAt: 1 } : { createdAt: -1 };
+    // Query for main list (exclude pinned docs on page 1 of All so they are not duplicated)
+    const mainQuery = { ...query };
+    if (page === 1 && isAllTab && rawPinnedDocs.length > 0) {
+      mainQuery.isPinned = { $ne: true };
+    }
 
-    const [rawDocs, total, unreadCount, pinnedCount] = await Promise.all([
-      this.model
-        .find(query)
+    let rawDocs: any[] = [];
+    const sort = filters?.sort || "newest";
+
+    if (sort === "most_read" || sort === "least_read") {
+      const sortDir = sort === "most_read" ? -1 : 1;
+      rawDocs = await this.model.aggregate([
+        { $match: mainQuery },
+        { $addFields: { readCount: { $size: { $ifNull: ["$readBy", []] } } } },
+        { $sort: { readCount: sortDir, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: "users",
+            localField: "createdBy",
+            foreignField: "_id",
+            as: "authorUser",
+          },
+        },
+        {
+          $addFields: {
+            createdBy: { $arrayElemAt: ["$authorUser", 0] },
+          },
+        },
+        { $project: { authorUser: 0 } },
+      ]);
+    } else {
+      const sortField: Record<string, 1 | -1> =
+        sort === "oldest" ? { createdAt: 1 } : { createdAt: -1 };
+      rawDocs = await this.model
+        .find(mainQuery)
         .sort(sortField)
         .skip(skip)
         .limit(limit)
-        .populate<{ createdBy: { _id: string; username: string; email: string } }>(
-          "createdBy",
-          "username email"
-        )
-        .lean(),
-      this.model.countDocuments(query),
-      userId ? this.getUnreadCount(workspaceId, userId) : Promise.resolve(0),
-      this.getPinnedCount(workspaceId),
-    ]);
+        .populate("createdBy", "username email")
+        .lean();
+    }
 
-    const announcements: MemberAnnouncementDTO[] = (rawDocs as any[]).map((doc) => {
-      const isRead = userId
-        ? (doc.readBy || []).some((r: any) => r.toString() === userId)
-        : false;
+    const total = await this.model.countDocuments(query);
+
+    const mapDoc = (doc: any): AnnouncementItemDTO => {
+      const readByList = (doc.readBy || []).map((r: any) => r.toString());
+      const isRead = userId ? readByList.includes(userId) : false;
       const authorName = doc.createdBy?.username || "Admin";
 
       return {
@@ -149,27 +198,96 @@ export class AnnouncementRepository
         title: doc.title,
         content: doc.content,
         type: doc.type,
-        isPinned: !!doc.isPinned,
+        status: doc.status || "published",
+        isPinned: Boolean(doc.isPinned),
+        targetAudience: doc.targetAudience || "all",
+        roomId: doc.roomId?.toString() || null,
         isRead,
+        readBy: readByList,
+        readCount: readByList.length,
+        totalMembersCount,
         author: {
           id: doc.createdBy?._id?.toString() || (doc.createdBy || "").toString(),
           name: authorName,
+          email: doc.createdBy?.email || "",
           avatar: "",
         },
         audience: doc.targetAudience === "room-specific" ? "Room" : "Everyone",
         createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+        expiresAt: doc.expiresAt,
       };
-    });
+    };
 
+    const items = rawDocs.map(mapDoc);
+    const pinnedItems = rawPinnedDocs.map(mapDoc);
+    const announcements = [...pinnedItems, ...items];
     const totalPages = Math.ceil(total / limit) || 1;
 
     return {
+      items,
       announcements,
+      pinnedItems,
       total,
       page,
+      limit,
       totalPages,
-      unreadCount,
-      pinnedCount,
+      totalMembersCount,
+      counts: {
+        all: countAll,
+        published: countPublished,
+        draft: countDraft,
+        archived: countArchived,
+        pinned: countPinned,
+      },
+      unreadCount: countAll - countPublished,
+      pinnedCount: countPinned,
+    };
+  }
+
+  async getAnnouncementReaders(
+    id: string,
+    workspaceId: string
+  ): Promise<{
+    totalMembers: number;
+    readCount: number;
+    unreadCount: number;
+    readMembers: Array<{ _id: string; username: string; email: string; role?: string; avatar?: string }>;
+    unreadMembers: Array<{ _id: string; username: string; email: string; role?: string; avatar?: string }>;
+  }> {
+    const announcement = await this.model.findOne({ _id: id, workspaceId }).lean();
+    if (!announcement) {
+      throw new AppError("Announcement not found", 404);
+    }
+
+    const readBySet = new Set((announcement.readBy || []).map((uid: any) => uid.toString()));
+    const memberFilter = buildWorkspaceMemberFilter(workspaceId);
+    const users = await UserModel.find(memberFilter, "_id username email role avatar createdAt").lean();
+
+    const readMembers: any[] = [];
+    const unreadMembers: any[] = [];
+
+    for (const user of users) {
+      const uDto = {
+        _id: user._id.toString(),
+        username: user.username,
+        email: user.email,
+        role: user.role || "member",
+        avatar: (user as any).avatar || "",
+      };
+      if (readBySet.has(user._id.toString())) {
+        readMembers.push(uDto);
+      } else {
+        unreadMembers.push(uDto);
+      }
+    }
+
+    return {
+      totalMembers: users.length,
+      readCount: readMembers.length,
+      unreadCount: unreadMembers.length,
+      readMembers,
+      unreadMembers,
     };
   }
 

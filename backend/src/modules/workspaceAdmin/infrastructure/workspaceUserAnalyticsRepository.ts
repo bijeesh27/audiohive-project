@@ -11,6 +11,18 @@ import {
   UserActivityHistoryResponseDTO,
   UserActivityHistoryItem,
 } from "../application/dtos/workspaceUserAnalyticsDTO";
+import {
+  GetWorkspaceDashboardInputDTO,
+  WorkspaceDashboardResponseDTO,
+  GetWorkspaceMembersActivityInputDTO,
+  WorkspaceMembersActivityResponseDTO,
+  WorkspaceMemberActivityRecordItem,
+  LiveMemberItem,
+  RecentlyJoinedItem,
+  EngagementUserItem,
+  RoomUsageItem,
+  RecentActivityFeedItem,
+} from "../application/dtos/workspaceDashboardDTO";
 import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema";
 import { UserModel } from "../../../shared/User.utils/userSchema";
 import { MeetingModel } from "../../meeting/infrastructure/meetingSchema";
@@ -22,17 +34,703 @@ import { UserRoles } from "../../../common/constant/userRoles";
 import { AppError } from "../../../common/Errors/AppError";
 import { HttpStatus } from "../../../common/constant/httpStatus";
 import { MESSAGES } from "../../../common/constant/messages";
+import {
+  buildWorkspaceMembershipQuery,
+  buildWorkspaceMemberFilter,
+} from "../../../shared/User.utils/workspaceMembership";
 
-const workspaceMembershipQuery = (workspaceId: string) => ({
-  $or: [
-    { workspaceIds: new Types.ObjectId(workspaceId) },
-    { workspaceId: new Types.ObjectId(workspaceId) },
-  ],
-});
+const workspaceMembershipQuery = buildWorkspaceMembershipQuery;
+
+const computeDelta = (current: number, previous: number) => {
+  if (previous === 0) {
+    if (current === 0) {
+      return { current, previous, deltaPercent: 0, trend: "neutral" as const };
+    }
+    return { current, previous, deltaPercent: 100, trend: "up" as const };
+  }
+  const deltaPercent = Math.round(((current - previous) / previous) * 1000) / 10;
+  const trend = deltaPercent > 0 ? ("up" as const) : deltaPercent < 0 ? ("down" as const) : ("neutral" as const);
+  return { current, previous, deltaPercent, trend };
+};
+
+const formatDuration = (minutes: number): string => {
+  if (!minutes || minutes <= 0) return "–";
+  const hrs = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hrs === 0) return `${mins}m`;
+  if (mins === 0) return `${hrs}h`;
+  return `${hrs}h ${mins}m`;
+};
 
 export class WorkspaceUserAnalyticsRepository
   implements IWorkspaceUserAnalyticsRepository
 {
+  async getWorkspaceDashboard(
+    input: GetWorkspaceDashboardInputDTO
+  ): Promise<WorkspaceDashboardResponseDTO> {
+    if (!Types.ObjectId.isValid(input.workspaceId)) {
+      throw new AppError(MESSAGES.ERRORS.WORKSPACE_INVALID_ID, HttpStatus.BAD_REQUEST);
+    }
+
+    const workspace = await WorkspaceModel.findById(input.workspaceId);
+    if (!workspace) {
+      throw new AppError(MESSAGES.ERRORS.WORKSPACE_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (workspace.workspaceAdminEmail?.toLowerCase() !== input.adminEmail.toLowerCase()) {
+      throw new AppError(MESSAGES.ERRORS.ACCESS_DENIED, HttpStatus.FORBIDDEN);
+    }
+
+    const workspaceObjId = new Types.ObjectId(input.workspaceId);
+    const workspaceIdStr = input.workspaceId;
+
+    // 1. Date range calculation (current and previous period of equal length)
+    const { start, end, rangeType, buckets } = parseDateRange(
+      input.range,
+      input.startDate,
+      input.endDate
+    );
+    const durationMs = end.getTime() - start.getTime();
+    const prevStart = new Date(start.getTime() - durationMs);
+    const prevEnd = new Date(start.getTime());
+
+    // 2. Fetch workspace members
+    const baseMemberFilter = {
+      role: { $in: [UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN, "workspace-admin"] },
+      ...workspaceMembershipQuery(input.workspaceId),
+    };
+
+    const allMembers = await UserModel.find(baseMemberFilter)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const membersMap = new Map<string, { username: string; email: string }>();
+    for (const m of allMembers) {
+      membersMap.set(m._id.toString(), { username: m.username, email: m.email });
+    }
+
+    const totalMembers = allMembers.length;
+    let onlineCount = 0;
+    for (const u of allMembers) {
+      if (socketService.isUserOnline(u._id.toString())) {
+        onlineCount++;
+      }
+    }
+    const offlineCount = Math.max(0, totalMembers - onlineCount);
+
+    const prevMembersCount = allMembers.filter((u) => {
+      const created = (u as { createdAt?: Date }).createdAt;
+      return created ? new Date(created) <= prevEnd : true;
+    }).length;
+    const totalMembersDelta = computeDelta(totalMembers, prevMembersCount);
+
+    // Find admin user for personalized greeting
+    const adminUser = allMembers.find(
+      (u) => u.email.toLowerCase() === input.adminEmail.toLowerCase()
+    );
+    const adminName = adminUser?.username || "Admin";
+
+    // 3. ActivityLog aggregation using $facet pipeline
+    const [activityAggResult] = await ActivityLogModel.aggregate([
+      {
+        $facet: {
+          currentActions: [
+            { $match: { workspaceId: workspaceIdStr, occurredAt: { $gte: start, $lte: end } } },
+            { $count: "count" },
+          ],
+          currentLogins: [
+            {
+              $match: {
+                workspaceId: workspaceIdStr,
+                action: { $in: ["USER_LOGIN", "LOGIN"] },
+                occurredAt: { $gte: start, $lte: end },
+              },
+            },
+            { $count: "count" },
+          ],
+          prevActions: [
+            { $match: { workspaceId: workspaceIdStr, occurredAt: { $gte: prevStart, $lt: start } } },
+            { $count: "count" },
+          ],
+          prevLogins: [
+            {
+              $match: {
+                workspaceId: workspaceIdStr,
+                action: { $in: ["USER_LOGIN", "LOGIN"] },
+                occurredAt: { $gte: prevStart, $lt: start },
+              },
+            },
+            { $count: "count" },
+          ],
+          dailyTrends: [
+            { $match: { workspaceId: workspaceIdStr, occurredAt: { $gte: start, $lte: end } } },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$occurredAt" } },
+                actions: { $sum: 1 },
+                logins: {
+                  $sum: { $cond: [{ $in: ["$action", ["USER_LOGIN", "LOGIN"]] }, 1, 0] },
+                },
+              },
+            },
+          ],
+          userActivityAgg: [
+            {
+              $match: {
+                workspaceId: workspaceIdStr,
+                occurredAt: { $gte: start, $lte: end },
+                actorId: { $ne: null },
+              },
+            },
+            {
+              $group: {
+                _id: "$actorId",
+                actionCount: { $sum: 1 },
+                loginCount: {
+                  $sum: { $cond: [{ $in: ["$action", ["USER_LOGIN", "LOGIN"]] }, 1, 0] },
+                },
+                lastActiveAt: { $max: "$occurredAt" },
+              },
+            },
+          ],
+          activeRoomsInRange: [
+            {
+              $match: {
+                workspaceId: workspaceIdStr,
+                occurredAt: { $gte: start, $lte: end },
+                targetType: { $in: ["ROOM", "CALL"] },
+              },
+            },
+            {
+              $group: {
+                _id: "$targetId",
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          prevActiveRooms: [
+            {
+              $match: {
+                workspaceId: workspaceIdStr,
+                occurredAt: { $gte: prevStart, $lt: start },
+                targetType: { $in: ["ROOM", "CALL"] },
+              },
+            },
+            {
+              $group: {
+                _id: "$targetId",
+              },
+            },
+          ],
+          recentLogs: [
+            { $match: { workspaceId: workspaceIdStr } },
+            { $sort: { occurredAt: -1 } },
+            { $limit: 10 },
+          ],
+        },
+      },
+    ]);
+
+    const totalActionsCurrent = activityAggResult?.currentActions?.[0]?.count || 0;
+    const totalActionsPrev = activityAggResult?.prevActions?.[0]?.count || 0;
+    const totalActionsDelta = computeDelta(totalActionsCurrent, totalActionsPrev);
+
+    const totalLoginsCurrent = activityAggResult?.currentLogins?.[0]?.count || 0;
+    const totalLoginsPrev = activityAggResult?.prevLogins?.[0]?.count || 0;
+    const totalLoginsDelta = computeDelta(totalLoginsCurrent, totalLoginsPrev);
+
+    // Chart series daily mapping
+    const dailyMap = new Map<string, { actions: number; logins: number }>();
+    if (activityAggResult?.dailyTrends) {
+      for (const item of activityAggResult.dailyTrends) {
+        dailyMap.set(item._id, { actions: item.actions || 0, logins: item.logins || 0 });
+      }
+    }
+
+    const chartSeries = buckets.map((b) => {
+      const counts = dailyMap.get(b.date) || { actions: 0, logins: 0 };
+      return {
+        date: b.date,
+        label: b.label,
+        actions: counts.actions,
+        logins: counts.logins,
+      };
+    });
+
+    // 4. Meetings aggregation
+    const meetingsCurrent = await MeetingModel.find({
+      workspaceId: workspaceObjId,
+      $or: [
+        { startTime: { $gte: start, $lte: end } },
+        { createdAt: { $gte: start, $lte: end } },
+      ],
+    }).lean();
+
+    const meetingsPrev = await MeetingModel.find({
+      workspaceId: workspaceObjId,
+      $or: [
+        { startTime: { $gte: prevStart, $lt: start } },
+        { createdAt: { $gte: prevStart, $lt: start } },
+      ],
+    }).lean();
+
+    let meetingsHeldCurrent = meetingsCurrent.length;
+    let totalMeetingMinutesCurrent = 0;
+    let scheduledMeetings = 0;
+    let completedMeetings = 0;
+    let liveMeetings = 0;
+
+    const userMeetingsMap = new Map<string, number>();
+    const userMeetingDurationMap = new Map<string, number>();
+
+    for (const m of meetingsCurrent) {
+      if (m.status === "scheduled") scheduledMeetings++;
+      else if (m.status === "completed") completedMeetings++;
+      else if (m.status === "live") liveMeetings++;
+
+      const duration = m.startTime && m.endTime
+        ? Math.max(0, Math.round((new Date(m.endTime).getTime() - new Date(m.startTime).getTime()) / 60000))
+        : 0;
+      totalMeetingMinutesCurrent += duration;
+
+      // Attribute meeting attendance to host and participants
+      const attendees = new Set<string>();
+      if (m.hostId) attendees.add(m.hostId.toString());
+      if (Array.isArray(m.participants)) {
+        for (const p of m.participants) {
+          if (p) attendees.add(p.toString());
+        }
+      }
+
+      for (const pId of attendees) {
+        userMeetingsMap.set(pId, (userMeetingsMap.get(pId) || 0) + 1);
+        userMeetingDurationMap.set(pId, (userMeetingDurationMap.get(pId) || 0) + duration);
+      }
+    }
+
+    const meetingsHeldPrev = meetingsPrev.length;
+    const meetingsDelta = computeDelta(meetingsHeldCurrent, meetingsHeldPrev);
+
+    const avgDurationMinutes = meetingsHeldCurrent > 0
+      ? Math.round(totalMeetingMinutesCurrent / meetingsHeldCurrent)
+      : 0;
+
+    // 5. Rooms query
+    const workspaceRooms = await RoomModel.find({ workspaceId: workspaceObjId })
+      .select("_id name type allowedUsers")
+      .lean();
+    const totalRooms = workspaceRooms.length;
+
+    const activeRoomIdsCurrent = new Set<string>();
+    if (activityAggResult?.activeRoomsInRange) {
+      for (const r of activityAggResult.activeRoomsInRange) {
+        if (r._id) activeRoomIdsCurrent.add(String(r._id));
+      }
+    }
+    const prevActiveRoomsCount = activityAggResult?.prevActiveRooms?.length || 0;
+    const activeRoomsCount = activeRoomIdsCurrent.size;
+    const activeRoomsDelta = computeDelta(activeRoomsCount, prevActiveRoomsCount);
+
+    // Room Usage list
+    const roomActivityMap = new Map<string, number>();
+    if (activityAggResult?.activeRoomsInRange) {
+      for (const r of activityAggResult.activeRoomsInRange) {
+        if (r._id) roomActivityMap.set(String(r._id), r.count || 0);
+      }
+    }
+
+    const topRooms: RoomUsageItem[] = workspaceRooms.map((r) => {
+      const rId = r._id.toString();
+      const count = roomActivityMap.get(rId) || 0;
+      const participantsCount = Array.isArray(r.allowedUsers) ? r.allowedUsers.length : 0;
+      return {
+        roomId: rId,
+        name: r.name,
+        type: r.type,
+        activityCount: count,
+        participantsCount,
+        timeSpentMinutes: count * 15, // estimated time spent from actions
+      };
+    })
+      .sort((a, b) => b.activityCount - a.activityCount);
+
+    // 6. Live Now & Recently Joined
+    const roomNameMap = new Map<string, string>();
+    for (const r of workspaceRooms) {
+      roomNameMap.set(r._id.toString(), r.name);
+    }
+
+    const liveNow: LiveMemberItem[] = [];
+    for (const u of allMembers) {
+      const uId = u._id.toString();
+      if (socketService.isUserOnline(uId)) {
+        const currentRoomId = socketService.getUserCurrentRoom(uId);
+        const roomName = currentRoomId ? roomNameMap.get(currentRoomId) || "Active Room" : undefined;
+        liveNow.push({
+          userId: uId,
+          username: u.username,
+          email: u.email,
+          isOnline: true,
+          currentRoom: currentRoomId ? { roomId: currentRoomId, name: roomName || "Call Room" } : null,
+          joinedAt: (u as { createdAt?: Date }).createdAt
+            ? new Date((u as { createdAt?: Date }).createdAt!).toISOString()
+            : new Date().toISOString(),
+        });
+      }
+    }
+
+    const recentlyJoined: RecentlyJoinedItem[] = allMembers.slice(0, 5).map((u) => {
+      const uId = u._id.toString();
+      return {
+        userId: uId,
+        username: u.username,
+        email: u.email,
+        role: u.role || UserRoles.MEMBER,
+        isOnline: socketService.isUserOnline(uId),
+        joinedAt: (u as { createdAt?: Date }).createdAt
+          ? new Date((u as { createdAt?: Date }).createdAt!).toISOString()
+          : new Date().toISOString(),
+      };
+    });
+
+    // 7. Engagement Leaderboard (Most Active vs Needs Engagement - strictly mutually exclusive)
+    const userAggMap = new Map<string, { actionCount: number; loginCount: number; lastActiveAt: Date | null }>();
+    if (activityAggResult?.userActivityAgg) {
+      for (const item of activityAggResult.userActivityAgg) {
+        userAggMap.set(String(item._id), {
+          actionCount: item.actionCount || 0,
+          loginCount: item.loginCount || 0,
+          lastActiveAt: item.lastActiveAt ? new Date(item.lastActiveAt) : null,
+        });
+      }
+    }
+
+    const memberEngagementList = allMembers.map((u) => {
+      const uId = u._id.toString();
+      const stats = userAggMap.get(uId);
+      const actionCount = stats?.actionCount || 0;
+      const logins = stats?.loginCount || 0;
+      const meetingsCount = userMeetingsMap.get(uId) || 0;
+      const score = actionCount * 1 + logins * 2 + meetingsCount * 5;
+      const lastActiveAt = stats?.lastActiveAt || (u as { updatedAt?: Date }).updatedAt || null;
+
+      return {
+        userId: uId,
+        username: u.username,
+        email: u.email,
+        isOnline: socketService.isUserOnline(uId),
+        score,
+        actionCount,
+        meetingsCount,
+        lastActiveAt: lastActiveAt ? new Date(lastActiveAt).toISOString() : null,
+        progressPercent: 0,
+      };
+    });
+
+    const maxScore = Math.max(...memberEngagementList.map((m) => m.score), 1);
+    memberEngagementList.forEach((m) => {
+      m.progressPercent = Math.min(100, Math.round((m.score / maxScore) * 100));
+    });
+
+    // Sort descending for most active
+    const sortedDesc = [...memberEngagementList].sort((a, b) => b.score - a.score);
+    const mostActiveUsers = sortedDesc.slice(0, 5);
+    const mostActiveIds = new Set(mostActiveUsers.map((u) => u.userId));
+
+    // Needs Engagement: lowest scores, strictly NOT in mostActive
+    const remainingForNeedsEngagement = memberEngagementList
+      .filter((u) => !mostActiveIds.has(u.userId))
+      .sort((a, b) => a.score - b.score);
+    const needsEngagementUsers = remainingForNeedsEngagement.slice(0, 5);
+
+    // 8. Recent Activities Feed
+    const recentActivities: RecentActivityFeedItem[] = (activityAggResult?.recentLogs || []).map(
+      (l: any) => {
+        const actorIdStr = l.actorId ? String(l.actorId) : null;
+        const memberInfo = actorIdStr ? membersMap.get(actorIdStr) : null;
+        return {
+          id: l._id ? String(l._id) : Math.random().toString(),
+          action: l.action || "WORKSPACE_ACTION",
+          actorId: actorIdStr,
+          actorName: memberInfo?.username || l.metadata?.actorName || "Workspace Member",
+          actorEmail: memberInfo?.email,
+          targetType: l.targetType,
+          targetId: l.targetId,
+          occurredAt: l.occurredAt ? new Date(l.occurredAt).toISOString() : new Date().toISOString(),
+          metadata: l.metadata,
+        };
+      }
+    );
+
+    return {
+      workspaceId: input.workspaceId,
+      workspaceName: workspace.workspaceName,
+      adminName,
+      dateRange: {
+        range: rangeType,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        prevStartDate: prevStart.toISOString(),
+        prevEndDate: prevEnd.toISOString(),
+      },
+      kpis: {
+        totalMembers: {
+          ...totalMembersDelta,
+          current: totalMembers,
+        },
+        onlineNow: {
+          online: onlineCount,
+          offline: offlineCount,
+          total: totalMembers,
+        },
+        totalLogins: totalLoginsDelta,
+        meetings: {
+          ...meetingsDelta,
+          meetingsHeld: meetingsHeldCurrent,
+          totalMinutes: totalMeetingMinutesCurrent,
+          formattedDuration: formatDuration(totalMeetingMinutesCurrent),
+        },
+        activeRooms: {
+          ...activeRoomsDelta,
+          activeRooms: activeRoomsCount,
+          totalRooms,
+        },
+        totalActions: totalActionsDelta,
+      },
+      chartSeries,
+      liveNow,
+      recentlyJoined,
+      leaderboard: {
+        mostActive: mostActiveUsers,
+        needsEngagement: needsEngagementUsers,
+      },
+      roomUsage: {
+        topRooms,
+        meetingsOverview: {
+          scheduled: scheduledMeetings,
+          completed: completedMeetings,
+          live: liveMeetings,
+          avgDurationMinutes,
+          formattedAvgDuration: formatDuration(avgDurationMinutes),
+        },
+      },
+      recentActivities,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+
+  async getWorkspaceMembersActivity(
+    input: GetWorkspaceMembersActivityInputDTO
+  ): Promise<WorkspaceMembersActivityResponseDTO> {
+    if (!Types.ObjectId.isValid(input.workspaceId)) {
+      throw new AppError(MESSAGES.ERRORS.WORKSPACE_INVALID_ID, HttpStatus.BAD_REQUEST);
+    }
+
+    const workspace = await WorkspaceModel.findById(input.workspaceId);
+    if (!workspace) {
+      throw new AppError(MESSAGES.ERRORS.WORKSPACE_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (workspace.workspaceAdminEmail?.toLowerCase() !== input.adminEmail.toLowerCase()) {
+      throw new AppError(MESSAGES.ERRORS.ACCESS_DENIED, HttpStatus.FORBIDDEN);
+    }
+
+    const { start, end } = parseDateRange(input.range, input.startDate, input.endDate);
+    const workspaceObjId = new Types.ObjectId(input.workspaceId);
+    const workspaceIdStr = input.workspaceId;
+
+    // 1. Fetch all members with optional search and status filter
+    const memberFilter: Record<string, unknown> = {
+      role: { $in: [UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN, "workspace-admin"] },
+      ...workspaceMembershipQuery(input.workspaceId),
+    };
+
+    if (input.status === "active") {
+      memberFilter.status = { $ne: false };
+    } else if (input.status === "disabled") {
+      memberFilter.status = false;
+    }
+
+    if (input.search && input.search.trim()) {
+      const q = input.search.trim();
+      memberFilter.$or = [
+        { username: { $regex: q, $options: "i" } },
+        { email: { $regex: q, $options: "i" } },
+      ];
+    }
+
+    const members = await UserModel.find(memberFilter)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 2. Fetch activity stats in date range
+    const activities = await ActivityLogModel.find({
+      workspaceId: workspaceIdStr,
+      occurredAt: { $gte: start, $lte: end },
+    })
+      .select("actorId action occurredAt")
+      .lean();
+
+    const userActivityMap = new Map<string, number>();
+    const userLoginMap = new Map<string, number>();
+    const userLastActiveMap = new Map<string, Date>();
+    const userLastLoginMap = new Map<string, Date>();
+
+    for (const act of activities) {
+      if (!act.actorId) continue;
+      const aId = act.actorId;
+      userActivityMap.set(aId, (userActivityMap.get(aId) || 0) + 1);
+
+      if (!userLastActiveMap.has(aId) || new Date(act.occurredAt) > userLastActiveMap.get(aId)!) {
+        userLastActiveMap.set(aId, new Date(act.occurredAt));
+      }
+
+      if (act.action === "USER_LOGIN" || act.action === "LOGIN") {
+        userLoginMap.set(aId, (userLoginMap.get(aId) || 0) + 1);
+        if (!userLastLoginMap.has(aId) || new Date(act.occurredAt) > userLastLoginMap.get(aId)!) {
+          userLastLoginMap.set(aId, new Date(act.occurredAt));
+        }
+      }
+    }
+
+    // 3. Fetch meetings in range
+    const meetings = await MeetingModel.find({
+      workspaceId: workspaceObjId,
+      $or: [
+        { startTime: { $gte: start, $lte: end } },
+        { createdAt: { $gte: start, $lte: end } },
+      ],
+    }).lean();
+
+    const userMeetingsMap = new Map<string, number>();
+    const userMeetingDurationMap = new Map<string, number>();
+
+    for (const m of meetings) {
+      const duration = m.startTime && m.endTime
+        ? Math.max(0, Math.round((new Date(m.endTime).getTime() - new Date(m.startTime).getTime()) / 60000))
+        : 0;
+
+      const attendees = new Set<string>();
+      if (m.hostId) attendees.add(m.hostId.toString());
+      if (Array.isArray(m.participants)) {
+        for (const p of m.participants) {
+          if (p) attendees.add(p.toString());
+        }
+      }
+
+      for (const pId of attendees) {
+        userMeetingsMap.set(pId, (userMeetingsMap.get(pId) || 0) + 1);
+        userMeetingDurationMap.set(pId, (userMeetingDurationMap.get(pId) || 0) + duration);
+      }
+    }
+
+    // 4. Fetch rooms
+    const workspaceRooms = await RoomModel.find({ workspaceId: workspaceObjId })
+      .select("_id type allowedUsers")
+      .lean();
+
+    const userRoomsCountMap = new Map<string, number>();
+    for (const u of members) {
+      const uId = u._id.toString();
+      const count = workspaceRooms.filter((r) => {
+        if (r.type === "public") return true;
+        return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: any) => id && id.toString() === uId);
+      }).length;
+      userRoomsCountMap.set(uId, count);
+    }
+
+    // 5. Build full items list
+    let recordItems: WorkspaceMemberActivityRecordItem[] = members.map((u) => {
+      const uId = u._id.toString();
+      const lastActive = userLastActiveMap.get(uId) || (u as { updatedAt?: Date }).updatedAt || null;
+      const lastLogin = userLastLoginMap.get(uId) || null;
+      const durationMins = userMeetingDurationMap.get(uId) || 0;
+
+      return {
+        userId: uId,
+        username: u.username,
+        email: u.email,
+        role: u.role || UserRoles.MEMBER,
+        status: u.status !== false,
+        isOnline: socketService.isUserOnline(uId),
+        joinedAt: (u as { createdAt?: Date }).createdAt
+          ? new Date((u as { createdAt?: Date }).createdAt!).toISOString()
+          : new Date().toISOString(),
+        lastActiveAt: lastActive ? new Date(lastActive).toISOString() : null,
+        lastLoginAt: lastLogin ? new Date(lastLogin).toISOString() : null,
+        totalLogins: userLoginMap.get(uId) || 0,
+        meetingsAttended: userMeetingsMap.get(uId) || 0,
+        meetingDurationMinutes: durationMins,
+        formattedMeetingDuration: formatDuration(durationMins),
+        roomsCount: userRoomsCountMap.get(uId) || 0,
+        activityCount: userActivityMap.get(uId) || 0,
+      };
+    });
+
+    // 6. Sorting
+    const sortField = input.sortField || "actions";
+    const sortOrder = input.sortOrder === "asc" ? 1 : -1;
+
+    recordItems.sort((a, b) => {
+      let valA: number | string = 0;
+      let valB: number | string = 0;
+
+      switch (sortField) {
+        case "logins":
+          valA = a.totalLogins;
+          valB = b.totalLogins;
+          break;
+        case "meetings":
+          valA = a.meetingsAttended;
+          valB = b.meetingsAttended;
+          break;
+        case "duration":
+          valA = a.meetingDurationMinutes;
+          valB = b.meetingDurationMinutes;
+          break;
+        case "rooms":
+          valA = a.roomsCount;
+          valB = b.roomsCount;
+          break;
+        case "name":
+          valA = a.username.toLowerCase();
+          valB = b.username.toLowerCase();
+          break;
+        case "lastActive":
+          valA = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : 0;
+          valB = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : 0;
+          break;
+        case "actions":
+        default:
+          valA = a.activityCount;
+          valB = b.activityCount;
+          break;
+      }
+
+      if (typeof valA === "string" && typeof valB === "string") {
+        return sortOrder * valA.localeCompare(valB);
+      }
+      return sortOrder * ((valA as number) - (valB as number));
+    });
+
+    // 7. Pagination
+    const total = recordItems.length;
+    const page = input.page && input.page > 0 ? input.page : 1;
+    const limit = input.limit && input.limit > 0 ? input.limit : 10;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const paginatedItems = recordItems.slice((page - 1) * limit, page * limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
   async getWorkspaceUserAnalytics(
     input: GetWorkspaceUserAnalyticsInputDTO
   ): Promise<WorkspaceUserAnalyticsResponseDTO> {
@@ -45,7 +743,6 @@ export class WorkspaceUserAnalyticsRepository
       throw new AppError(MESSAGES.ERRORS.WORKSPACE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    // Verify workspace admin authorization
     if (workspace.workspaceAdminEmail?.toLowerCase() !== input.adminEmail.toLowerCase()) {
       throw new AppError(MESSAGES.ERRORS.ACCESS_DENIED, HttpStatus.FORBIDDEN);
     }
@@ -59,7 +756,6 @@ export class WorkspaceUserAnalyticsRepository
     const workspaceObjId = new Types.ObjectId(input.workspaceId);
     const workspaceIdStr = input.workspaceId;
 
-    // 1. Fetch all members in this workspace
     const baseMemberFilter = {
       role: { $in: [UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN, "workspace-admin"] },
       ...workspaceMembershipQuery(input.workspaceId),
@@ -86,7 +782,6 @@ export class WorkspaceUserAnalyticsRepository
       else inactiveCount++;
     }
 
-    // 2. Recently joined members (top 5)
     const recentlyJoined: RecentlyJoinedMemberItem[] = allMembers.slice(0, 5).map((u) => {
       const uId = u._id.toString();
       return {
@@ -101,7 +796,6 @@ export class WorkspaceUserAnalyticsRepository
       };
     });
 
-    // 3. Activity trends in date range
     const activitiesInRange = await ActivityLogModel.find({
       workspaceId: workspaceIdStr,
       occurredAt: { $gte: start, $lte: end },
@@ -140,8 +834,6 @@ export class WorkspaceUserAnalyticsRepository
       meetingCount: meetingByDay.get(b.date) || 0,
     }));
 
-    // 4. Per-user statistics in date range
-    // Pre-calculate user activities and logins
     const userActivityMap = new Map<string, number>();
     const userLoginMap = new Map<string, number>();
     const userLastActiveMap = new Map<string, Date>();
@@ -164,7 +856,6 @@ export class WorkspaceUserAnalyticsRepository
       }
     }
 
-    // Pre-calculate user meetings and durations
     const userMeetingsMap = new Map<string, number>();
     const userMeetingDurationMap = new Map<string, number>();
 
@@ -182,7 +873,6 @@ export class WorkspaceUserAnalyticsRepository
       }
     }
 
-    // Rooms accessible in this workspace
     const workspaceRooms = await RoomModel.find({ workspaceId: workspaceObjId })
       .select("_id type allowedUsers")
       .lean();
@@ -197,7 +887,6 @@ export class WorkspaceUserAnalyticsRepository
       userRoomsCountMap.set(uId, count);
     }
 
-    // Compute user rank list
     const userRankList: UserRankItem[] = allMembers.map((u) => {
       const uId = u._id.toString();
       const activityCount = userActivityMap.get(uId) || 0;
@@ -226,7 +915,6 @@ export class WorkspaceUserAnalyticsRepository
       .sort((a, b) => a.activityCount + a.meetingsAttended - (b.activityCount + b.meetingsAttended))
       .slice(0, 5);
 
-    // 5. Search and Pagination for Records table
     let filteredMembers = allMembers;
     if (input.search && input.search.trim()) {
       const q = input.search.trim().toLowerCase();
@@ -334,10 +1022,37 @@ export class WorkspaceUserAnalyticsRepository
       ],
     };
 
-    const [logs, total] = await Promise.all([
+    const [logs, total, totalLogins, allUserMeetings, workspaceRooms] = await Promise.all([
       ActivityLogModel.find(query).sort({ occurredAt: -1 }).skip(skip).limit(limit).lean(),
       ActivityLogModel.countDocuments(query),
+      ActivityLogModel.countDocuments({
+        workspaceId: input.workspaceId,
+        actorId: input.userId,
+        action: { $in: ["USER_LOGIN", "LOGIN"] },
+      }),
+      MeetingModel.find({
+        workspaceId: new Types.ObjectId(input.workspaceId),
+        $or: [
+          { hostId: new Types.ObjectId(input.userId) },
+          { participants: new Types.ObjectId(input.userId) },
+        ],
+      }).lean(),
+      RoomModel.find({ workspaceId: new Types.ObjectId(input.workspaceId) })
+        .select("_id name type allowedUsers")
+        .lean(),
     ]);
+
+    let meetingDurationMinutes = 0;
+    for (const m of allUserMeetings) {
+      if (m.startTime && m.endTime) {
+        meetingDurationMinutes += Math.max(0, Math.round((new Date(m.endTime).getTime() - new Date(m.startTime).getTime()) / 60000));
+      }
+    }
+
+    const accessibleRooms = workspaceRooms.filter((r) => {
+      if (r.type === "public") return true;
+      return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: any) => id && id.toString() === input.userId);
+    });
 
     const items: UserActivityHistoryItem[] = logs.map((l) => ({
       _id: l._id.toString(),
@@ -360,6 +1075,15 @@ export class WorkspaceUserAnalyticsRepository
         role: user.role || UserRoles.MEMBER,
         status: user.status !== false,
         isOnline: socketService.isUserOnline(finalUserId),
+      },
+      stats: {
+        totalLogins,
+        meetingsAttended: allUserMeetings.length,
+        meetingDurationMinutes,
+        formattedMeetingDuration: formatDuration(meetingDurationMinutes),
+        roomsCount: accessibleRooms.length,
+        roomNames: accessibleRooms.map((r) => r.name),
+        totalActions: total,
       },
       items,
       total,

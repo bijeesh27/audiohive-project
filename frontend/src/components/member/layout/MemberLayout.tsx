@@ -7,7 +7,7 @@ export default function MemberLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC]">
+    <div className="flex h-screen bg-[#F8FAFC] antialiased text-gray-900">
       {/* Desktop Sidebar */}
       <MemberSidebar />
 
@@ -30,7 +30,7 @@ export default function MemberLayout() {
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <MemberNavbar onOpenMobileMenu={() => setMobileMenuOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1280px] w-full">
             <Outlet />
           </div>
         </main>

@@ -7,6 +7,7 @@ export interface CreateAnnouncementData {
   type: "info" | "warning" | "critical" | "event";
   targetAudience: "all" | "room-specific";
   status: "draft" | "published";
+  isPinned?: boolean;
   roomId?: string;
   scheduledAt?: string;
   expiresAt?: string;
@@ -16,6 +17,9 @@ export interface UpdateAnnouncementData {
   title?: string;
   content?: string;
   type?: "info" | "warning" | "critical" | "event";
+  targetAudience?: "all" | "room-specific";
+  roomId?: string;
+  isPinned?: boolean;
   status?: "draft" | "published" | "archived";
   expiresAt?: string;
 }
@@ -23,6 +27,7 @@ export interface UpdateAnnouncementData {
 export interface AnnouncementAuthor {
   id: string;
   name: string;
+  email?: string;
   avatar?: string;
 }
 
@@ -32,12 +37,27 @@ export interface MemberAnnouncement {
   title: string;
   content: string;
   type: "info" | "important" | "urgent" | "event" | "warning" | "critical";
+  status: "draft" | "published" | "archived";
   isPinned: boolean;
+  targetAudience?: "all" | "room-specific";
+  roomId?: string | null;
   isRead: boolean;
   readBy?: string[];
+  readCount?: number;
+  totalMembersCount?: number;
   author: AnnouncementAuthor;
   audience: string;
   createdAt: string;
+  updatedAt?: string;
+  expiresAt?: string;
+}
+
+export interface AnnouncementCounts {
+  all: number;
+  published: number;
+  draft: number;
+  archived: number;
+  pinned: number;
 }
 
 export interface GetAnnouncementsParams {
@@ -46,19 +66,40 @@ export interface GetAnnouncementsParams {
   status?: string;
   search?: string;
   q?: string;
-  tab?: "all" | "unread" | "pinned" | string;
+  tab?: "all" | "published" | "draft" | "archived" | "pinned" | "unread" | string;
   type?: string;
   range?: string;
-  sort?: "newest" | "oldest" | string;
+  sort?: "newest" | "oldest" | "most_read" | "least_read" | string;
 }
 
 export interface PaginatedAnnouncementsResponse {
+  items?: MemberAnnouncement[];
   announcements: MemberAnnouncement[];
+  pinnedItems?: MemberAnnouncement[];
   total: number;
   page: number;
+  limit?: number;
   totalPages: number;
+  totalMembersCount?: number;
+  counts?: AnnouncementCounts;
+  unreadCount?: number;
+  pinnedCount?: number;
+}
+
+export interface AnnouncementReaderUser {
+  _id: string;
+  username: string;
+  email: string;
+  role?: string;
+  avatar?: string;
+}
+
+export interface AnnouncementReadersResponse {
+  totalMembers: number;
+  readCount: number;
   unreadCount: number;
-  pinnedCount: number;
+  readMembers: AnnouncementReaderUser[];
+  unreadMembers: AnnouncementReaderUser[];
 }
 
 export const getAnnouncements = (
@@ -77,6 +118,10 @@ export const getAnnouncements = (
 
 export const getAnnouncement = (id: string) => {
   return axiosInstance.get(API_ENDPOINTS.ANNOUNCEMENT.GET_ONE(id));
+};
+
+export const getAnnouncementReaders = (id: string) => {
+  return axiosInstance.get(API_ENDPOINTS.ANNOUNCEMENT.GET_READERS(id));
 };
 
 export const createAnnouncement = (data: CreateAnnouncementData) => {

@@ -60,7 +60,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
       {/* Main Canvas Area */}
       <div
         ref={boardRef}
-        className="relative flex-1 w-full h-full overflow-auto cursor-default"
+        className="relative flex-1 w-full overflow-auto cursor-default"
         style={{
           backgroundImage:
             "radial-gradient(circle, rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px)",

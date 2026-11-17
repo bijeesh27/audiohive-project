@@ -31,7 +31,8 @@ export class AnnouncementController {
     private readonly getByRoomFn: (roomId: string, workspaceId: string) => Promise<AnnouncementResponseDTO[]>,
     private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>,
     private readonly markAsUnreadFn?: (id: string, workspaceId: string, userId: string) => Promise<void>,
-    private readonly markAllAsReadFn?: (workspaceId: string, userId: string) => Promise<number>
+    private readonly markAllAsReadFn?: (workspaceId: string, userId: string) => Promise<number>,
+    private readonly getAnnouncementReadersUseCase?: IuseCase<{ id: string; workspaceId: string }, any>
   ) {}
 
   private async resolveWorkspace(req: AuthRequest) {
@@ -205,6 +206,20 @@ export class AnnouncementController {
       const { workspaceId } = await this.resolveWorkspace(req);
       const announcements = await this.getByRoomFn(roomId, workspaceId);
       return ApiResposne.success(res, MESSAGES.SUCCESS.ANNOUNCEMENTS_FETCHED, { announcements });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getAnnouncementReaders = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const id = req.params.id as string;
+      const { workspaceId } = await this.resolveWorkspace(req);
+      if (!this.getAnnouncementReadersUseCase) {
+        throw new AppError("Reader tracking not supported", HttpStatus.BAD_REQUEST);
+      }
+      const data = await this.getAnnouncementReadersUseCase.execute({ id, workspaceId });
+      return ApiResposne.success(res, "Announcement readers fetched successfully", data);
     } catch (error) {
       next(error);
     }

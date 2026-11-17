@@ -15,9 +15,15 @@ export interface UpdateRoomData {
   status?: "active" | "blocked";
 }
 
-export const getRooms = (page: number, limit: number, search?: string) => {
+export const getRooms = (
+  page: number,
+  limit: number,
+  search?: string,
+  type?: string,
+  status?: string
+) => {
   return axiosInstance.get(API_ENDPOINTS.ROOM.GET_ALL, {
-    params: { page, limit, search },
+    params: { page, limit, search, type, status },
   });
 };
 
@@ -58,4 +64,12 @@ export const getRoomParticipants = (
 
 export const removeRoomUser = (roomId: string, userId: string) => {
   return axiosInstance.delete(API_ENDPOINTS.ROOM.REMOVE_USER(roomId, userId));
+};
+
+export const leaveRoom = (roomId: string) => {
+  return axiosInstance.post(`/api/room/${roomId}/leave`);
+};
+
+export const updateMemberRole = (roomId: string, userId: string, role: string) => {
+  return axiosInstance.patch(`/api/room/${roomId}/members/${userId}/role`, { role });
 };

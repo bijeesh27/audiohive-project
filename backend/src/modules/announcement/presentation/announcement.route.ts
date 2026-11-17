@@ -5,6 +5,7 @@ import { UpdateAnnouncementUseCase } from "../application/usecases/updateAnnounc
 import { DeleteAnnouncementUseCase } from "../application/usecases/deleteAnnouncementUseCase.js";
 import { GetAllAnnouncementsUseCase } from "../application/usecases/getAllAnnouncementsUseCase.js";
 import { GetAnnouncementUseCase } from "../application/usecases/getAnnouncementUseCase.js";
+import { GetAnnouncementReadersUseCase } from "../application/usecases/getAnnouncementReadersUseCase.js";
 import { PinAnnouncementUseCase } from "../application/usecases/pinAnnouncementUseCase.js";
 import { MarkAsReadUseCase } from "../application/usecases/markAsReadUseCase.js";
 import { AnnouncementController } from "./announcement.controller.js";
@@ -31,6 +32,7 @@ const updateAnnouncementUseCase = new UpdateAnnouncementUseCase(announcementRepo
 const deleteAnnouncementUseCase = new DeleteAnnouncementUseCase(announcementRepository,activityLogRepository);
 const getAllAnnouncementsUseCase = new GetAllAnnouncementsUseCase(announcementRepository);
 const getAnnouncementUseCase = new GetAnnouncementUseCase(announcementRepository);
+const getAnnouncementReadersUseCase = new GetAnnouncementReadersUseCase(announcementRepository);
 const pinAnnouncementUseCase = new PinAnnouncementUseCase(announcementRepository,activityLogRepository);
 const markAsReadUseCase = new MarkAsReadUseCase(announcementRepository,activityLogRepository);
 const resolveWorkspaceUseCase = new ResolveWorkspaceUseCase(workspaceRepository, userRepository);
@@ -47,7 +49,8 @@ const controller = new AnnouncementController(
   announcementRepository.getByRoom.bind(announcementRepository),
   resolveWorkspaceUseCase,
   announcementRepository.markAsUnread.bind(announcementRepository),
-  announcementRepository.markAllAsRead.bind(announcementRepository)
+  announcementRepository.markAllAsRead.bind(announcementRepository),
+  getAnnouncementReadersUseCase
 );
 
 router.post(API_ROUTES.ANNOUNCEMENT.CREATE_ANNOUNCEMENT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.createAnnouncement.bind(controller));
@@ -59,6 +62,7 @@ router.patch(API_ROUTES.ANNOUNCEMENT.READ_ALL, authMiddleware, roleMiddleware([U
 router.get(API_ROUTES.ANNOUNCEMENT.UNREAD_COUNT, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getUnreadCount.bind(controller));
 router.get(API_ROUTES.ANNOUNCEMENT.GET_BY_ROOM, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getByRoom.bind(controller));
 router.get(API_ROUTES.ANNOUNCEMENT.GET_ALL, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAllAnnouncements.bind(controller));
+router.get(API_ROUTES.ANNOUNCEMENT.GET_READERS, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN]), controller.getAnnouncementReaders.bind(controller));
 router.get(API_ROUTES.ANNOUNCEMENT.GET_ONE, authMiddleware, roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]), controller.getAnnouncement.bind(controller));
 
 router.patch(API_ROUTES.ANNOUNCEMENT.MARK_READ, authMiddleware, roleMiddleware([UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN]), controller.markAsRead.bind(controller));

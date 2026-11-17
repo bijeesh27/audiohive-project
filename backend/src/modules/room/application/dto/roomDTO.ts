@@ -5,17 +5,28 @@ export interface CreateRoomDTO {
   workspaceId: string;
   name: string;
   description?: string;
-  type: "public" | "private";
+  type: "standard" | "lounge" | "public" | "private";
+  isDefault?: boolean;
   isPrivate?: boolean;
+  settings?: {
+    music?: {
+      enabled: boolean;
+    };
+  };
   createdBy: string;
 }
 
 export interface UpdateRoomDTO {
   name?: string;
   description?: string;
-  type?: "public" | "private";
+  type?: "standard" | "lounge" | "public" | "private";
   isPrivate?: boolean;
   status?: "active" | "blocked";
+  settings?: {
+    music?: {
+      enabled: boolean;
+    };
+  };
   allowedUsers?: string[];
   actorId?: string;
   workspaceId: string;
@@ -45,6 +56,8 @@ export interface GetAllRoomsDTO {
   search?: string;
   userId?: string;
   role?: string;
+  type?: string;
+  status?: string;
 }
 
 export interface GetAllRoomsResultDTO {

@@ -21,9 +21,6 @@ export class RemoveWorkspaceMemberUseCase
     if (!existingUser || !workspaceIds.includes(input.workspaceId)) {
       throw new AppError(MESSAGES.ERRORS.MEMBER_NOT_ASSIGNED_TO_WORKSPACE, 404);
     }
-    if (workspaceIds.length === 1) {
-      throw new AppError(MESSAGES.ERRORS.REPLACEMENT_WORKSPACE_REQUIRED, 400);
-    }
 
     const user = await this.userRepository.removeUserFromWorkspace(
       input.userId,

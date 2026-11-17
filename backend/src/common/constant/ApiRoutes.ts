@@ -55,6 +55,8 @@ export const API_ROUTES = {
     GET_ACTIVE_USERS: "/activeusers/:workspaceId",
     USER_ANALYTICS: "/user-analytics",
     USER_ACTIVITY_HISTORY: "/users/:userId/activities",
+    DASHBOARD: "/dashboard",
+    DASHBOARD_MEMBERS: "/dashboard/members",
   },
 
   MEMBER: {
@@ -116,6 +118,7 @@ export const API_ROUTES = {
     UNREAD_COUNT: "/unread-count",
     GET_BY_ROOM: "/room/:roomId",
     GET_ALL: "/",
+    GET_READERS: "/:id/readers",
     GET_ONE: "/:id",
     MARK_READ: "/:id/read",
     MARK_UNREAD: "/:id/unread",

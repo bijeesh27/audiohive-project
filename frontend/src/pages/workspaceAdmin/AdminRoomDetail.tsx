@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   getRoom,
   deleteRoom,
@@ -7,253 +7,211 @@ import {
   getRoomParticipants,
   removeRoomUser,
 } from "../../services/roomServices";
+import {
+  getWorkspaceDashboardStats,
+  type DashboardData,
+  type RoomUsage,
+} from "../../services/workspaceAdminServices";
 
 import RoomModal from "../../components/workspaceAdmin/RoomModal";
 import RoomAccessModal from "../../components/workspaceAdmin/RoomAccessModal";
-
 import ConfirmModal from "../../components/common/ConfirmModal";
-
 import { API_ROUTES } from "../../constants/Api_Routes";
-import ActionButton from "../../components/common/ActionButton";
-import Table, { type Column } from "../../components/common/Table";
 
 import {
   Globe,
   Lock,
+  Sparkles,
   ArrowLeft,
-  Pencil,
+  MoreVertical,
+  Edit3,
   ShieldBan,
   ShieldCheck,
   Trash2,
-  UserCog,
-  UserMinus,
-  Wifi,
-  WifiOff,
+  Users,
   Video,
   Layout,
   FileText,
+  UserMinus,
+  Plus,
+  Clock,
+  RotateCcw,
+  AlertCircle,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { updateWorkspaceUser } from "../../services/authServices";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { VideoCallPanel } from "../../components/room/VideoCallPanel";
 import { RoomDocuments } from "./RoomDocuments";
 import { Whiteboard } from "../../components/whiteboard/Whiteboard";
+import { LoungeView } from "../../components/room/lounge/LoungeView";
+import type { RoomDetailData, ParticipantItem } from "../../types/rooms";
 
 interface Room {
   _id: string;
+  workspaceId?: string;
   name: string;
-  description: string;
-  type: "public" | "private";
+  description?: string;
+  type: "public" | "private" | "lounge" | "standard";
   status: "active" | "blocked";
+  isDefault?: boolean;
   allowedUsers?: string[];
+  memberCount?: number;
+  onlineCount?: number;
   createdAt: string;
 }
 
-interface User {
+interface ParticipantUser {
   _id: string;
   username: string;
   email: string;
   role: string;
   status: boolean;
+  isOnline?: boolean;
+  joinedAt?: string;
+  createdAt?: string;
 }
 
-type RoomActionType = "delete" | "block" | "unblock";
-
-// Discriminated union: one branch for room-level actions, one for
-// per-user actions. Each branch carries exactly the data it needs.
 type ConfirmState =
   | { isOpen: false }
-  | { isOpen: true; kind: "room"; actionType: RoomActionType }
-  | {
-      isOpen: true;
-      kind: "user";
-      userId: string;
-      username: string;
-      newStatus: boolean; // the status we're about to set (true = active)
-    }
-  | {
-      isOpen: true;
-      kind: "removeUser";
-      userId: string;
-      username: string;
-    };
+  | { isOpen: true; kind: "room"; actionType: "delete" | "block" | "unblock" }
+  | { isOpen: true; kind: "removeUser"; userId: string; username: string };
 
-const PAGE_SIZE = 5;
 const CLOSED_CONFIRM: ConfirmState = { isOpen: false };
 
 const getErrorMessage = (err: unknown, fallback: string): string => {
   if (!err || typeof err !== "object") return fallback;
-
-  const response = "response" in err ? err.response : undefined;
+  const response = "response" in err ? (err as any).response : undefined;
   if (!response || typeof response !== "object") return fallback;
-
   const data = "data" in response ? response.data : undefined;
   if (!data || typeof data !== "object") return fallback;
-
   const message = "message" in data ? data.message : undefined;
   return typeof message === "string" ? message : fallback;
 };
 
-// Copy for the shared confirm modal, derived from the current state.
-const getConfirmCopy = (state: ConfirmState, roomName: string) => {
-  if (!state.isOpen) {
-    return { title: "", message: "", label: "", isDanger: false };
-  }
-
-  if (state.kind === "room") {
-    switch (state.actionType) {
-      case "delete":
-        return {
-          title: "Delete Room?",
-          message: `Are you sure you want to permanently delete "${roomName}"? This action cannot be undone.`,
-          label: "Delete",
-          isDanger: true,
-        };
-      case "block":
-        return {
-          title: "Block Room?",
-          message: `"${roomName}" will be blocked and users won't be able to join it.`,
-          label: "Block",
-          isDanger: true,
-        };
-      case "unblock":
-        return {
-          title: "Unblock Room?",
-          message: `"${roomName}" will be unblocked and active again.`,
-          label: "Unblock",
-          isDanger: false,
-        };
-    }
-  }
-
-  if (state.kind === "removeUser") {
-    return {
-      title: "Remove Participant?",
-      message: `Are you sure you want to remove "${state.username}" from "${roomName}"?`,
-      label: "Remove",
-      isDanger: true,
-    };
-  }
-
-  const { username, newStatus } = state;
-  return {
-    title: newStatus ? "Unblock User?" : "Block User?",
-    message: newStatus
-      ? `"${username}" will be unblocked and can participate in this room again.`
-      : `"${username}" will be blocked.`,
-    label: newStatus ? "Unblock" : "Block",
-    isDanger: !newStatus,
-  };
+const formatTimeSpent = (minutes: number): string => {
+  if (!minutes || minutes <= 0) return "0m";
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours > 0 && remainingMinutes > 0) return `${hours}h ${remainingMinutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${remainingMinutes}m`;
 };
 
-const AdminRoomDetail = () => {
+const formatFullDate = (iso: string | null | undefined): string => {
+  if (!iso) return "–";
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return String(iso);
+  }
+};
+
+export default function AdminRoomDetail() {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { username } = useAuth();
+  const { socket } = useSocket();
 
+  // Tab State synced with URL (?tab=)
+  const tabParam = searchParams.get("tab");
+  const activeTab: "overview" | "meeting" | "whiteboard" | "documents" =
+    tabParam === "meeting" || tabParam === "whiteboard" || tabParam === "documents"
+      ? tabParam
+      : "overview";
+
+  const handleTabChange = (newTab: "overview" | "meeting" | "whiteboard" | "documents") => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (newTab === "overview") {
+        next.delete("tab");
+      } else {
+        next.set("tab", newTab);
+      }
+      return next;
+    });
+  };
+
+  // Room State
   const [room, setRoom] = useState<Room | null>(null);
-  const [roomLoading, setRoomLoading] = useState(true);
+  const [roomLoading, setRoomLoading] = useState<boolean>(true);
   const [roomError, setRoomError] = useState<string | null>(null);
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [participantsLoading, setParticipantsLoading] = useState(true);
+  // Analytics Usage State (reusing Dashboard room usage data)
+  const [dashboardUsage, setDashboardUsage] = useState<RoomUsage | null>(null);
+  const [meetingsOverviewCount, setMeetingsOverviewCount] = useState<number>(0);
+
+  // Participants & Live Presence State
+  const [participants, setParticipants] = useState<ParticipantUser[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState<boolean>(true);
   const [participantsError, setParticipantsError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState<number>(1);
+  const limit = 10;
+  const [totalParticipants, setTotalParticipants] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  // Errors from block / unblock / delete / remove actions. Kept separate
-  // from load errors so an action failure never masquerades as
-  // "Room not found" or an empty table.
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"meeting" | "whiteboard" | "details" | "documents">("meeting");
-
-  const [removingId, setRemovingId] = useState<string | null>(null);
-  const [userActionLoading, setUserActionLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
-  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
-
-  const { socket } = useSocket();
+  // Live Socket Connected Users in this Room
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; username: string }[]>([]);
-  const [presenceFilter, setPresenceFilter] = useState<"all" | "online" | "offline">("all");
-
   const onlineUserIdSet = useMemo(() => new Set(onlineUsers.map((u) => u.userId)), [onlineUsers]);
 
-  const presenceMembers = useMemo(() => {
-    const map = new Map<string, { id: string; username: string; email?: string; role?: string; isOnline: boolean }>();
-
-    users.forEach((u) => {
-      map.set(u._id, {
-        id: u._id,
-        username: u.username,
-        email: u.email,
-        role: u.role,
-        isOnline: onlineUserIdSet.has(u._id),
-      });
-    });
-
-    onlineUsers.forEach((u) => {
-      if (!map.has(u.userId)) {
-        map.set(u.userId, {
-          id: u.userId,
-          username: u.username,
-          isOnline: true,
-        });
-      }
-    });
-
-    return Array.from(map.values());
-  }, [users, onlineUserIdSet, onlineUsers]);
-
-  const onlineCount = useMemo(() => presenceMembers.filter((m) => m.isOnline).length, [presenceMembers]);
-  const offlineCount = useMemo(() => presenceMembers.filter((m) => !m.isOnline).length, [presenceMembers]);
-
-  const filteredPresenceMembers = useMemo(() => {
-    if (presenceFilter === "online") return presenceMembers.filter((m) => m.isOnline);
-    if (presenceFilter === "offline") return presenceMembers.filter((m) => !m.isOnline);
-    return presenceMembers;
-  }, [presenceMembers, presenceFilter]);
+  // Modals & Menu State
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState<boolean>(false);
+  const [isRoomModalOpen, setIsRoomModalOpen] = useState<boolean>(false);
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState<boolean>(false);
 
   const [confirmModal, setConfirmModal] = useState<ConfirmState>(CLOSED_CONFIRM);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  // Guards against stale responses (id/page/search changed, or unmounted).
+  const [, startTransition] = useTransition();
   const roomRequestIdRef = useRef(0);
   const participantsRequestIdRef = useRef(0);
 
-  // Reset everything when navigating from one room to another. The route
-  // element is reused, so without this the previous room's data would
-  // stay on screen until the new fetch finished.
+  // Close menus on outside click or escape
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRoom(null);
-    setUsers([]);
-    setPage(1);
-    setTotalPages(1);
-    setSearch("");
-    setDebouncedSearch("");
-    setRoomError(null);
-    setParticipantsError(null);
-    setActionError(null);
-    setConfirmModal(CLOSED_CONFIRM);
-  }, [roomId]);
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-header-menu]")) {
+        setIsHeaderMenuOpen(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsHeaderMenuOpen(false);
+      }
+    };
+    window.addEventListener("click", handleOutsideClick);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("click", handleOutsideClick);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
-  // Debounce the search box so we don't fire a request per keystroke.
+  // Debounce search input for participants
   useEffect(() => {
     const t = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1); // reset to first page on a new search
+      startTransition(() => {
+        setDebouncedSearch(searchQuery.trim());
+        setPage(1);
+      });
     }, 300);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [searchQuery]);
 
+  // Fetch Room Details
   const fetchRoom = useCallback(async () => {
     if (!roomId) return;
-
     const requestId = ++roomRequestIdRef.current;
     setRoomLoading(true);
     setRoomError(null);
@@ -261,22 +219,38 @@ const AdminRoomDetail = () => {
     try {
       const res = await getRoom(roomId);
       if (requestId !== roomRequestIdRef.current) return;
-      setRoom(res.data.data || res.data);
+      const roomData = res.data?.data || res.data;
+      setRoom(roomData);
     } catch (err: unknown) {
       if (requestId !== roomRequestIdRef.current) return;
-      setRoomError(getErrorMessage(err, "Failed to load room"));
+      setRoomError(getErrorMessage(err, "Failed to load room details"));
     } finally {
-      // No `return` inside finally: it would swallow exceptions/returns
-      // from the try/catch above (and trips no-unsafe-finally).
       if (requestId === roomRequestIdRef.current) {
         setRoomLoading(false);
       }
     }
   }, [roomId]);
 
+  // Fetch Dashboard Stats to reuse Room Usage data (avoids creating new analytics endpoint)
+  const fetchDashboardUsage = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      const res: DashboardData = await getWorkspaceDashboardStats();
+      if (res?.roomUsage?.topRooms) {
+        const found = res.roomUsage.topRooms.find((r) => r.roomId === roomId);
+        if (found) setDashboardUsage(found);
+      }
+      if (res?.roomUsage?.meetingsOverview) {
+        setMeetingsOverviewCount(res.roomUsage.meetingsOverview.completed || 0);
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }, [roomId]);
+
+  // Fetch Unified Participants List
   const fetchParticipants = useCallback(async () => {
     if (!roomId) return;
-
     const requestId = ++participantsRequestIdRef.current;
     setParticipantsLoading(true);
     setParticipantsError(null);
@@ -284,28 +258,24 @@ const AdminRoomDetail = () => {
     try {
       const res = await getRoomParticipants(roomId, {
         page,
-        limit: PAGE_SIZE,
-        search: debouncedSearch, // already trimmed in the debounce effect
+        limit,
+        search: debouncedSearch,
       });
-
       if (requestId !== participantsRequestIdRef.current) return;
 
-      const payload = res.data.data ?? res.data;
-      const list: User[] = Array.isArray(payload)
+      const payload = res.data?.data ?? res.data;
+      const list: ParticipantUser[] = Array.isArray(payload)
         ? payload
-        : payload.users ?? [];
-      const pages: number = res.data.totalPages ?? payload.totalPages ?? 1;
-      const safeTotalPages = Math.max(1, pages || 1);
+        : payload?.users ?? [];
+      const total = payload?.total ?? list.length;
+      const pages = payload?.totalPages ?? Math.max(1, Math.ceil(total / limit));
 
-      setUsers(list);
-      setTotalPages(safeTotalPages);
-
-      if (page > safeTotalPages) {
-        setPage(safeTotalPages);
-      }
+      setParticipants(list);
+      setTotalParticipants(total);
+      setTotalPages(pages);
     } catch (err: unknown) {
       if (requestId !== participantsRequestIdRef.current) return;
-      setParticipantsError(getErrorMessage(err, "Failed to load participants"));
+      setParticipantsError(getErrorMessage(err, "Failed to load room members"));
     } finally {
       if (requestId === participantsRequestIdRef.current) {
         setParticipantsLoading(false);
@@ -313,17 +283,9 @@ const AdminRoomDetail = () => {
     }
   }, [roomId, page, debouncedSearch]);
 
+  // Socket Presence Connection
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchRoom();
-    return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      roomRequestIdRef.current++;
-    };
-  }, [fetchRoom]);
-
-  useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !socket) return;
 
     const handlePresence = (users: { userId: string; username: string }[]) => {
       setOnlineUsers(users);
@@ -350,667 +312,833 @@ const AdminRoomDetail = () => {
   }, [roomId, socket]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRoom();
+    fetchDashboardUsage();
+  }, [fetchRoom, fetchDashboardUsage]);
+
+  useEffect(() => {
     fetchParticipants();
-    return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      participantsRequestIdRef.current++;
-    };
   }, [fetchParticipants]);
 
-  const closeConfirmModal = () => setConfirmModal(CLOSED_CONFIRM);
+  // Merge participants with live socket presence
+  const unifiedMembers = useMemo(() => {
+    return participants.map((p) => {
+      const isOnline = onlineUserIdSet.has(p._id);
+      return {
+        ...p,
+        isOnline,
+      };
+    });
+  }, [participants, onlineUserIdSet]);
 
+  const liveOnlineCount = useMemo(() => {
+    return onlineUsers.length;
+  }, [onlineUsers]);
+
+  const isDefault = Boolean(
+    room?.isDefault || room?.name === "Lounge" || room?.name === "Office Common Room"
+  );
+  const isRoomLounge = room?.type === "lounge" || room?.name?.toLowerCase() === "lounge";
+
+  const loungeRoomData: RoomDetailData | null = useMemo(() => {
+    if (!room) return null;
+    return {
+      _id: room._id,
+      id: room._id,
+      workspaceId: room.workspaceId || (room as any).workspace?._id || (room as any).workspace,
+      name: room.name,
+      description: room.description,
+      type: "lounge",
+      isDefault: isDefault,
+      status: room.status,
+      createdAt: room.createdAt,
+      memberCount: totalParticipants || room.memberCount || participants.length,
+      onlineCount: onlineUsers.length,
+      myRole: "admin",
+      isLive: onlineUsers.length > 0,
+    };
+  }, [room, isDefault, totalParticipants, participants.length, onlineUsers.length]);
+
+  const loungeParticipants: ParticipantItem[] = useMemo(() => {
+    return participants.map((p) => ({
+      _id: p._id,
+      username: p.username,
+      email: p.email,
+      role: (p.role === "workspace-admin" || p.role === "admin" ? "admin" : "member") as "admin" | "member" | "owner",
+      status: p.status,
+      isOnline: Boolean(p.isOnline),
+      joinedAt: p.joinedAt,
+      createdAt: p.createdAt,
+    }));
+  }, [participants]);
+
+  // Actions confirm handler
   const handleActionConfirm = async () => {
     if (!roomId || !confirmModal.isOpen) return;
-
+    setActionLoading(true);
     setActionError(null);
 
-    if (confirmModal.kind === "room") {
-      const { actionType } = confirmModal;
-      let navigatedAway = false;
-      setActionLoading(true);
-
-      try {
+    try {
+      if (confirmModal.kind === "room") {
+        const { actionType } = confirmModal;
         if (actionType === "delete") {
           await deleteRoom(roomId);
-          navigatedAway = true;
           navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS);
           return;
         }
 
-        await updateRoom(roomId, {
-          status: actionType === "block" ? "blocked" : "active",
-        });
-        fetchRoom();
-      } catch (err: unknown) {
-        setActionError(getErrorMessage(err, `Failed to ${actionType} room`));
-      } finally {
-        // `return` inside try still runs finally, so guard explicitly
-        // instead of relying on a comment.
-        if (!navigatedAway) {
-          setActionLoading(false);
-          closeConfirmModal();
-        }
+        const newStatus = actionType === "block" ? "blocked" : "active";
+        await updateRoom(roomId, { status: newStatus });
+        await fetchRoom();
+        setConfirmModal(CLOSED_CONFIRM);
+        return;
       }
-      return;
-    }
 
-    if (confirmModal.kind === "removeUser") {
-      const { userId } = confirmModal;
-      closeConfirmModal();
-      await handleRemove(userId);
-      return;
-    }
-
-    // kind === "user"
-    const { userId, newStatus } = confirmModal;
-    setUserActionLoading(true);
-
-    try {
-      await updateWorkspaceUser(userId, { status: newStatus });
-      setUsers((prev) =>
-        prev.map((u) => (u._id === userId ? { ...u, status: newStatus } : u))
-      );
-    } catch (err: unknown) {
-      setActionError(
-        getErrorMessage(err, `Failed to ${newStatus ? "unblock" : "block"} user`)
-      );
-    } finally {
-      setUserActionLoading(false);
-      closeConfirmModal();
-    }
-  };
-
-  const handleRemove = async (userId: string) => {
-    if (!roomId) return;
-
-    setRemovingId(userId);
-    setActionError(null);
-
-    try {
-      await removeRoomUser(roomId, userId);
-
-      if (users.length === 1 && page > 1) {
-        // Last row on a non-first page: step back (this triggers a refetch).
-        setPage((p) => Math.max(1, p - 1));
-      } else {
-        // Refetch so the page refills and totalPages stays accurate.
+      if (confirmModal.kind === "removeUser") {
+        await removeRoomUser(roomId, confirmModal.userId);
+        setConfirmModal(CLOSED_CONFIRM);
         fetchParticipants();
+        fetchRoom();
       }
     } catch (err: unknown) {
-      setActionError(getErrorMessage(err, "Failed to remove user"));
+      setActionError(getErrorMessage(err, "Failed to complete action"));
     } finally {
-      setRemovingId(null);
+      setActionLoading(false);
     }
   };
 
   if (roomLoading && !room) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-6 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-5 w-36 bg-gray-200 rounded" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_348px] gap-10">
-            <div className="h-52 bg-white border border-gray-200 rounded-xl" />
-            <div className="h-52 bg-white border border-gray-200 rounded-xl" />
-          </div>
-        </div>
+      <div className="space-y-6 animate-pulse">
+        <div className="h-20 bg-gray-200 rounded-xl" />
+        <div className="h-10 bg-gray-200 rounded-lg w-1/3" />
+        <div className="h-64 bg-gray-200 rounded-xl" />
       </div>
     );
   }
 
   if (roomError && !room) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-6 py-20">
-        <div className="flex flex-col items-center justify-center text-center">
-          <p className="text-base font-medium text-gray-700">Room not found</p>
-
-          <p className="text-sm text-gray-400 mt-1 mb-6">{roomError}</p>
-
-          <button
-            type="button"
-            onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS)}
-            className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Rooms
-          </button>
-        </div>
+      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center max-w-lg mx-auto shadow-sm">
+        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+        <h2 className="text-lg font-bold text-gray-900">Room not found</h2>
+        <p className="text-sm text-gray-500 mt-1">{roomError}</p>
+        <button
+          onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS)}
+          className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Rooms
+        </button>
       </div>
     );
   }
 
   if (!room) return null;
 
-  const columns: Column<User>[] = [
-    {
-      header: "Username",
-      render: (user) => {
-        const isOnline = onlineUserIdSet.has(user._id);
-        return (
-          <div className="flex items-center gap-3">
-            <div className="relative flex-shrink-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-sm font-medium">
-                {user.username.charAt(0).toUpperCase()}
-              </div>
-              <span
-                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                  isOnline ? "bg-emerald-500" : "bg-gray-300"
-                }`}
-                title={isOnline ? "Online" : "Offline"}
-              />
-            </div>
-            <span className="text-sm font-medium text-gray-900">
-              {user.username}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      header: "Presence",
-      render: (user) => {
-        const isOnline = onlineUserIdSet.has(user._id);
-        return (
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${
-              isOnline
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-gray-50 text-gray-500 border-gray-200"
-            }`}
-          >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
-              }`}
-            />
-            {isOnline ? "Online" : "Offline"}
-          </span>
-        );
-      },
-    },
-    {
-      header: "Email",
-      render: (user) => (
-        <span className="text-sm text-gray-700">{user.email}</span>
-      ),
-    },
-    {
-      header: "User Role",
-      render: (user) => (
-        <span className="text-sm font-medium text-gray-900">{user.role}</span>
-      ),
-    },
-    {
-      header: "Status",
-      render: (user) => (
-        <span
-          className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-            user.status ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
-          }`}
-        >
-          {user.status ? "Active" : "Inactive"}
-        </span>
-      ),
-    },
-    {
-      header: "Actions",
-      render: (user) => (
-        <div className="flex items-center gap-2">
-          <ActionButton
-            icon={user.status ? ShieldBan : ShieldCheck}
-            label={user.status ? "Block User" : "Unblock User"}
-            onClick={() =>
-              setConfirmModal({
-                isOpen: true,
-                kind: "user",
-                userId: user._id,
-                username: user.username,
-                newStatus: !user.status,
-              })
-            }
-            colorClasses={
-              user.status
-                ? "bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-300"
-                : "bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-300"
-            }
-            disabled={userActionLoading}
-          />
-          {room.type === "private" && (
-            <ActionButton
-              icon={UserMinus}
-              label="Remove User"
-              onClick={() =>
-                setConfirmModal({
-                  isOpen: true,
-                  kind: "removeUser",
-                  userId: user._id,
-                  username: user.username,
-                })
-              }
-              colorClasses="bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-300"
-              disabled={removingId === user._id || actionLoading || userActionLoading}
-            />
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  const confirmCopy = getConfirmCopy(confirmModal, room.name);
-
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 py-8">
-      {/* BACK */}
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS)}
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Rooms
-        </button>
-      </div>
+    <div className="space-y-6">
+      {isRoomLounge && loungeRoomData ? (
+        <LoungeView
+          room={loungeRoomData}
+          participants={loungeParticipants}
+          onlineUsers={onlineUsers}
+          onLeaveRoom={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS)}
+        />
+      ) : (
+        <>
+          {/* ── CLEAN ROOM DETAIL HEADER ── */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs p-5 sm:p-6">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          {/* Left: Back Link, Room Icon, Name, Badges, Description */}
+          <div className="min-w-0 flex-1 space-y-3">
+            {/* Back link */}
+            <button
+              type="button"
+              onClick={() => navigate(API_ROUTES.WORKSPACE_ADMIN.NAV.ROOMS)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-indigo-600 transition-colors focus:outline-none"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Rooms</span>
+            </button>
 
-      {/* ACTION ERROR */}
-      {actionError && (
-        <div
-          role="alert"
-          className="mb-6 flex items-start justify-between gap-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          <span>{actionError}</span>
-          <button
-            type="button"
-            onClick={() => setActionError(null)}
-            className="shrink-0 font-medium hover:text-red-900"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+            {/* Title & Badges */}
+            <div className="flex items-start gap-3.5">
+              {/* Room Type Icon (matching exact type: no lock on public!) */}
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${
+                  isRoomLounge
+                    ? "bg-purple-50 text-purple-600 border-purple-100"
+                    : room.type === "public"
+                    ? "bg-indigo-50 text-indigo-600 border-indigo-100"
+                    : "bg-orange-50 text-orange-600 border-orange-100"
+                }`}
+              >
+                {isRoomLounge ? (
+                  <Sparkles className="w-5 h-5" />
+                ) : room.type === "public" ? (
+                  <Globe className="w-5 h-5" />
+                ) : (
+                  <Lock className="w-5 h-5" />
+                )}
+              </div>
 
-      {/* Room Navigation Tabs - underline style */}
-      <div className="flex items-center gap-0 border-b border-gray-200 overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab("meeting")}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "meeting" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
-        >
-          <Video className="w-4 h-4" />
-          <span>Meeting & Video</span>
-          {activeTab === "meeting" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("whiteboard")}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "whiteboard" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
-        >
-          <Layout className="w-4 h-4" />
-          <span>Collaborative Whiteboard</span>
-          {activeTab === "whiteboard" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("details")}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "details" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
-        >
-          <UserCog className="w-4 h-4" />
-          <span>Room Details & Members</span>
-          {activeTab === "details" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("documents")}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${activeTab === "documents" ? "text-violet-700" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"}`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Documents</span>
-          {activeTab === "documents" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />}
-        </button>
-      </div>
-
-      {/* meeting tab */}
-      <div className={activeTab === "meeting" ? "block" : "hidden"}>
-        <VideoCallPanel roomId={room._id} roomName={room.name} roomType={room.type} currentUsername={username ?? "Admin"} />
-      </div>
-
-      {/* whiteboard tab */}
-      <div className={activeTab === "whiteboard" ? "block h-[82vh] rounded-xl overflow-hidden border border-gray-200 shadow-lg" : "hidden"}>
-        <Whiteboard roomId={room._id} />
-      </div>
-
-      {/* documents tab */}
-      <div className={activeTab === "documents" ? "block space-y-6" : "hidden"}>
-        <RoomDocuments roomId={room._id} />
-      </div>
-
-      {/* details tab */}
-      <div className={activeTab === "details" ? "block space-y-6" : "hidden"}>
-        {/* MAIN GRID: Room Card & Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-6 items-start">
-          {/* ROOM CARD */}
-          <div className="w-full min-w-0 bg-white border border-gray-200 rounded-xl shadow-sm px-6 py-6">
-            <div className="flex items-start justify-between gap-4">
-              {/* LEFT SIDE */}
-              <div className="flex items-start gap-4 min-w-0 flex-1">
-                {/* ROOM ICON */}
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                    room.type === "public" ? "bg-indigo-50" : "bg-orange-50"
-                  }`}
-                >
-                  {room.type === "public" ? (
-                    <Globe className="w-6 h-6 text-indigo-600" />
-                  ) : (
-                    <Lock className="w-6 h-6 text-orange-600" />
-                  )}
-                </div>
-
-                {/* NAME + BADGES */}
-                <div className="min-w-0 pt-0.5">
-                  <h1 className="text-xl font-bold text-gray-900 truncate">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight truncate">
                     {room.name}
                   </h1>
 
-                  <div className="flex items-center flex-wrap gap-2 mt-2">
-                    {/* TYPE */}
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        room.type === "public"
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "bg-orange-50 text-orange-700"
-                      }`}
-                    >
-                      {room.type === "public" ? (
-                        <Globe className="w-3 h-3" />
-                      ) : (
-                        <Lock className="w-3 h-3" />
-                      )}
-                      {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
+                  {/* Default Badge */}
+                  {isDefault && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
+                      Default
                     </span>
+                  )}
 
-                    {/* STATUS */}
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        room.status === "active"
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT SIDE INFO */}
-              <div className="shrink-0 text-right pt-0.5">
-                <p className="text-xs text-gray-400 whitespace-nowrap">
-                  Created{" "}
-                  {new Date(room.createdAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-            </div>
-
-            {room.description && (
-              <p
-                className="mt-4 text-xs text-gray-600 leading-relaxed"
-                title={room.description}
-              >
-                {room.description}
-              </p>
-            )}
-          </div>
-
-          {/* ACTIONS CARD */}
-          <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm px-5 py-5">
-            <h2 className="text-xs font-semibold text-gray-700 text-center mb-4">
-              Room Actions
-            </h2>
-
-            <div
-              className={`grid gap-3 justify-items-center ${
-                room.type === "private" ? "grid-cols-2" : "grid-cols-1"
-              }`}
-            >
-              {room.type === "private" && (
-                <ActionButton
-                  icon={UserCog}
-                  label="Manage Access"
-                  onClick={() => setIsAccessModalOpen(true)}
-                  colorClasses="bg-blue-50 text-blue-600 hover:bg-blue-100 focus:ring-blue-300"
-                />
-              )}
-
-              <ActionButton
-                icon={Pencil}
-                label="Edit Room"
-                onClick={() => setIsRoomModalOpen(true)}
-                colorClasses="bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-300"
-              />
-
-              <ActionButton
-                icon={room.status === "active" ? ShieldBan : ShieldCheck}
-                label={room.status === "active" ? "Block Room" : "Unblock Room"}
-                onClick={() =>
-                  setConfirmModal({
-                    isOpen: true,
-                    kind: "room",
-                    actionType: room.status === "active" ? "block" : "unblock",
-                  })
-                }
-                colorClasses={
-                  room.status === "active"
-                    ? "bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-300"
-                    : "bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-300"
-                }
-                disabled={actionLoading}
-              />
-
-              <ActionButton
-                icon={Trash2}
-                label="Delete Room"
-                onClick={() =>
-                  setConfirmModal({
-                    isOpen: true,
-                    kind: "room",
-                    actionType: "delete",
-                  })
-                }
-                colorClasses="bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-300"
-                disabled={actionLoading}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Room Presence (Online & Offline) */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                <Wifi className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-gray-800">Room Presence</h2>
-                <p className="text-xs text-gray-400">
-                  <span className="text-emerald-600 font-medium">{onlineCount} online</span>
-                  {" • "}
-                  <span>{offlineCount} offline</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Filter buttons */}
-            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg text-xs">
-              <button
-                type="button"
-                onClick={() => setPresenceFilter("all")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                  presenceFilter === "all"
-                    ? "bg-white text-gray-900 shadow-xs"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                All ({presenceMembers.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setPresenceFilter("online")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                  presenceFilter === "online"
-                    ? "bg-white text-emerald-700 shadow-xs"
-                    : "text-gray-500 hover:text-emerald-700"
-                }`}
-              >
-                Online ({onlineCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setPresenceFilter("offline")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                  presenceFilter === "offline"
-                    ? "bg-white text-gray-800 shadow-xs"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                Offline ({offlineCount})
-              </button>
-            </div>
-          </div>
-
-          {filteredPresenceMembers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-              <WifiOff className="w-8 h-8 mb-2 text-gray-300" />
-              <p className="text-sm text-gray-500">
-                {presenceFilter === "online"
-                  ? "No users currently online in this room"
-                  : presenceFilter === "offline"
-                  ? "All participants are online"
-                  : "No presence records"}
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-              {filteredPresenceMembers.map((u) => (
-                <li key={u.id} className="flex items-center justify-between gap-3 px-6 py-3 hover:bg-gray-50/60 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative flex-shrink-0">
-                      <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold ${
-                          u.isOnline ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {u.username.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span
-                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                          u.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-300"
-                        }`}
-                        title={u.isOnline ? "Online" : "Offline"}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{u.username}</p>
-                      {u.email && <p className="text-xs text-gray-400 truncate">{u.email}</p>}
-                    </div>
-                  </div>
-
+                  {/* Type Badge */}
                   <span
-                    className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${
-                      u.isOnline
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-gray-50 text-gray-500 border-gray-200"
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      isRoomLounge
+                        ? "bg-purple-50 text-purple-700 border border-purple-200"
+                        : room.type === "public"
+                        ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        : "bg-orange-50 text-orange-700 border border-orange-200"
                     }`}
                   >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        u.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
-                      }`}
-                    />
-                    {u.isOnline ? "Online" : "Offline"}
+                    {isRoomLounge ? (
+                      <Sparkles className="w-3 h-3 text-purple-500" />
+                    ) : room.type === "public" ? (
+                      <Globe className="w-3 h-3 text-indigo-500" />
+                    ) : (
+                      <Lock className="w-3 h-3 text-orange-500" />
+                    )}
+                    {isRoomLounge
+                      ? "Lounge"
+                      : room.type.charAt(0).toUpperCase() + room.type.slice(1)}
                   </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
 
-        {/* PARTICIPANTS TABLE */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">Participants</h2>
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Search username or email..."
-              aria-label="Search participants"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+                  {/* Status Badge */}
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      room.status === "active"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-rose-50 text-rose-700 border border-rose-200"
+                    }`}
+                  >
+                    {room.status === "active" ? "Active" : "Disabled"}
+                  </span>
+                </div>
+
+                {/* Created Date */}
+                <p className="text-xs text-gray-400 mt-1">
+                  Created {formatFullDate(room.createdAt)}
+                </p>
+
+                {/* Description */}
+                {room.description && (
+                  <p
+                    className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed max-w-3xl"
+                    title={room.description}
+                  >
+                    {room.description}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
-          <Table
-            columns={columns}
-            data={users}
-            keyExtractor={(u) => u._id}
-            loading={participantsLoading}
-            error={participantsError}
-            emptyMessage="No users found."
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
+          {/* Right: Room Actions "..." menu */}
+          <div className="relative inline-block text-left shrink-0 self-start" data-header-menu>
+            <button
+              type="button"
+              onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Room actions"
+              aria-haspopup="true"
+              aria-expanded={isHeaderMenuOpen}
+            >
+              <span>Room Actions</span>
+              <MoreVertical className="w-4 h-4 text-gray-500" />
+            </button>
+
+            {isHeaderMenuOpen && (
+              <div
+                className="absolute right-0 mt-1.5 w-48 rounded-xl bg-white py-1.5 shadow-xl ring-1 ring-black/5 z-30 divide-y divide-gray-100 animate-in fade-in zoom-in-95 duration-100"
+                role="menu"
+              >
+                <div className="py-1">
+                  {/* Edit */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      setIsRoomModalOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                    role="menuitem"
+                  >
+                    <Edit3 className="w-4 h-4 text-gray-400" />
+                    <span>Edit Room</span>
+                  </button>
+
+                  {/* Manage Access (for private rooms) */}
+                  {room.type === "private" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        setIsAccessModalOpen(true);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                      role="menuitem"
+                    >
+                      <Users className="w-4 h-4 text-gray-400" />
+                      <span>Manage Access</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="py-1">
+                  {/* Disable / Enable */}
+                  <button
+                    type="button"
+                    disabled={isDefault}
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      if (isDefault) return;
+                      setActionError(null);
+                      setConfirmModal({
+                        isOpen: true,
+                        kind: "room",
+                        actionType: room.status === "active" ? "block" : "unblock",
+                      });
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2.5 transition-colors ${
+                      isDefault
+                        ? "text-gray-300 cursor-not-allowed"
+                        : room.status === "active"
+                        ? "text-amber-700 hover:bg-amber-50"
+                        : "text-emerald-700 hover:bg-emerald-50"
+                    }`}
+                    role="menuitem"
+                    title={isDefault ? "System default rooms cannot be disabled" : undefined}
+                  >
+                    {room.status === "active" ? (
+                      <ShieldBan className="w-4 h-4 text-amber-600" />
+                    ) : (
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    )}
+                    <span>{room.status === "active" ? "Disable Room" : "Enable Room"}</span>
+                  </button>
+
+                  {/* Delete Room */}
+                  <button
+                    type="button"
+                    disabled={isDefault}
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      if (isDefault) return;
+                      setActionError(null);
+                      setConfirmModal({
+                        isOpen: true,
+                        kind: "room",
+                        actionType: "delete",
+                      });
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2.5 transition-colors ${
+                      isDefault
+                        ? "text-gray-300 cursor-not-allowed"
+                        : "text-rose-600 hover:bg-rose-50"
+                    }`}
+                    role="menuitem"
+                    title={isDefault ? "System default rooms cannot be deleted" : undefined}
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-500" />
+                    <span>Delete Room</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ROOM MODAL */}
+      {/* ── CLEAN TABS NAVIGATION (Overview, Meeting, Whiteboard, Documents) ── */}
+      <div className="flex items-center gap-0 border-b border-gray-200 overflow-x-auto bg-transparent">
+        <button
+          type="button"
+          onClick={() => handleTabChange("overview")}
+          className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-colors duration-150 whitespace-nowrap focus:outline-none ${
+            activeTab === "overview"
+              ? "text-indigo-600"
+              : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/50"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Overview</span>
+          {activeTab === "overview" && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange("meeting")}
+          className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-colors duration-150 whitespace-nowrap focus:outline-none ${
+            activeTab === "meeting"
+              ? "text-indigo-600"
+              : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/50"
+          }`}
+        >
+          <Video className="w-4 h-4" />
+          <span>Meeting</span>
+          {activeTab === "meeting" && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange("whiteboard")}
+          className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-colors duration-150 whitespace-nowrap focus:outline-none ${
+            activeTab === "whiteboard"
+              ? "text-indigo-600"
+              : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/50"
+          }`}
+        >
+          <Layout className="w-4 h-4" />
+          <span>Whiteboard</span>
+          {activeTab === "whiteboard" && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange("documents")}
+          className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-colors duration-150 whitespace-nowrap focus:outline-none ${
+            activeTab === "documents"
+              ? "text-indigo-600"
+              : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/50"
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Documents</span>
+          {activeTab === "documents" && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+      </div>
+
+      {/* ── TAB CONTENT ── */}
+
+      {/* 1. OVERVIEW TAB */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          {/* Stat Chips (Members, Online now, Total meetings, Total time spent) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Members */}
+            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center gap-3.5">
+              <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-600">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 font-medium block">Members</span>
+                <span className="text-lg sm:text-xl font-bold text-gray-900 font-mono">
+                  {room.memberCount ?? totalParticipants}
+                </span>
+              </div>
+            </div>
+
+            {/* Online Now */}
+            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center gap-3.5">
+              <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <span className="w-5 h-5 rounded-full bg-emerald-500 animate-pulse block" />
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 font-medium block">Online Now</span>
+                <span className="text-lg sm:text-xl font-bold text-emerald-700 font-mono">
+                  {liveOnlineCount}
+                </span>
+              </div>
+            </div>
+
+            {/* Total Meetings */}
+            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center gap-3.5">
+              <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
+                <Video className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 font-medium block">Total Meetings</span>
+                <span className="text-lg sm:text-xl font-bold text-blue-900 font-mono">
+                  {dashboardUsage?.activityCount ?? meetingsOverviewCount}
+                </span>
+              </div>
+            </div>
+
+            {/* Total Time Spent */}
+            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center gap-3.5">
+              <div className="p-2.5 rounded-lg bg-purple-50 text-purple-600">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 font-medium block">Total Time Spent</span>
+                <span className="text-lg sm:text-xl font-bold text-purple-900 font-mono">
+                  {formatTimeSpent(dashboardUsage?.timeSpentMinutes ?? 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ONE Unified Members Table combining presence and membership */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+            {/* Table Header Toolbar */}
+            <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  Room Members & Presence
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Unified member directory showing live online presence and access permissions
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Search */}
+                <div className="relative w-full sm:w-56">
+                  <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search members..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Add Members Button (especially for private rooms) */}
+                {room.type === "private" && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAccessModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors whitespace-nowrap"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Members</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Table or States */}
+            {participantsError ? (
+              <div className="py-12 text-center">
+                <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
+                <p className="text-xs text-gray-600">{participantsError}</p>
+                <button
+                  type="button"
+                  onClick={() => fetchParticipants()}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs text-indigo-600 font-semibold"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse" role="table">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50/75 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="py-3.5 pl-6 pr-3">
+                        Member
+                      </th>
+                      <th scope="col" className="px-3 py-3.5">
+                        Email
+                      </th>
+                      <th scope="col" className="px-3 py-3.5">
+                        Role
+                      </th>
+                      <th scope="col" className="px-3 py-3.5">
+                        Presence
+                      </th>
+                      <th scope="col" className="px-3 py-3.5">
+                        Joined
+                      </th>
+                      <th scope="col" className="py-3.5 pl-3 pr-6 text-right">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {participantsLoading ? (
+                      Array.from({ length: 4 }).map((_, i) => (
+                        <tr key={`p-skeleton-${i}`} className="animate-pulse">
+                          <td className="py-3.5 pl-6 pr-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-gray-200" />
+                              <div className="w-24 h-4 bg-gray-200 rounded" />
+                            </div>
+                          </td>
+                          <td className="px-3 py-3.5">
+                            <div className="w-32 h-4 bg-gray-200 rounded" />
+                          </td>
+                          <td className="px-3 py-3.5">
+                            <div className="w-16 h-5 bg-gray-200 rounded-full" />
+                          </td>
+                          <td className="px-3 py-3.5">
+                            <div className="w-16 h-5 bg-gray-200 rounded-full" />
+                          </td>
+                          <td className="px-3 py-3.5">
+                            <div className="w-20 h-4 bg-gray-200 rounded" />
+                          </td>
+                          <td className="py-3.5 pl-3 pr-6 text-right">
+                            <div className="w-6 h-6 bg-gray-200 rounded ml-auto" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : unifiedMembers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-gray-500">
+                          <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm font-semibold text-gray-900">No participants found</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {searchQuery
+                              ? "No members match your search criteria."
+                              : "No members have been added to this room yet."}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      unifiedMembers.map((user) => {
+                        const isOwner = user.role?.toLowerCase() === "owner";
+                        return (
+                          <tr key={user._id} className="hover:bg-gray-50/70 transition-colors">
+                            {/* Member Avatar & Username */}
+                            <td className="py-3.5 pl-6 pr-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase shadow-xs">
+                                  {user.username ? user.username.substring(0, 2) : "U"}
+                                </div>
+                                <span className="text-sm font-semibold text-gray-900">
+                                  {user.username}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Email */}
+                            <td className="px-3 py-3.5 text-xs text-gray-600 font-medium">
+                              {user.email || "–"}
+                            </td>
+
+                            {/* Role */}
+                            <td className="px-3 py-3.5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                  isOwner
+                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                    : "bg-gray-100 text-gray-700 border border-gray-200"
+                                }`}
+                              >
+                                {isOwner ? "Room Owner" : user.role || "Member"}
+                              </span>
+                            </td>
+
+                            {/* Live Presence Indicator */}
+                            <td className="px-3 py-3.5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                  user.isOnline
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-gray-50 text-gray-500 border border-gray-200"
+                                }`}
+                              >
+                                <span
+                                  className={`w-2 h-2 rounded-full ${
+                                    user.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+                                  }`}
+                                />
+                                {user.isOnline ? "Online" : "Offline"}
+                              </span>
+                            </td>
+
+                            {/* Joined Date */}
+                            <td className="px-3 py-3.5 text-xs text-gray-500 whitespace-nowrap">
+                              {formatFullDate(user.createdAt || user.joinedAt)}
+                            </td>
+
+                            {/* Actions (Remove from Room) */}
+                            <td className="py-3.5 pl-3 pr-6 text-right whitespace-nowrap">
+                              {!isOwner && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmModal({
+                                      isOpen: true,
+                                      kind: "removeUser",
+                                      userId: user._id,
+                                      username: user.username,
+                                    })
+                                  }
+                                  className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                  title={`Remove ${user.username} from room`}
+                                  aria-label={`Remove ${user.username} from room`}
+                                >
+                                  <UserMinus className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Single Footer & Pagination */}
+            {!participantsError && totalPages > 1 && (
+              <div className="border-t border-gray-200 px-6 py-3 flex items-center justify-between bg-white text-xs text-gray-500">
+                <span>
+                  Showing {Math.min((page - 1) * limit + 1, totalParticipants)} to{" "}
+                  {Math.min(page * limit, totalParticipants)} of {totalParticipants} members
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1 || participantsLoading}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages || participantsLoading}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                  >
+                    Next
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2. MEETING TAB (Constrained dark call UI fitting viewport with no overflow) */}
+      {activeTab === "meeting" && (
+        <div className="w-full max-h-[calc(100vh-230px)] min-h-[520px] rounded-2xl overflow-hidden flex flex-col bg-[#090C15] border border-slate-800 shadow-xl">
+          <VideoCallPanel
+            roomId={room._id}
+            roomName={room.name}
+            roomType={room.type === "private" ? "private" : "public"}
+            currentUsername={username ?? "Admin"}
+          />
+        </div>
+      )}
+
+      {/* 3. WHITEBOARD TAB (Contained canvas inside tab area, no overflow past bottom) */}
+      {activeTab === "whiteboard" && (
+        <div className="w-full h-[calc(100vh-230px)] min-h-[580px] rounded-2xl overflow-hidden border border-gray-200 shadow-lg">
+          <Whiteboard roomId={room._id} />
+        </div>
+      )}
+
+      {/* 4. DOCUMENTS TAB */}
+      {activeTab === "documents" && (
+        <div className="w-full">
+          <RoomDocuments roomId={room._id} />
+        </div>
+      )}
+      </>
+      )}
+
+      {/* ── SHARED MODALS ── */}
       <RoomModal
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
-        onSuccess={() => {
-          setIsRoomModalOpen(false);
-          fetchRoom();
-        }}
-        room={room}
+        onSuccess={() => fetchRoom()}
+        room={room as any}
       />
 
-      {/* ACCESS MODAL */}
       <RoomAccessModal
         isOpen={isAccessModalOpen}
         onClose={() => setIsAccessModalOpen(false)}
         onSuccess={() => {
-          setIsAccessModalOpen(false);
           fetchRoom();
-          fetchParticipants(); // access changes can change who is listed
+          fetchParticipants();
         }}
         roomId={room._id}
         roomName={room.name}
         initialAllowedUsers={room.allowedUsers || []}
       />
 
-      {/* CONFIRM MODAL (shared for room-level and per-user actions) */}
+      {/* Confirmation Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        title={confirmCopy.title}
-        message={confirmCopy.message}
-        confirmLabel={confirmCopy.label}
-        onConfirm={handleActionConfirm}
-        onCancel={closeConfirmModal}
-        isLoading={
+        title={
           confirmModal.isOpen && confirmModal.kind === "room"
-            ? actionLoading
-            : userActionLoading
+            ? confirmModal.actionType === "delete"
+              ? `Delete "${room.name}"?`
+              : confirmModal.actionType === "block"
+              ? `Disable "${room.name}"?`
+              : `Enable "${room.name}"?`
+            : confirmModal.isOpen && confirmModal.kind === "removeUser"
+            ? `Remove "${confirmModal.username}"?`
+            : "Confirm Action"
         }
-        isDanger={confirmCopy.isDanger}
+        message={
+          confirmModal.isOpen && confirmModal.kind === "room"
+            ? confirmModal.actionType === "delete"
+              ? `Are you sure you want to permanently delete "${room.name}"? Active members will be disconnected, and all documents, whiteboard notes, and meeting history in this room will be permanently removed. This action cannot be undone.`
+              : confirmModal.actionType === "block"
+              ? `"${room.name}" will be disabled. Active members will be disconnected and unable to join or access meetings, documents, and whiteboard notes until the room is re-enabled. Existing files and notes will remain safely stored.`
+              : `"${room.name}" will be reactivated. Members will immediately regain access to meetings, documents, and whiteboard notes.`
+            : confirmModal.isOpen && confirmModal.kind === "removeUser"
+            ? `Are you sure you want to remove "${confirmModal.username}" from "${room.name}"? They will lose access to all room meetings, documents, and whiteboard notes.`
+            : ""
+        }
+        confirmLabel={
+          confirmModal.isOpen && confirmModal.kind === "room"
+            ? confirmModal.actionType === "delete"
+              ? "Delete Room"
+              : confirmModal.actionType === "block"
+              ? "Disable Room"
+              : "Enable Room"
+            : confirmModal.isOpen && confirmModal.kind === "removeUser"
+            ? "Remove Member"
+            : "Confirm"
+        }
+        onConfirm={handleActionConfirm}
+        onCancel={() => {
+          setActionError(null);
+          setConfirmModal(CLOSED_CONFIRM);
+        }}
+        isLoading={actionLoading}
+        isDanger={
+          confirmModal.isOpen &&
+          (confirmModal.kind === "removeUser" ||
+            (confirmModal.kind === "room" && confirmModal.actionType !== "unblock"))
+        }
+        error={actionError}
       />
     </div>
   );
-};
-
-export default AdminRoomDetail;
+}

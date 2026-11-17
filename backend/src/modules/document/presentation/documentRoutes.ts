@@ -45,6 +45,7 @@ const controller = new DocumentController(
 router.post(API_ROUTES.DOCUMENT.UPLOAD_DOCUMENT, authMiddleware, upload.single("document"), controller.uploadDocument.bind(controller));
 router.get(API_ROUTES.DOCUMENT.GET_ROOM_DOCUMENTS, authMiddleware, controller.getRoomDocuments.bind(controller));
 router.get(API_ROUTES.DOCUMENT.GET_DOCUMENT_FILE, authMiddleware, controller.getDocumentFile.bind(controller));
+router.patch("/:roomId/documents/:documentId/rename", authMiddleware, controller.renameDocument.bind(controller));
 router.delete(API_ROUTES.DOCUMENT.DELETE_DOCUMENT, authMiddleware, controller.deleteDocument.bind(controller));
 
 export default router;

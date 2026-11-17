@@ -18,6 +18,8 @@ import { ActivityLogRepository } from "../../activityLog/infrastructure/activity
 import { WorkspaceUserAnalyticsRepository } from "../infrastructure/workspaceUserAnalyticsRepository.ts";
 import { GetWorkspaceUserAnalyticsUseCase } from "../application/usecase/getWorkspaceUserAnalyticsUseCase.ts";
 import { GetUserActivityHistoryUseCase } from "../application/usecase/getUserActivityHistoryUseCase.ts";
+import { GetWorkspaceDashboardUseCase } from "../application/usecase/getWorkspaceDashboardUseCase.ts";
+import { GetWorkspaceMembersActivityUseCase } from "../application/usecase/getWorkspaceMembersActivityUseCase.ts";
 
 const router = express.Router();
 const activityLogRepository = new ActivityLogRepository();
@@ -36,6 +38,8 @@ const updateWorkspaceMemberUseCase = new UpdateWorkspaceMemberUseCase(userReposi
 const removeWorkspaceMemberUseCase = new RemoveWorkspaceMemberUseCase(userRepository);
 const getWorkspaceUserAnalyticsUseCase = new GetWorkspaceUserAnalyticsUseCase(workspaceUserAnalyticsRepository);
 const getUserActivityHistoryUseCase = new GetUserActivityHistoryUseCase(workspaceUserAnalyticsRepository);
+const getWorkspaceDashboardUseCase = new GetWorkspaceDashboardUseCase(workspaceUserAnalyticsRepository);
+const getWorkspaceMembersActivityUseCase = new GetWorkspaceMembersActivityUseCase(workspaceUserAnalyticsRepository);
 
 const controller = new WorkspaceAdminController(
   getAllUserUseCase,
@@ -46,7 +50,9 @@ const controller = new WorkspaceAdminController(
   updateWorkspaceMemberUseCase,
   removeWorkspaceMemberUseCase,
   getWorkspaceUserAnalyticsUseCase,
-  getUserActivityHistoryUseCase
+  getUserActivityHistoryUseCase,
+  getWorkspaceDashboardUseCase,
+  getWorkspaceMembersActivityUseCase
 );
 
 router.get(
@@ -103,6 +109,20 @@ router.get(
   authMiddleware,
   roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
   controller.getUserActivityHistory.bind(controller),
+);
+
+router.get(
+  API_ROUTES.WORKSPACE_ADMIN.DASHBOARD,
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  controller.getDashboard.bind(controller),
+);
+
+router.get(
+  API_ROUTES.WORKSPACE_ADMIN.DASHBOARD_MEMBERS,
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  controller.getMembersActivity.bind(controller),
 );
 
 export default router;

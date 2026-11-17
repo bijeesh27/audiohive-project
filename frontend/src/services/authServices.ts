@@ -39,10 +39,30 @@ export const getUsers = (page: number = 1, limit: number = 10, search: string = 
   return axiosInstance.get(url).then((res) => res.data);
 };
 
-export const worspaceAdminGetUsers = (page: number = 1, limit: number = 10, search: string = "") => {
+export const worspaceAdminGetUsers = (
+  page: number = 1,
+  limit: number = 10,
+  search: string = "",
+  role?: string,
+  status?: string,
+  sortField?: string,
+  sortOrder?: "asc" | "desc",
+) => {
   let url = `${API_ENDPOINTS.WORKSPACE_ADMIN.GET_USERS}?page=${page}&limit=${limit}`;
   if (search) {
     url += `&search=${encodeURIComponent(search)}`;
+  }
+  if (role && role !== "all") {
+    url += `&role=${encodeURIComponent(role)}`;
+  }
+  if (status && status !== "all") {
+    url += `&status=${encodeURIComponent(status)}`;
+  }
+  if (sortField) {
+    url += `&sortField=${encodeURIComponent(sortField)}`;
+  }
+  if (sortOrder) {
+    url += `&sortOrder=${encodeURIComponent(sortOrder)}`;
   }
   return axiosInstance.get(url).then((res) => res.data);
 };

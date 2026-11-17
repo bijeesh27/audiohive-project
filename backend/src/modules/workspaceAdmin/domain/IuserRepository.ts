@@ -1,8 +1,13 @@
 import { IuserDTO } from "../../../shared/User.utils/userDTO.ts";
-
+import { GetAllUsersQueryDTO, GetAllUsersResponseDTO } from "../application/dtos/workspaceAdminDTO.ts";
 
 export interface IuserRepository {
-  getAllUsers(workspaceId: string, page: number, limit: number, searchQuery?: string): Promise<{ users: Array<IuserDTO>; total: number } | null>;
+  getAllUsers(
+    paramsOrWorkspaceId: GetAllUsersQueryDTO | string,
+    page?: number,
+    limit?: number,
+    searchQuery?: string
+  ): Promise<GetAllUsersResponseDTO | null>;
   getDashboardStats(workspaceId: string): Promise<import("../application/dtos/workspaceAdminDTO.ts").WorkspaceDashboardStatsDTO>;
   getActiveUsers(workspaceId: string): Promise<number>;
   updateUser(userId: string, data: Partial<IuserDTO>): Promise<IuserDTO>;

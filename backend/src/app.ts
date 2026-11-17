@@ -55,8 +55,11 @@ export function connectApp() {
   app.use(BASE_API_ROUTES.WORKSPACE_ADMIN, workspaceAdminRouter);
   app.use(BASE_API_ROUTES.SUBSCRIPTION, subscriptionRouter);
   app.use(BASE_API_ROUTES.WORKSPACE, workspaceRouter);
+  app.use("/api/workspaces", workspaceRouter);
+  app.use("/workspaces", workspaceRouter);
   app.use(BASE_API_ROUTES.ORGANIZATION, organizationRouter);
   app.use(BASE_API_ROUTES.ROOM, roomRouter);
+  app.use("/api/rooms", roomRouter);
   app.use(BASE_API_ROUTES.ANNOUNCEMENT, announcementRouter);
   app.use("/api/announcements", announcementRouter);
   app.use(BASE_API_ROUTES.ROOMS_DOCUMENTS, documentRouter);
