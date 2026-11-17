@@ -1,123 +1,177 @@
-import { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { getRoom, getRoomParticipants } from "../../services/roomServices";
-import { Globe, Lock, ArrowLeft, DoorOpen, ShieldOff, Users, Wifi, WifiOff, Video, Layout, FileText } from "lucide-react";
+import React, { useEffect, useState, useMemo, useRef, lazy, Suspense } from "react";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import {
+  DoorOpen,
+  ShieldOff,
+  ArrowLeft,
+  AlertCircle,
+  WifiOff,
+  RotateCcw,
+  Loader2,
+} from "lucide-react";
 import { API_ROUTES } from "../../constants/Api_Routes";
 import { HttpStatus } from "../../constants/httpStatus";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
-import { RoomDocuments } from "../workspaceAdmin/RoomDocuments";
-import { VideoCallPanel } from "../../components/room/VideoCallPanel";
-import { Whiteboard } from "../../components/whiteboard/Whiteboard";
+import { getRoom, getRoomParticipants, updateRoom } from "../../services/roomServices";
+import type { RoomDetailData, ParticipantItem } from "../../types/rooms";
+import { RoomHeader } from "../../components/room/workspace/RoomHeader";
+import { RoomTabs } from "../../components/room/workspace/RoomTabs";
+import type { RoomTabKey } from "../../components/room/workspace/RoomTabs";
+import { CardSkeleton, Skeleton } from "../../components/common/Skeleton";
+import { LoungeView } from "../../components/room/lounge/LoungeView";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
-interface Room {
-  _id: string;
-  name: string;
-  description: string;
-  type: "public" | "private";
-  status: "active" | "blocked";
-  createdAt: string;
-}
+// Lazy-load heavier tab components so sockets & media resources are cleaned up when unmounted
+const VoiceAndChatSection = lazy(() =>
+  import("../../components/room/workspace/VoiceAndChatSection").then((m) => ({ default: m.VoiceAndChatSection }))
+);
+const VideoCallPanel = lazy(() =>
+  import("../../components/room/VideoCallPanel").then((m) => ({ default: m.VideoCallPanel }))
+);
+const WhiteboardCanvas = lazy(() =>
+  import("../../components/room/workspace/WhiteboardCanvas").then((m) => ({ default: m.WhiteboardCanvas }))
+);
+const DocumentList = lazy(() =>
+  import("../../components/room/workspace/DocumentList").then((m) => ({ default: m.DocumentList }))
+);
+const ParticipantList = lazy(() =>
+  import("../../components/room/workspace/ParticipantList").then((m) => ({ default: m.ParticipantList }))
+);
 
-interface Participant {
-  _id: string;
-  username: string;
-  email: string;
-}
-
-const RoomDetail = () => {
+const RoomDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { socket } = useSocket();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { socket, isConnected } = useSocket();
   const { username } = useAuth();
-  const [room, setRoom] = useState<Room | null>(null);
+
+  // Tab State synced with URL query (?tab=voice|video|whiteboard|documents|participants)
+  const tabParam = searchParams.get("tab") as RoomTabKey | null;
+  const activeTab: RoomTabKey =
+    tabParam && ["voice", "video", "whiteboard", "documents", "participants"].includes(tabParam)
+      ? tabParam
+      : "voice";
+
+  const handleTabChange = (newTab: RoomTabKey) => {
+    setSearchParams({ tab: newTab }, { replace: true });
+  };
+
+  // Room Core State
+  const [room, setRoom] = useState<RoomDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [participantsLoading, setParticipantsLoading] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState<{ userId: string; username: string }[]>([]);
-  const [activeTab, setActiveTab] = useState<"meeting" | "whiteboard" | "documents" | "participants">("meeting");
-  const [presenceFilter, setPresenceFilter] = useState<"all" | "online" | "offline">("all");
 
-  const onlineUserIdSet = useMemo(() => new Set(onlineUsers.map((u) => u.userId)), [onlineUsers]);
+  // Leave Confirmation State (for Browser Back Button & Leave Actions)
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
+  const isLeavingConfirmedRef = useRef(false);
 
-  const presenceMembers = useMemo(() => {
-    const map = new Map<string, { id: string; username: string; email?: string; isOnline: boolean }>();
-
-    participants.forEach((p) => {
-      map.set(p._id, {
-        id: p._id,
-        username: p.username,
-        email: p.email,
-        isOnline: onlineUserIdSet.has(p._id),
-      });
-    });
-
-    onlineUsers.forEach((u) => {
-      if (!map.has(u.userId)) {
-        map.set(u.userId, {
-          id: u.userId,
-          username: u.username,
-          isOnline: true,
-        });
-      }
-    });
-
-    return Array.from(map.values());
-  }, [participants, onlineUserIdSet, onlineUsers]);
-
-  const onlineCount = useMemo(() => presenceMembers.filter((m) => m.isOnline).length, [presenceMembers]);
-  const offlineCount = useMemo(() => presenceMembers.filter((m) => !m.isOnline).length, [presenceMembers]);
-
-  const filteredPresenceMembers = useMemo(() => {
-    if (presenceFilter === "online") return presenceMembers.filter((m) => m.isOnline);
-    if (presenceFilter === "offline") return presenceMembers.filter((m) => !m.isOnline);
-    return presenceMembers;
-  }, [presenceMembers, presenceFilter]);
-
+  // Trap browser back button (popstate) while inside the room
   useEffect(() => {
+    if (loading || !room || error || accessDenied) return;
+
+    // Buffer current room state in history so popping it triggers popstate without unmounting
+    window.history.pushState({ inRoom: true }, "", window.location.href);
+
+    const handlePopState = () => {
+      if (isLeavingConfirmedRef.current) return;
+      // Re-push buffer so React Router does not navigate away
+      window.history.pushState({ inRoom: true }, "", window.location.href);
+      setShowLeaveConfirmModal(true);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [loading, Boolean(room), Boolean(error), accessDenied]);
+
+  const handleConfirmLeave = () => {
+    isLeavingConfirmedRef.current = true;
+    setShowLeaveConfirmModal(false);
+    navigate(API_ROUTES.MEMBER.NAV.ROOMS);
+  };
+
+  const handleCancelLeave = () => {
+    setShowLeaveConfirmModal(false);
+  };
+
+  // Participants & Shared Presence State
+  const [participants, setParticipants] = useState<ParticipantItem[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantsError, setParticipantsError] = useState<string | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<{ userId: string; username: string }[]>([]);
+
+  // Document Count for Tab Badge
+  const [documentCount, setDocumentCount] = useState<number | undefined>(undefined);
+
+  // Settings Modal State
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsName, setSettingsName] = useState("");
+  const [settingsDesc, setSettingsDesc] = useState("");
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // 1. Fetch Room Data
+  const loadRoom = () => {
     if (!id) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
     setAccessDenied(false);
+
     getRoom(id)
       .then((res) => {
         const data = res.data.data || res.data;
         setRoom(data);
+        setSettingsName(data.name || "");
+        setSettingsDesc(data.description || "");
       })
       .catch((err) => {
         const status = err?.response?.status;
-        const msg = err?.response?.data?.message || "Failed to load room";
+        const msg = err?.response?.data?.message || "Failed to load room workspace";
         if (status === HttpStatus.FORBIDDEN) {
           setAccessDenied(true);
         }
         setError(msg);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  };
 
   useEffect(() => {
+    loadRoom();
+  }, [id]);
+
+  // 2. Fetch Room Participants
+  const loadParticipants = () => {
     if (!id) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setParticipantsLoading(true);
-    getRoomParticipants(id)
+    setParticipantsError(null);
+
+    getRoomParticipants(id, { page: 1, limit: 100 })
       .then((res) => {
-        const data = res.data.data;
-        setParticipants(data?.participants || data?.users || []);
+        const data = res.data?.data;
+        const list = data?.participants || data?.users || [];
+        setParticipants(list);
       })
       .catch(() => {
+        setParticipantsError("Failed to load participants");
       })
       .finally(() => setParticipantsLoading(false));
+  };
+
+  useEffect(() => {
+    loadParticipants();
   }, [id]);
 
- 
+  // 3. Single Shared Realtime Presence Store
   useEffect(() => {
-    if (!id) return;
+    if (!id || !socket) return;
 
     const handlePresence = (users: { userId: string; username: string }[]) => {
-      setOnlineUsers(users);
+      if (Array.isArray(users)) {
+        setOnlineUsers(users);
+      }
     };
 
     socket.on("room:presence-update", handlePresence);
@@ -140,395 +194,342 @@ const RoomDetail = () => {
     };
   }, [id, socket]);
 
+  const onlineUserIdSet = useMemo(() => new Set(onlineUsers.map((u) => u.userId)), [onlineUsers]);
+
+  // Enriched Room data with real-time online count
+  const enrichedRoom: RoomDetailData | null = useMemo(() => {
+    if (!room) return null;
+    return {
+      ...room,
+      onlineCount: onlineUsers.length,
+    };
+  }, [room, onlineUsers]);
+
+  // Room Settings update handler
+  const handleSaveSettings = async () => {
+    if (!room || !settingsName.trim()) return;
+    try {
+      setIsSavingSettings(true);
+      await updateRoom(room._id, {
+        name: settingsName.trim(),
+        description: settingsDesc.trim(),
+      });
+      setRoom((prev) => (prev ? { ...prev, name: settingsName.trim(), description: settingsDesc.trim() } : null));
+      setShowSettingsModal(false);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Failed to update room settings");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  // Loading State Skeleton
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-48"></div>
-        <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-          <div className="h-6 bg-gray-200 rounded w-64 mb-4"></div>
-          <div className="h-4 bg-gray-100 rounded w-full mb-2"></div>
-          <div className="h-4 bg-gray-100 rounded w-3/4"></div>
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-28 rounded-md" />
+        <CardSkeleton />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <div className="h-[460px] bg-white rounded-2xl border border-gray-200 p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
         </div>
       </div>
     );
   }
 
-  if (error || !room) {
-    if (accessDenied) {
-      return (
-        <div className="flex flex-col items-center justify-center py-24">
-          <div className="bg-red-50 rounded-full p-5 mb-5">
-            <ShieldOff className="w-10 h-10 text-red-400" />
-          </div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Access Restricted</h2>
-          <p className="text-sm text-gray-500 text-center max-w-sm mb-1">
-            This is a <span className="font-medium text-orange-600">private room</span>. You have not been granted access yet.
-          </p>
-          <p className="text-sm text-gray-400 text-center max-w-sm mb-8">
-            Contact your Workspace Admin to request access.
-          </p>
-          <Link
-            to={API_ROUTES.MEMBER.NAV.ROOMS}
-            className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:underline"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Rooms
-          </Link>
-        </div>
-      );
-    }
-
+  // 403 Access Denied State
+  if (accessDenied) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-gray-400">
-        <DoorOpen className="w-12 h-12 mb-3" />
-        <p className="text-base font-medium text-gray-600">Room not found</p>
-        <p className="text-sm text-gray-400 mt-1 mb-6">{error}</p>
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 shadow-xs">
+          <ShieldOff className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight mb-1">Access Restricted</h2>
+        <p className="text-xs sm:text-sm text-gray-500 max-w-sm mb-2 leading-relaxed">
+          This is a <strong className="text-purple-600 font-semibold">private room</strong>. You don't have access to this room yet.
+        </p>
+        <p className="text-xs text-gray-400 max-w-sm mb-6">
+          Please ask a Workspace Admin or the room owner to grant you access.
+        </p>
         <Link
           to={API_ROUTES.MEMBER.NAV.ROOMS}
-          className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Rooms
+          <span>Back to Rooms</span>
         </Link>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate(API_ROUTES.MEMBER.NAV.ROOMS)}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Rooms
-        </button>
-      </div>
-
-      {/* Room Header Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div
-              className={`p-3 rounded-xl ring-1 ${
-                room.type === "public"
-                  ? "bg-indigo-50 ring-indigo-100"
-                  : "bg-orange-50 ring-orange-100"
-              }`}
-            >
-              {room.type === "public" ? (
-                <Globe className="w-7 h-7 text-indigo-600" />
-              ) : (
-                <Lock className="w-7 h-7 text-orange-600" />
-              )}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{room.name}</h1>
-              <div className="flex items-center gap-3 mt-1">
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    room.type === "public"
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "bg-orange-50 text-orange-700"
-                  }`}
-                >
-                  {room.type === "public" ? (
-                    <Globe className="w-3 h-3" />
-                  ) : (
-                    <Lock className="w-3 h-3" />
-                  )}
-                  {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
-                </span>
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    room.status === "active"
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-600"
-                  }`}
-                >
-                  {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-xs text-gray-400">
-            Created{" "}
-            {new Date(room.createdAt).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </div>
+  // 404 Room Not Found or General Error
+  if (error || !enrichedRoom) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div className="w-16 h-16 rounded-3xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
+          <DoorOpen className="w-8 h-8" />
         </div>
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight mb-1">Room not found</h2>
+        <p className="text-xs sm:text-sm text-gray-500 max-w-sm mb-6 leading-relaxed">
+          {error || "The requested room does not exist or has been removed from this workspace."}
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={loadRoom}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Retry</span>
+          </button>
+          <Link
+            to={API_ROUTES.MEMBER.NAV.ROOMS}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Rooms</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-        {room.description && (
-          <p className="mt-4 text-sm text-gray-500 leading-relaxed max-w-2xl">
-            {room.description}
-          </p>
+  const isRoomAdminOrOwner = enrichedRoom.myRole === "owner" || enrichedRoom.myRole === "admin";
+  const isOwner = enrichedRoom.myRole === "owner";
+
+  return (
+    <div className="space-y-4">
+      {/* Socket Disconnected Alert Banner */}
+      {!isConnected && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs animate-pulse">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Reconnecting...</strong> Real-time edits, whiteboard synchronization, and live presence are temporarily paused.
+            </span>
+          </div>
+          <span className="font-semibold text-[11px] uppercase tracking-wider text-amber-600">Offline</span>
+        </div>
+      )}
+
+      {/* Dedicated Lounge View for Default Workspace Lounge */}
+      {enrichedRoom.isDefault || enrichedRoom.type === "lounge" ? (
+        <LoungeView
+          room={enrichedRoom}
+          participants={participants}
+          onlineUsers={onlineUsers}
+          onLeaveRoom={() => setShowLeaveConfirmModal(true)}
+        />
+      ) : (
+        <>
+          {/* Page Header (~88px compact, with badges, counts, and actions) */}
+          <RoomHeader
+            room={enrichedRoom}
+            onOpenSettings={() => setShowSettingsModal(true)}
+            onOpenInvite={() => handleTabChange("participants")}
+            onRoomLeft={() => navigate(API_ROUTES.MEMBER.NAV.ROOMS)}
+            onRequestLeave={() => setShowLeaveConfirmModal(true)}
+          />
+
+          {/* Tabs Navigation (Underline indigo, keyboard accessible, synced with URL) */}
+          <RoomTabs
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            documentCount={documentCount}
+            participantCount={participants.length}
+          />
+
+          {/* Tab Panels: Viewport-fitting for Voice, Video & Whiteboard, unmounted when inactive */}
+          <div className="relative">
+        {/* Tab 1: Voice & Group Chat (audio-first virtual office initial view) */}
+        {activeTab === "voice" && (
+          <Suspense
+            fallback={
+              <div className="h-[460px] bg-white rounded-2xl flex items-center justify-center text-gray-400">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+              </div>
+            }
+          >
+            <VoiceAndChatSection
+              roomId={enrichedRoom._id}
+              roomName={enrichedRoom.name}
+            />
+          </Suspense>
+        )}
+
+        {/* Tab 2: Meeting & Video (Lobby pre-join with camera/mic OFF by default + Full-screen call experience) */}
+        {activeTab === "video" && (
+          <Suspense
+            fallback={
+              <div className="h-[460px] bg-slate-950 rounded-2xl flex items-center justify-center text-white">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              </div>
+            }
+          >
+            <VideoCallPanel
+              roomId={enrichedRoom._id}
+              roomName={enrichedRoom.name}
+              roomType={enrichedRoom.type === "private" ? "private" : "public"}
+              currentUsername={username ?? "You"}
+            />
+          </Suspense>
+        )}
+
+        {/* Tab 2: Collaborative Whiteboard (dark canvas filling height, zero page scrollbar) */}
+        {activeTab === "whiteboard" && (
+          <Suspense
+            fallback={
+              <div className="h-[520px] bg-[#070B14] rounded-2xl flex items-center justify-center text-slate-400">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              </div>
+            }
+          >
+            <WhiteboardCanvas
+              roomId={enrichedRoom._id}
+              onlinePresenceUsers={onlineUsers}
+            />
+          </Suspense>
+        )}
+
+        {/* Tab 3: Documents (Room Resources, filters, sort, drag & drop, pagination) */}
+        {activeTab === "documents" && (
+          <Suspense
+            fallback={
+              <div className="p-12 text-center text-gray-400">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-2" />
+                <span className="text-xs">Loading resources...</span>
+              </div>
+            }
+          >
+            <DocumentList
+              roomId={enrichedRoom._id}
+              isRoomAdminOrOwner={isRoomAdminOrOwner}
+              onTotalCountChange={setDocumentCount}
+            />
+          </Suspense>
+        )}
+
+        {/* Tab 4: Participants (ONE unified list, search, presence dots, role actions, invite modal) */}
+        {activeTab === "participants" && (
+          <Suspense
+            fallback={
+              <div className="p-12 text-center text-gray-400">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-2" />
+                <span className="text-xs">Loading participants...</span>
+              </div>
+            }
+          >
+            {participantsError ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-3">
+                <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+                <p className="text-sm font-semibold text-gray-800">{participantsError}</p>
+                <button
+                  type="button"
+                  onClick={loadParticipants}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 transition-colors cursor-pointer"
+                >
+                  Retry loading participants
+                </button>
+              </div>
+            ) : (
+              <ParticipantList
+                roomId={enrichedRoom._id}
+                roomName={enrichedRoom.name}
+                roomType={enrichedRoom.type === "private" ? "private" : "public"}
+                participants={participants}
+                onlineUserIdSet={onlineUserIdSet}
+                canManage={isRoomAdminOrOwner}
+                isOwner={isOwner}
+                isLoading={participantsLoading}
+                onRefresh={loadParticipants}
+              />
+            )}
+          </Suspense>
         )}
       </div>
+      </>
+      )}
 
-      {/* Room Tabs Navigation - underline style */}
-      <div className="flex items-center gap-0 border-b border-gray-200 overflow-x-auto scrollbar-hide">
-        {(
-          [
-            { key: "meeting", icon: Video, label: "Meeting & Video" },
-            { key: "whiteboard", icon: Layout, label: "Collaborative Whiteboard" },
-            { key: "documents", icon: FileText, label: "Documents" },
-          ] as { key: "meeting" | "whiteboard" | "documents" | "participants"; icon: React.ElementType; label: string }[]
-        ).map(({ key, icon: Icon, label }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setActiveTab(key)}
-            className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${
-              activeTab === key
-                ? "text-violet-700"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            <span>{label}</span>
-            {activeTab === key && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />
-            )}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setActiveTab("participants")}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 whitespace-nowrap ${
-            activeTab === "participants"
-              ? "text-violet-700"
-              : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-          }`}
+      {/* Room Settings Modal (For Owner & Admin) */}
+      {showSettingsModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setShowSettingsModal(false)}
         >
-          <Users className="w-4 h-4" />
-          <span>Participants</span>
-          <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-gray-100 text-gray-600 text-[10px] font-semibold px-1">
-            {participants.length}
-          </span>
-          {activeTab === "participants" && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full" />
-          )}
-        </button>
-      </div>
-
-      {/* Prominent Video Conference Hub (Full Screen Experience) — kept mounted to preserve call */}
-      <div className={activeTab === "meeting" ? "block" : "hidden"}>
-        <VideoCallPanel
-          roomId={room._id}
-          roomName={room.name}
-          roomType={room.type}
-          currentUsername={username ?? "You"}
-        />
-      </div>
-
-      {/* Real-Time Collaborative Whiteboard */}
-      <div className={activeTab === "whiteboard" ? "block h-[82vh] rounded-xl overflow-hidden border border-gray-200 shadow-lg" : "hidden"}>
-        <Whiteboard roomId={room._id} />
-      </div>
-
-      {/* Room Documents */}
-      <div className={activeTab === "documents" ? "block space-y-6" : "hidden"}>
-        <RoomDocuments roomId={room._id} />
-      </div>
-
-      {/* Grid for Presence and Room Participants */}
-      <div className={activeTab === "participants" ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "hidden"}>
-        {/* Room Presence (Online & Offline) */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                <Wifi className="w-4 h-4" />
-              </div>
+          <div
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-gray-900">Room Settings</h3>
+            <div className="space-y-3">
               <div>
-                <h2 className="text-sm font-semibold text-gray-800">Room Presence</h2>
-                <p className="text-xs text-gray-400">
-                  <span className="text-emerald-600 font-medium">{onlineCount} online</span>
-                  {" • "}
-                  <span>{offlineCount} offline</span>
-                </p>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Room Name</label>
+                <input
+                  type="text"
+                  value={settingsName}
+                  onChange={(e) => setSettingsName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={settingsDesc}
+                  onChange={(e) => setSettingsDesc(e.target.value)}
+                  placeholder="What is this room used for?"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
               </div>
             </div>
 
-            {/* Filter pills */}
-            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg text-xs">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setPresenceFilter("all")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                  presenceFilter === "all"
-                    ? "bg-white text-gray-900 shadow-xs"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
+                onClick={() => setShowSettingsModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer"
               >
-                All ({presenceMembers.length})
+                Cancel
               </button>
               <button
                 type="button"
-                onClick={() => setPresenceFilter("online")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                  presenceFilter === "online"
-                    ? "bg-white text-emerald-700 shadow-xs"
-                    : "text-gray-500 hover:text-emerald-700"
-                }`}
+                onClick={handleSaveSettings}
+                disabled={isSavingSettings || !settingsName.trim()}
+                className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl disabled:opacity-50 cursor-pointer shadow-xs"
               >
-                Online ({onlineCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setPresenceFilter("offline")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                  presenceFilter === "offline"
-                    ? "bg-white text-gray-800 shadow-xs"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                Offline ({offlineCount})
+                {isSavingSettings ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
+        </div>
+      )}
 
-          {filteredPresenceMembers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <WifiOff className="w-8 h-8 mb-2 text-gray-300" />
-              <p className="text-sm text-gray-500">
-                {presenceFilter === "online"
-                  ? "No users currently online"
-                  : presenceFilter === "offline"
-                  ? "All participants are online"
-                  : "No presence data"}
+      {/* Leave Room / Lounge Confirmation Dialog (Browser Back & Leave Actions) */}
+      <ConfirmDialog
+        isOpen={showLeaveConfirmModal}
+        title={enrichedRoom?.isDefault || enrichedRoom?.type === "lounge" ? "Leave Lounge" : "Leave Room"}
+        message={
+          <div>
+            <p>
+              Are you sure you want to leave{" "}
+              <strong className="text-gray-900">{enrichedRoom?.name || "this room"}</strong> and return to the rooms list?
+            </p>
+            {enrichedRoom?.type === "private" && (
+              <p className="mt-2 text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                This is a private room. You may need an invite to rejoin later.
               </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-              {filteredPresenceMembers.map((u) => (
-                <li key={u.id} className="flex items-center justify-between gap-3 px-6 py-3 hover:bg-gray-50/60 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative flex-shrink-0">
-                      <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold ${
-                          u.isOnline ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {u.username.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span
-                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                          u.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-300"
-                        }`}
-                        title={u.isOnline ? "Online" : "Offline"}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{u.username}</p>
-                      {u.email && <p className="text-xs text-gray-400 truncate">{u.email}</p>}
-                    </div>
-                  </div>
-
-                  <span
-                    className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${
-                      u.isOnline
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-gray-50 text-gray-500 border-gray-200"
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        u.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
-                      }`}
-                    />
-                    {u.isOnline ? "Online" : "Offline"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Participants */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-            <div className="p-2 rounded-lg bg-indigo-50">
-              <Users className="w-4 h-4 text-indigo-600" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-gray-800">Participants</h2>
-              {!participantsLoading && (
-                <p className="text-xs text-gray-400">
-                  {participants.length} member{participants.length !== 1 ? "s" : ""} in this room
-                </p>
-              )}
-            </div>
+            )}
           </div>
-
-          {participantsLoading ? (
-            <div className="p-6 space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 animate-pulse">
-                  <div className="w-9 h-9 rounded-full bg-gray-200" />
-                  <div className="flex-1 space-y-1.5">
-                    <div className="h-3.5 bg-gray-200 rounded w-32" />
-                    <div className="h-3 bg-gray-100 rounded w-48" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : participants.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-              <Users className="w-8 h-8 mb-2 text-gray-300" />
-              <p className="text-sm text-gray-500">No participants yet</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-              {participants.map((p) => {
-                const isOnline = onlineUserIdSet.has(p._id);
-                return (
-                  <li key={p._id} className="flex items-center justify-between gap-3 px-6 py-3 hover:bg-gray-50/60 transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative flex-shrink-0">
-                        <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-semibold text-xs">
-                          {p.username.slice(0, 2).toUpperCase()}
-                        </div>
-                        <span
-                          className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                            isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-300"
-                          }`}
-                          title={isOnline ? "Online" : "Offline"}
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{p.username}</p>
-                        <p className="text-xs text-gray-500 truncate">{p.email}</p>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${
-                        isOnline
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-gray-50 text-gray-500 border-gray-200"
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
-                        }`}
-                      />
-                      {isOnline ? "Online" : "Offline"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
+        }
+        confirmLabel={enrichedRoom?.isDefault || enrichedRoom?.type === "lounge" ? "Leave Lounge" : "Leave Room"}
+        cancelLabel={enrichedRoom?.isDefault || enrichedRoom?.type === "lounge" ? "Stay in Lounge" : "Stay in Room"}
+        isDestructive
+        onConfirm={handleConfirmLeave}
+        onCancel={handleCancelLeave}
+      />
     </div>
   );
 };

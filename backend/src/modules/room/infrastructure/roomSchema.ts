@@ -1,14 +1,22 @@
 import { Schema, model, Document, Types } from "mongoose";
 
+export interface IRoomSettings {
+  music?: {
+    enabled: boolean;
+  };
+}
+
 export interface IRoomDocument extends Document {
   organizationId: Types.ObjectId;
   workspaceId: Types.ObjectId;
   name: string;
   description?: string;
-  type: "public" | "private";
+  type: "standard" | "lounge" | "public" | "private";
+  isDefault: boolean;
   isPrivate: boolean;
   status: "active" | "blocked";
   capacity?: number;
+  settings?: IRoomSettings;
   allowedUsers: Types.ObjectId[];
   createdBy: Types.ObjectId;
   createdAt: Date;
@@ -35,7 +43,6 @@ const roomSchema = new Schema<IRoomDocument>(
       type: String,
       required: true,
       trim: true,
-      unique:true
     },
 
     description: {
@@ -44,10 +51,24 @@ const roomSchema = new Schema<IRoomDocument>(
       default: "",
     },
 
+    isDefault: {
+      type: Boolean,
+      default: false,
+    },
+
     type: {
       type: String,
-      enum: ["public", "private"],
-      required: true,
+      enum: ["standard", "lounge", "public", "private"],
+      default: "standard",
+    },
+
+    settings: {
+      music: {
+        enabled: {
+          type: Boolean,
+          default: true,
+        },
+      },
     },
 
     isPrivate: {
@@ -83,5 +104,12 @@ const roomSchema = new Schema<IRoomDocument>(
     timestamps: true,
   }
 );
+
+roomSchema.index(
+  { workspaceId: 1, isDefault: 1 },
+  { unique: true, partialFilterExpression: { isDefault: true } }
+);
+
+roomSchema.index({ workspaceId: 1, isDefault: -1, createdAt: -1 });
 
 export const RoomModel = model<IRoomDocument>("Room", roomSchema);

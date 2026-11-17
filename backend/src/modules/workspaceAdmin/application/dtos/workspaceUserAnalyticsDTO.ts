@@ -112,6 +112,15 @@ export interface UserActivityHistoryResponseDTO {
     status: boolean;
     isOnline: boolean;
   };
+  stats?: {
+    totalLogins: number;
+    meetingsAttended: number;
+    meetingDurationMinutes: number;
+    formattedMeetingDuration: string;
+    roomsCount: number;
+    roomNames: string[];
+    totalActions: number;
+  };
   items: UserActivityHistoryItem[];
   total: number;
   page: number;

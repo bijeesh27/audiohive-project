@@ -95,4 +95,19 @@ router.delete(
   controller.removeWorkspaceUser.bind(controller),
 );
 
+// ── Company Profile & Announcements ─────────────────────────
+router.get("/:id/company-profile", authMiddleware, controller.getCompanyProfile.bind(controller));
+router.patch(
+  "/:id/company-profile",
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.ORGANIZATION_OWNER, UserRoles.SUPER_ADMIN]),
+  controller.updateCompanyProfile.bind(controller)
+);
+router.post(
+  "/:id/announcements",
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.ORGANIZATION_OWNER, UserRoles.SUPER_ADMIN]),
+  controller.addAnnouncement.bind(controller)
+);
+
 export default router;

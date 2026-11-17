@@ -1,3 +1,31 @@
+import { Types } from "mongoose";
+import { UserRoles } from "../../common/constant/userRoles.ts";
+
+export const WORKSPACE_MEMBER_ROLES = [
+  UserRoles.MEMBER,
+  UserRoles.WORKSPACE_ADMIN,
+  "workspace-admin",
+];
+
+export function buildWorkspaceMembershipQuery(workspaceId: string) {
+  const conditions: Record<string, unknown>[] = [
+    { workspaceIds: workspaceId },
+    { workspaceId: workspaceId },
+  ];
+  if (Types.ObjectId.isValid(workspaceId)) {
+    const objId = new Types.ObjectId(workspaceId);
+    conditions.push({ workspaceIds: objId }, { workspaceId: objId });
+  }
+  return { $or: conditions };
+}
+
+export function buildWorkspaceMemberFilter(workspaceId: string) {
+  return {
+    role: { $in: WORKSPACE_MEMBER_ROLES },
+    ...buildWorkspaceMembershipQuery(workspaceId),
+  };
+}
+
 interface UserWorkspaceReferences {
   workspaceIds?: unknown[];
   workspaceId?: unknown;

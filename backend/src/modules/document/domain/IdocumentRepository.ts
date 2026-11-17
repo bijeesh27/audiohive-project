@@ -5,4 +5,5 @@ export interface IDocumentRepository {
   findByRoomId(roomId: string): Promise<IDocument[]>;
   findById(id: string): Promise<IDocument | null>;
   delete(id: string): Promise<boolean>;
+  updateName?(id: string, originalName: string): Promise<IDocument | null>;
 }

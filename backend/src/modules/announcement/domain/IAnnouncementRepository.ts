@@ -30,4 +30,11 @@ export interface IAnnouncementRepository {
   getUnreadCount(workspaceId: string, userId: string): Promise<number>;
   getPinnedCount(workspaceId: string): Promise<number>;
   getByRoom(roomId: string, workspaceId: string): Promise<AnnouncementResponseDTO[]>;
+  getAnnouncementReaders(id: string, workspaceId: string): Promise<{
+    readMembers: { _id: string; username: string; email: string; avatar?: string }[];
+    unreadMembers: { _id: string; username: string; email: string; avatar?: string }[];
+    totalMembers: number;
+    readCount: number;
+    unreadCount: number;
+  }>;
 }

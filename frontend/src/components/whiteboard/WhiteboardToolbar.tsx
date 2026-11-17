@@ -31,7 +31,7 @@ export const WhiteboardToolbar: React.FC<WhiteboardToolbarProps> = ({
   noteCount,
 }) => {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-[#0d1322]/80 backdrop-blur-xl border-b border-white/[0.08] shadow-md z-30 select-none">
+    <header className="sticky top-0 z-30 shrink-0 flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-[#0d1322]/95 backdrop-blur-xl border-b border-white/[0.08] shadow-md select-none">
       {/* Left: Add Note & Preset Color Picker */}
       <div className="flex items-center gap-2">
         <button

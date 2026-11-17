@@ -90,3 +90,15 @@ export const getWorkspaceUsers = (workspaceId: string, page: number = 1, limit: 
 export const removeWorkspaceUser = (workspaceId: string, userId: string) => {
   return axiosInstance.delete(API_ENDPOINTS.WORKSPACE.REMOVE_USER(workspaceId, userId)).then((res) => res.data);
 };
+
+export const getCompanyProfile = (workspaceId: string) => {
+  return axiosInstance.get(`/api/workspace/${workspaceId}/company-profile`).then((res) => res.data);
+};
+
+export const updateCompanyProfile = (workspaceId: string, data: Record<string, unknown>) => {
+  return axiosInstance.patch(`/api/workspace/${workspaceId}/company-profile`, data).then((res) => res.data);
+};
+
+export const addWorkspaceAnnouncement = (workspaceId: string, data: { title: string; body: string }) => {
+  return axiosInstance.post(`/api/workspace/${workspaceId}/announcements`, data).then((res) => res.data);
+};

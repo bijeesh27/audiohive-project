@@ -19,7 +19,7 @@ export class DeleteDocumentUseCase implements IuseCase<DeleteDocumentDTO, void> 
       throw new Error(MESSAGES.ERRORS.DOCUMENT_NOT_IN_ROOM);
     }
 
-    if (document.uploaderId.toString() !== data.userId) {
+    if (document.uploaderId.toString() !== data.userId && !data.isRoomAdminOrOwner) {
       throw new Error(MESSAGES.ERRORS.UNAUTHORIZED_DELETE_DOCUMENT);
     }
 

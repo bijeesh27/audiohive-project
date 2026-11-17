@@ -22,4 +22,12 @@ export class DocumentRepository implements IDocumentRepository {
     const result = await DocumentModel.deleteOne({ _id: id });
     return result.deletedCount > 0;
   }
+
+  async updateName(id: string, originalName: string): Promise<IDocument | null> {
+    return DocumentModel.findByIdAndUpdate(
+      id,
+      { $set: { originalName } },
+      { new: true }
+    ).populate("uploaderId", "username email");
+  }
 }

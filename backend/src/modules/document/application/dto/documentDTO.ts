@@ -14,6 +14,7 @@ export interface DeleteDocumentDTO {
   roomId: string;
   userId: string;
   workspaceId: string;
+  isRoomAdminOrOwner?: boolean;
 }
 
 export interface GetRoomDocumentsDTO {

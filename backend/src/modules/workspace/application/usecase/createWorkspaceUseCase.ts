@@ -47,11 +47,31 @@ export class CreateWorkspaceUseCase implements IuseCase<CreateWorkspaceDTO, void
         }
 
         try {
-            await this.workspaceRepository.createWorkspace({
-                organizationId: organization._id,
-                workspaceName: data.workspaceName,
-                slug: data.slug,
-            } as unknown as IWorkspaceDocument);
+            await this.workspaceRepository.createWorkspaceWithLounge(
+                {
+                    organizationId: organization._id,
+                    workspaceName: data.workspaceName,
+                    slug: data.slug,
+                    companyProfile: {
+                        name: data.workspaceName,
+                        tagline: "Welcome to our virtual office",
+                        about: "Connect, collaborate, and listen to music together.",
+                        mission: "",
+                        website: "",
+                        logoUrl: "",
+                        links: [],
+                        announcements: [
+                            {
+                                title: "Welcome to the Lounge!",
+                                body: "This is your team's social space. Hang out, share music, and stay connected.",
+                                createdAt: new Date(),
+                                createdBy: "AudioHive System",
+                            },
+                        ],
+                    },
+                } as unknown as IWorkspaceDocument,
+                organization.ownerId?.toString()
+            );
         } catch (error: unknown) {
             if (
                 typeof error === "object" &&

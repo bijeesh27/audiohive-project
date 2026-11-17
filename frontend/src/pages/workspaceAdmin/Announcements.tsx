@@ -1,418 +1,875 @@
-import { useState } from "react";
-import { useAnnouncements } from "../../hooks/useAnnouncements";
-import type { Announcement } from "../../hooks/useAnnouncements";
-import ActionButton from "../../components/common/ActionButton";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
+  Megaphone,
+  Plus,
+  Search,
+  X,
+  Pin,
+  PinOff,
+  Pencil,
+  Trash2,
+  Archive,
+  ArchiveRestore,
+  MoreVertical,
+  Users,
+  CheckCircle2,
+  Eye,
+  RotateCcw,
+} from "lucide-react";
+import {
+  getAnnouncements,
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
   pinAnnouncement,
 } from "../../services/announcementServices";
+import type {
+  MemberAnnouncement,
+  AnnouncementCounts,
+} from "../../services/announcementServices";
 import {
-  Megaphone,
-  Plus,
-  Pin,
-  PinOff,
-  Trash2,
-  Pencil,
-  X,
-  AlertTriangle,
-  Info,
-  Zap,
-  CalendarDays,
-  Users,
-} from "lucide-react";
+  getTypeConfig,
+  formatRelativeTime,
+  formatFullDateTime,
+} from "../../components/announcements/announcementUtils";
+import { TypeBadge } from "../../components/announcements/TypeBadge";
+import { Pagination } from "../../components/announcements/Pagination";
+import { AnnouncementSkeleton } from "../../components/announcements/AnnouncementSkeleton";
+import { AnnouncementEmptyState } from "../../components/announcements/AnnouncementEmptyState";
+import { AnnouncementModal } from "../../components/announcements/AnnouncementModal";
+import type { AnnouncementFormData } from "../../components/announcements/AnnouncementModal";
+import { AnnouncementReadDrawer } from "../../components/announcements/AnnouncementReadDrawer";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
-const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; border: string }> = {
-  info: { label: "Info", icon: Info, color: "bg-blue-50 text-blue-700", border: "border-l-blue-500" },
-  warning: { label: "Warning", icon: AlertTriangle, color: "bg-amber-50 text-amber-700", border: "border-l-amber-500" },
-  important: { label: "Warning", icon: AlertTriangle, color: "bg-amber-50 text-amber-700", border: "border-l-amber-500" },
-  critical: { label: "Critical", icon: Zap, color: "bg-red-50 text-red-700", border: "border-l-red-500" },
-  urgent: { label: "Critical", icon: Zap, color: "bg-red-50 text-red-700", border: "border-l-red-500" },
-  event: { label: "Event", icon: CalendarDays, color: "bg-green-50 text-green-700", border: "border-l-green-500" },
-};
+const TABS = [
+  { id: "all", label: "All" },
+  { id: "published", label: "Published" },
+  { id: "draft", label: "Draft" },
+  { id: "archived", label: "Archived" },
+  { id: "pinned", label: "Pinned" },
+] as const;
 
-const EMPTY_FORM = {
-  title: "",
-  content: "",
-  type: "info" as Announcement["type"],
-  targetAudience: "all" as "all" | "room-specific",
-  status: "published" as "draft" | "published",
-  expiresAt: "",
-};
+interface ToastState {
+  type: "success" | "error";
+  message: string;
+}
 
-const TABS = ["all", "published", "draft", "archived", "pinned"] as const;
+function HighlightText({ text, query }: { text: string; query?: string }) {
+  if (!query || !query.trim() || !text) return <>{text}</>;
+  const trimmed = query.trim();
+  const escaped = trimmed.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+  const regex = new RegExp(`(${escaped})`, "gi");
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === trimmed.toLowerCase() ? (
+          <mark key={i} className="bg-amber-200 text-slate-900 rounded-xs px-0.5 font-medium">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
 
 export default function AdminAnnouncements() {
-  const { announcements, loading, refetch } = useAnnouncements();
-  const [activeTab, setActiveTab] = useState<typeof TABS[number]>("all");
-  const [showModal, setShowModal] = useState(false);
-  const [editTarget, setEditTarget] = useState<Announcement | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const filtered = announcements.filter((a) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "pinned") return a.isPinned;
-    return a.status === activeTab;
+  // URL state
+  const activeTab = searchParams.get("tab") || "all";
+  const searchQuery = searchParams.get("q") || "";
+  const typeFilter = searchParams.get("type") || "all";
+  const sortOption = searchParams.get("sort") || "newest";
+  const currentPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const pageSize = Math.max(10, parseInt(searchParams.get("limit") || "10", 10));
+
+  // Local search input state (for debouncing)
+  const [searchInput, setSearchInput] = useState(searchQuery);
+
+  // Announcement state
+  const [items, setItems] = useState<MemberAnnouncement[]>([]);
+  const [pinnedItems, setPinnedItems] = useState<MemberAnnouncement[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalMembersCount, setTotalMembersCount] = useState(0);
+  const [counts, setCounts] = useState<AnnouncementCounts>({
+    all: 0,
+    published: 0,
+    draft: 0,
+    archived: 0,
+    pinned: 0,
   });
 
-  const openCreate = () => {
-    setEditTarget(null);
-    setForm(EMPTY_FORM);
-    setFormErrors({});
-    setApiError(null);
-    setShowModal(true);
-  };
+  // Loading & error states
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const openEdit = (a: Announcement) => {
-    setEditTarget(a);
-    setForm({
-      title: a.title,
-      content: a.content,
-      type: a.type,
-      targetAudience: a.targetAudience,
-      status: a.status === "archived" ? "published" : (a.status as "draft" | "published"),
-      expiresAt: a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : "",
-    });
-    setFormErrors({});
-    setApiError(null);
-    setShowModal(true);
-  };
+  // Modals & Drawers
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<MemberAnnouncement | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const handleFieldChange = (field: string, value: string) => {
-    setForm((f) => ({ ...f, [field]: value }));
-    if (formErrors[field]) {
-      setFormErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
-    }
-  };
+  // Read receipts drawer
+  const [readDrawerOpen, setReadDrawerOpen] = useState(false);
+  const [readDrawerTarget, setReadDrawerTarget] = useState<{ id: string; title: string } | null>(null);
 
-  const validate = (): boolean => {
-    const errs: Record<string, string> = {};
-    if (!form.title.trim()) {
-      errs.title = "Title is required";
-    } else if (form.title.trim().length > 120) {
-      errs.title = "Title must be 120 characters or fewer";
-    }
-    if (!form.content.trim()) {
-      errs.content = "Content is required";
-    } else if (form.content.trim().length < 10) {
-      errs.content = "Content must be at least 10 characters";
-    }
-    if (form.expiresAt) {
-      const expiry = new Date(form.expiresAt);
-      if (isNaN(expiry.getTime()) || expiry <= new Date()) {
-        errs.expiresAt = "Expiry must be a future date and time";
+  // Delete confirm modal
+  const [deleteTarget, setDeleteTarget] = useState<MemberAnnouncement | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Expanded cards set (for clicking card to expand full text)
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  // Active dropdown menu ID
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Toast
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((type: "success" | "error", message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast({ type, message });
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
+  }, []);
+
+  // Sync search input when URL changes
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  // Debounced search input to URL query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchInput !== searchQuery) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          if (searchInput.trim()) {
+            next.set("q", searchInput.trim());
+          } else {
+            next.delete("q");
+          }
+          next.set("page", "1");
+          return next;
+        });
       }
-    }
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+    }, 300);
 
-  const handleSave = async () => {
-    if (!validate()) return;
-    setSaving(true);
+    return () => clearTimeout(handler);
+  }, [searchInput, searchQuery, setSearchParams]);
+
+  // Update URL helper
+  const updateQueryParam = useCallback(
+    (key: string, value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (!value || value === "all" || (key === "page" && value === "1") || (key === "sort" && value === "newest") || (key === "limit" && value === "10")) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+        if (key !== "page") {
+          next.delete("page");
+        }
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+
+  // Fetch announcements
+  const fetchAnnouncements = useCallback(async () => {
+    setFetching(true);
     setApiError(null);
     try {
-      const payload = {
-        ...form,
-        title: form.title.trim(),
-        content: form.content.trim(),
-        expiresAt: form.expiresAt || undefined,
-      };
-      if (editTarget) {
-        await updateAnnouncement(editTarget._id, payload);
-      } else {
-        await createAnnouncement(payload);
+      const res = await getAnnouncements({
+        page: currentPage,
+        limit: pageSize,
+        tab: activeTab,
+        q: searchQuery,
+        type: typeFilter !== "all" ? typeFilter : undefined,
+        sort: sortOption,
+      });
+
+      const data = res.data?.data || {};
+      const returnedItems: MemberAnnouncement[] = data.items || data.announcements || [];
+      const returnedPinned: MemberAnnouncement[] = data.pinnedItems || [];
+
+      setItems(returnedItems);
+      setPinnedItems(returnedPinned);
+      setTotal(data.total ?? returnedItems.length);
+      setTotalPages(data.totalPages ?? (Math.ceil((data.total ?? 1) / pageSize) || 1));
+      if (data.totalMembersCount) {
+        setTotalMembersCount(data.totalMembersCount);
       }
-      setShowModal(false);
-      refetch();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
-      setApiError(err?.response?.data?.message || "Failed to save announcement");
+      if (data.counts) {
+        setCounts(data.counts);
+      }
+    } catch (err: any) {
+      setApiError(err?.response?.data?.message || "Failed to load announcements. Please check your connection.");
+    } finally {
+      setFetching(false);
+      setInitialLoading(false);
+    }
+  }, [currentPage, pageSize, activeTab, searchQuery, typeFilter, sortOption]);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-menu-container]")) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener("click", handleDocumentClick);
+    return () => document.removeEventListener("click", handleDocumentClick);
+  }, []);
+
+  // Card expand/collapse toggle
+  const toggleCardExpand = (id: string) => {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Create / Edit
+  const handleOpenCreate = () => {
+    setEditTarget(null);
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (item: MemberAnnouncement) => {
+    setEditTarget(item);
+    setModalOpen(true);
+    setActiveMenuId(null);
+  };
+
+  const handleSaveAnnouncement = async (formData: AnnouncementFormData) => {
+    setSaving(true);
+    try {
+      if (editTarget) {
+        await updateAnnouncement(editTarget.id || editTarget._id || "", formData);
+        showToast("success", "Announcement updated successfully");
+      } else {
+        await createAnnouncement(formData);
+        showToast("success", formData.status === "draft" ? "Draft saved successfully" : "Announcement published successfully");
+      }
+      setModalOpen(false);
+      fetchAnnouncements();
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to save announcement");
     } finally {
       setSaving(false);
     }
   };
 
-  const handlePin = async (id: string, current: boolean) => {
-    await pinAnnouncement(id, !current);
-    refetch();
+  // Pin / Unpin
+  const handleTogglePin = async (item: MemberAnnouncement) => {
+    const id = item.id || item._id || "";
+    const nextPin = !item.isPinned;
+    // Optimistic local update
+    setItems((prev) => prev.map((a) => ((a.id || a._id) === id ? { ...a, isPinned: nextPin } : a)));
+    setPinnedItems((prev) =>
+      nextPin ? [...prev, { ...item, isPinned: true }] : prev.filter((a) => (a.id || a._id) !== id)
+    );
+
+    try {
+      await pinAnnouncement(id, nextPin);
+      showToast("success", nextPin ? "Announcement pinned to top" : "Announcement unpinned");
+      fetchAnnouncements();
+    } catch (err: any) {
+      // Rollback
+      fetchAnnouncements();
+      showToast("error", err?.response?.data?.message || "Failed to update pin status");
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteAnnouncement(id);
-    setDeleteConfirm(null);
-    refetch();
+  // Archive / Publish (Unarchive)
+  const handleToggleArchive = async (item: MemberAnnouncement) => {
+    const id = item.id || item._id || "";
+    const newStatus = item.status === "archived" ? "published" : "archived";
+    setActiveMenuId(null);
+
+    // Optimistic update
+    setItems((prev) => prev.map((a) => ((a.id || a._id) === id ? { ...a, status: newStatus } : a)));
+
+    try {
+      await updateAnnouncement(id, { status: newStatus });
+      showToast("success", newStatus === "archived" ? "Announcement moved to archive" : "Announcement restored to published");
+      fetchAnnouncements();
+    } catch (err: any) {
+      fetchAnnouncements();
+      showToast("error", err?.response?.data?.message || "Failed to update status");
+    }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-50 rounded-lg">
-            <Megaphone className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Announcements</h1>
-            <p className="text-sm text-gray-500">Broadcast messages to your workspace members</p>
-          </div>
-        </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Announcement
-        </button>
-      </div>
+  // Delete with optimistic rollback
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id || deleteTarget._id || "";
+    const backupItems = [...items];
+    const backupPinned = [...pinnedItems];
+    setDeleting(true);
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors capitalize ${
-              activeTab === tab
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+    // Optimistic removal
+    setItems((prev) => prev.filter((a) => (a.id || a._id) !== id));
+    setPinnedItems((prev) => prev.filter((a) => (a.id || a._id) !== id));
+    setDeleteTarget(null);
 
-      {/* List */}
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <Megaphone className="w-12 h-12 mb-3 text-gray-300" />
-          <p className="text-base font-medium text-gray-500">No announcements yet</p>
-          {/* eslint-disable-next-line react/no-unescaped-entities */}
-          <p className="text-sm mt-1">Click "New Announcement" to get started</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((a) => {
-            const cfg = TYPE_CONFIG[a.type] || TYPE_CONFIG.info;
-            const Icon = cfg.icon;
-            return (
+    try {
+      await deleteAnnouncement(id);
+      showToast("success", `"${deleteTarget.title}" was deleted.`);
+      fetchAnnouncements();
+    } catch (err: any) {
+      // Rollback
+      setItems(backupItems);
+      setPinnedItems(backupPinned);
+      showToast("error", err?.response?.data?.message || "Failed to delete announcement. Restored previous view.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Open read receipt drawer
+  const handleOpenReadDrawer = (e: React.MouseEvent, item: MemberAnnouncement) => {
+    e.stopPropagation();
+    setReadDrawerTarget({ id: item.id || item._id || "", title: item.title });
+    setReadDrawerOpen(true);
+  };
+
+  // Clear filters helper
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setSearchParams(new URLSearchParams());
+  };
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case "published":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Published
+          </span>
+        );
+      case "draft":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            Draft
+          </span>
+        );
+      case "archived":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+            Archived
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+            {status || "Unknown"}
+          </span>
+        );
+    }
+  };
+
+  const renderAnnouncementCard = (a: MemberAnnouncement, isPinnedGroup = false) => {
+    const id = a.id || a._id || "";
+    const cfg = getTypeConfig(a.type);
+    const Icon = cfg.icon;
+    const isExpanded = expandedCards.has(id);
+    const readCount = a.readCount ?? a.readBy?.length ?? 0;
+    const totalMembers = a.totalMembersCount || totalMembersCount || Math.max(readCount, 1);
+    const readPercent = Math.min(100, Math.round((readCount / totalMembers) * 100));
+
+    return (
+      <div
+        key={id}
+        onClick={() => toggleCardExpand(id)}
+        className={`group bg-white rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md ${
+          isPinnedGroup
+            ? "border-indigo-200/80 hover:border-indigo-300 bg-linear-to-r from-indigo-50/20 via-white to-white"
+            : "border-slate-200/80 hover:border-slate-300"
+        } ${cfg.borderColor} border-l-4`}
+      >
+        <div className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            {/* Left section: Icon + Content */}
+            <div className="flex items-start gap-3.5 flex-1 min-w-0">
+              {/* Type Icon */}
               <div
-                key={a._id}
-                className={`bg-white border border-gray-200 rounded-xl p-5 shadow-sm border-l-4 ${cfg.border}`}
+                className={`p-2 rounded-xl shrink-0 mt-0.5 border ${cfg.badgeColor}`}
+                title={`Type: ${cfg.label}`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className={`p-1.5 rounded-lg mt-0.5 ${cfg.color.split(" ")[0]}`}>
-                      <Icon className={`w-4 h-4 ${cfg.color.split(" ")[1]}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-semibold text-gray-900">{a.title}</h3>
-                        {a.isPinned && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                            <Pin className="w-3 h-3" /> Pinned
-                          </span>
-                        )}
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cfg.color}`}>
-                          {cfg.label}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          a.status === "published" ? "bg-green-50 text-green-700" :
-                          a.status === "draft" ? "bg-gray-100 text-gray-600" :
-                          "bg-red-50 text-red-600"
-                        }`}>
-                          {a.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{a.content}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {a.readBy?.length ?? 0} read
-                        </span>
-                        <span>{new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <ActionButton
-                      icon={Pencil}
-                      label="Edit"
-                      onClick={() => openEdit(a)}
-                      colorClasses="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                    />
-                    <ActionButton
-                      icon={a.isPinned ? PinOff : Pin}
-                      label={a.isPinned ? "Unpin" : "Pin"}
-                      onClick={() => handlePin(a._id, a.isPinned)}
-                      colorClasses="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                    />
-                    <ActionButton
-                      icon={Trash2}
-                      label="Delete"
-                      onClick={() => setDeleteConfirm(a._id)}
-                      colorClasses="text-gray-400 hover:text-red-600 hover:bg-red-50"
-                    />
-                  </div>
-                </div>
+                <Icon className="w-4 h-4" />
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editTarget ? "Edit Announcement" : "New Announcement"}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {apiError && (
-                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 mb-4">
-                  {apiError}
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => handleFieldChange("title", e.target.value)}
-                  placeholder="Announcement title..."
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${formErrors.title ? "border-red-400" : "border-gray-200"}`}
-                />
-                {formErrors.title && <p className="mt-1 text-xs text-red-500">{formErrors.title}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Content *</label>
-                <textarea
-                  rows={4}
-                  value={form.content}
-                  onChange={(e) => handleFieldChange("content", e.target.value)}
-                  placeholder="Write your announcement..."
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${formErrors.content ? "border-red-400" : "border-gray-200"}`}
-                />
-                <div className="flex justify-between items-center mt-1">
-                  {formErrors.content ? (
-                    <p className="text-xs text-red-500">{formErrors.content}</p>
-                  ) : (
-                    <p className="text-xs text-gray-400">At least 10 characters.</p>
+              {/* Title, Badges, Body */}
+              <div className="flex-1 min-w-0">
+                {/* Header row with Title & Badges */}
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <HighlightText text={a.title} query={searchQuery} />
+                  </h3>
+
+                  {a.isPinned && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                      <Pin className="w-3 h-3 text-indigo-600 fill-indigo-600" /> Pinned
+                    </span>
                   )}
-                  <span className="text-xs text-gray-400">{form.content.length} chars</span>
+
+                  <TypeBadge type={a.type} />
+
+                  {/* Real Status Badge (fixes empty pink pill) */}
+                  {getStatusBadge(a.status)}
+
+                  {/* Audience Chip */}
+                  {a.targetAudience === "room-specific" ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                      Room
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Body Content */}
+                <p
+                  className={`text-xs sm:text-sm text-slate-600 leading-relaxed transition-all ${
+                    isExpanded ? "whitespace-pre-wrap" : "line-clamp-2"
+                  }`}
+                >
+                  <HighlightText text={a.content} query={searchQuery} />
+                </p>
+
+                {a.content && a.content.length > 140 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCardExpand(id);
+                    }}
+                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 mt-1 inline-flex items-center gap-0.5"
+                  >
+                    {isExpanded ? "Show less" : "Show full announcement"}
+                  </button>
+                )}
+
+                {/* Metadata Row: Author, Date, Read tracking */}
+                <div className="flex items-center flex-wrap gap-y-2 gap-x-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                  {/* Author */}
+                  <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                    <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 uppercase">
+                      {a.author?.name ? a.author.name.slice(0, 2) : "AD"}
+                    </span>
+                    <span>{a.author?.name || "Admin"}</span>
+                  </span>
+
+                  {/* Date with hover tooltip */}
+                  <span
+                    className="cursor-help hover:text-slate-800 transition-colors"
+                    title={formatFullDateTime(a.createdAt)}
+                  >
+                    {formatRelativeTime(a.createdAt)}
+                  </span>
+
+                  {/* Read Tracking Bar */}
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenReadDrawer(e, a)}
+                    className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/80 hover:bg-slate-100 hover:border-slate-300 transition-all text-slate-700 cursor-pointer shadow-2xs group/track"
+                    title="Click to view who has and hasn't read this announcement"
+                  >
+                    <Users className="w-3.5 h-3.5 text-slate-500 group-hover/track:text-indigo-600 transition-colors" />
+                    <span className="text-[11px] font-semibold">
+                      <span className="text-slate-900 font-bold">{readCount}</span> of {totalMembers} read
+                    </span>
+                    <div className="w-16 sm:w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden shrink-0">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${readPercent}%` }}
+                      />
+                    </div>
+                  </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <select
-                    value={form.type}
-                    onChange={(e) => handleFieldChange("type", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {Object.entries(TYPE_CONFIG).map(([key, val]) => (
-                      <option key={key} value={key}>{val.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => handleFieldChange("status", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="published">Publish Now</option>
-                    <option value="draft">Save as Draft</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date & Time (Optional)</label>
-                <input
-                  type="datetime-local"
-                  value={form.expiresAt}
-                  onChange={(e) => handleFieldChange("expiresAt", e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${formErrors.expiresAt ? "border-red-400" : "border-gray-200"}`}
-                />
-                {formErrors.expiresAt ? (
-                  <p className="mt-1 text-xs text-red-500">{formErrors.expiresAt}</p>
-                ) : (
-                  <p className="mt-1 text-xs text-gray-400">If set, the announcement will automatically hide after this time.</p>
+            </div>
+
+            {/* Right section: Action Buttons */}
+            <div
+              className="flex items-center sm:items-start gap-1.5 shrink-0 self-end sm:self-auto pt-2 sm:pt-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Edit button */}
+              <button
+                type="button"
+                onClick={() => handleOpenEdit(a)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-2xs"
+                aria-label={`Edit announcement ${a.title}`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+
+              {/* Pin / Unpin button */}
+              <button
+                type="button"
+                onClick={() => handleTogglePin(a)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors shadow-2xs ${
+                  a.isPinned
+                    ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-indigo-600"
+                }`}
+                aria-label={a.isPinned ? "Unpin announcement" : "Pin announcement"}
+              >
+                {a.isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{a.isPinned ? "Unpin" : "Pin"}</span>
+              </button>
+
+              {/* More Actions Dropdown (...) */}
+              <div className="relative" data-menu-container>
+                <button
+                  type="button"
+                  onClick={() => setActiveMenuId(activeMenuId === id ? null : id)}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs"
+                  aria-label="More actions"
+                  aria-expanded={activeMenuId === id}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {activeMenuId === id && (
+                  <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-30 animate-in fade-in zoom-in-95 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleArchive(a)}
+                      className="w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2 transition-colors"
+                    >
+                      {a.status === "archived" ? (
+                        <>
+                          <ArchiveRestore className="w-4 h-4 text-slate-500" />
+                          <span>Publish (Unarchive)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Archive className="w-4 h-4 text-slate-500" />
+                          <span>Archive</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuId(null);
+                        handleOpenReadDrawer({ stopPropagation: () => {} } as any, a);
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2 transition-colors"
+                    >
+                      <Eye className="w-4 h-4 text-slate-500" />
+                      <span>View Read Receipts</span>
+                    </button>
+
+                    <div className="my-1 border-t border-slate-100" />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuId(null);
+                        setDeleteTarget(a);
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-500" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                {saving ? "Saving..." : editTarget ? "Save Changes" : "Create"}
-              </button>
-            </div>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-xs font-semibold border transition-all animate-in slide-in-from-bottom-5 ${
+            toast.type === "success"
+              ? "bg-slate-900 text-white border-slate-800"
+              : "bg-rose-600 text-white border-rose-700"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          ) : (
+            <X className="w-4 h-4 text-white shrink-0" />
+          )}
+          <span>{toast.message}</span>
         </div>
       )}
 
-      {/* Delete Confirm Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-50 rounded-lg">
-                <Trash2 className="w-5 h-5 text-red-600" />
-              </div>
-              <h3 className="text-base font-bold text-gray-900">Delete Announcement</h3>
-            </div>
-            <p className="text-sm text-gray-500 mb-6">
-              This will permanently delete the announcement and notify all connected members to remove it from their view.
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600 shadow-2xs">
+            <Megaphone className="w-6 h-6 stroke-[1.75]" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Announcements</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Broadcast messages, alerts, and events to your workspace members
             </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
           </div>
         </div>
-      )}
+
+        <button
+          type="button"
+          onClick={handleOpenCreate}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition-all hover:shadow-indigo-500/20 active:scale-98 cursor-pointer"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>New Announcement</span>
+        </button>
+      </div>
+
+      {/* Status Tabs with server-provided counts */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const count = counts[tab.id as keyof AnnouncementCounts] ?? 0;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => updateQueryParam("tab", tab.id)}
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
+                isActive
+                  ? "bg-slate-900 text-white font-semibold shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  isActive ? "bg-white/20 text-white" : "bg-slate-200/70 text-slate-600"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search, Type Filter & Sort Controls */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+        {/* Search Input (Debounced 300ms) */}
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search announcements by title or content..."
+            className="w-full pl-9 pr-9 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 bg-slate-50/50 hover:bg-white focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-md hover:bg-slate-100"
+              aria-label="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter & Sort Dropdowns */}
+        <div className="flex items-center flex-wrap sm:flex-nowrap gap-2.5">
+          {/* Type Filter */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs font-medium text-slate-500 hidden sm:inline">Type:</span>
+            <select
+              value={typeFilter}
+              onChange={(e) => updateQueryParam("type", e.target.value)}
+              className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer shadow-2xs"
+            >
+              <option value="all">All Types</option>
+              <option value="info">Info</option>
+              <option value="warning">Warning / Important</option>
+              <option value="critical">Critical / Urgent</option>
+              <option value="event">Event</option>
+            </select>
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs font-medium text-slate-500 hidden sm:inline">Sort:</span>
+            <select
+              value={sortOption}
+              onChange={(e) => updateQueryParam("sort", e.target.value)}
+              className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer shadow-2xs"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="most_read">Most read</option>
+              <option value="least_read">Least read</option>
+            </select>
+          </div>
+
+          {/* Reset Filters (if active) */}
+          {(searchQuery || typeFilter !== "all" || sortOption !== "newest" || activeTab !== "all") && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center gap-1 transition-colors"
+              title="Reset all filters"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Reset</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className={`space-y-6 relative ${fetching && !initialLoading ? "opacity-60 pointer-events-none transition-opacity" : ""}`}>
+        {initialLoading ? (
+          <AnnouncementSkeleton count={4} />
+        ) : apiError ? (
+          <AnnouncementEmptyState
+            type="error"
+            errorMessage={apiError}
+            onRetry={fetchAnnouncements}
+          />
+        ) : items.length === 0 && pinnedItems.length === 0 ? (
+          searchQuery || typeFilter !== "all" ? (
+            <AnnouncementEmptyState
+              type="no-results"
+              searchQuery={searchQuery}
+              onClearFilters={handleClearFilters}
+            />
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 sm:p-14 text-center shadow-2xs">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 mx-auto flex items-center justify-center mb-3.5 shadow-2xs">
+                <Megaphone className="w-7 h-7 stroke-[1.75]" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mb-1">
+                {activeTab === "all" ? "No announcements yet" : `No ${activeTab} announcements`}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto mb-5">
+                Broadcast critical updates, upcoming events, or team news to all workspace members.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenCreate}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-all shadow-xs"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span>Create your first announcement</span>
+              </button>
+            </div>
+          )
+        ) : (
+          <div className="space-y-6">
+            {/* Pinned Announcements Group (Shown at the top of page 1 of "All" tab only) */}
+            {activeTab === "all" && currentPage === 1 && pinnedItems.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <div className="p-1 rounded-md bg-indigo-50 text-indigo-600">
+                    <Pin className="w-3.5 h-3.5 fill-indigo-600" />
+                  </div>
+                  <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Pinned Announcements ({pinnedItems.length})
+                  </h2>
+                </div>
+                <div className="space-y-3">
+                  {pinnedItems.map((a) => renderAnnouncementCard(a, true))}
+                </div>
+              </div>
+            )}
+
+            {/* Main List */}
+            {items.length > 0 ? (
+              <div className="space-y-3">
+                {activeTab === "all" && currentPage === 1 && pinnedItems.length > 0 && (
+                  <div className="px-1 pt-2">
+                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      All Announcements
+                    </h2>
+                  </div>
+                )}
+                {items.map((a) => renderAnnouncementCard(a, false))}
+              </div>
+            ) : null}
+
+            {/* Pagination Footer */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={pageSize}
+              onPageChange={(page) => updateQueryParam("page", String(page))}
+              onPageSizeChange={(size) => updateQueryParam("limit", String(size))}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Create / Edit Modal */}
+      <AnnouncementModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={handleSaveAnnouncement}
+        editTarget={editTarget}
+        saving={saving}
+      />
+
+      {/* Read Receipts Drawer */}
+      <AnnouncementReadDrawer
+        isOpen={readDrawerOpen}
+        onClose={() => {
+          setReadDrawerOpen(false);
+          setReadDrawerTarget(null);
+        }}
+        announcementId={readDrawerTarget?.id || null}
+        announcementTitle={readDrawerTarget?.title || ""}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title="Delete Announcement?"
+        message={`Are you sure you want to permanently delete "${deleteTarget?.title}"? All member read receipts and references will be removed.`}
+        confirmLabel={deleting ? "Deleting..." : "Delete Announcement"}
+        cancelLabel="Cancel"
+        isDanger={true}
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
-
-

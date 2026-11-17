@@ -58,14 +58,14 @@ router.post(
 router.put(
   API_ROUTES.ROOM.UPDATE_ROOM,
   authMiddleware,
-  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]),
   controller.updateRoom.bind(controller)
 );
 
 router.delete(
   API_ROUTES.ROOM.DELETE_ROOM,
   authMiddleware,
-  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]),
   controller.deleteRoom.bind(controller)
 );
 
@@ -86,7 +86,7 @@ router.get(
 router.post(
   API_ROUTES.ROOM.ALLOCATE_USERS,
   authMiddleware,
-  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]),
   controller.allocateRoomUsers.bind(controller)
 );
 
@@ -100,8 +100,22 @@ router.get(
 router.delete(
   API_ROUTES.ROOM.REMOVE_USER,
   authMiddleware,
-  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]),
   controller.removeRoomUser.bind(controller)
+);
+
+router.post(
+  "/:id/leave",
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]),
+  controller.leaveRoom.bind(controller)
+);
+
+router.patch(
+  "/:id/members/:userId/role",
+  authMiddleware,
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER]),
+  controller.updateMemberRole.bind(controller)
 );
 
 export default router;

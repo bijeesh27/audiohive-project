@@ -56,4 +56,16 @@ export const SOCKET_EVENTS = {
   WHITEBOARD_NOTE_COLOR_UPDATED: "whiteboard:note:color-updated",
   WHITEBOARD_PRESENCE: "whiteboard:presence",
   WHITEBOARD_ERROR: "whiteboard:error",
+  // ── Lounge Music Synchronization ────────────────────────────
+  MUSIC_GET_STATE: "music:get-state",
+  MUSIC_STATE: "music:state",
+  MUSIC_PLAY: "music:play",
+  MUSIC_PAUSE: "music:pause",
+  MUSIC_SEEK: "music:seek",
+  MUSIC_ADD_QUEUE: "music:add-queue",
+  MUSIC_VOTE_SKIP: "music:vote-skip",
+  MUSIC_ADMIN_SKIP: "music:admin-skip",
+  MUSIC_GET_LIBRARY: "music:get-library",
+  MUSIC_LIBRARY: "music:library",
+  MUSIC_ERROR: "music:error",
 } as const;

@@ -72,6 +72,10 @@ const activityLogSchema = new Schema<IActivityLogDocumet>(
   }
 );
 
+activityLogSchema.index({ workspaceId: 1, occurredAt: -1 });
+activityLogSchema.index({ workspaceId: 1, action: 1, occurredAt: -1 });
+activityLogSchema.index({ workspaceId: 1, actorId: 1, occurredAt: -1 });
+
 export const ActivityLogModel = model<IActivityLogDocumet>(
   "ActivityLog",
   activityLogSchema

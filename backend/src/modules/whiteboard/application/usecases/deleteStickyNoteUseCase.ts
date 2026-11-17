@@ -33,6 +33,12 @@ export class DeleteStickyNoteUseCase
       throw new AppError("Sticky note not found", HttpStatus.NOT_FOUND);
     }
 
+    const isAuthor = existingNote.createdBy?.userId === input.userId;
+    const isAdmin = input.role === "workspaceAdmin" || input.role === "admin";
+    if (!isAuthor && !isAdmin) {
+      throw new AppError("Only the author or an admin can delete this sticky note", HttpStatus.FORBIDDEN);
+    }
+
     return this.whiteboardRepository.delete(input.noteId);
   }
 }

@@ -7,6 +7,7 @@ export interface CreateAnnouncementDTO {
   type: "info" | "warning" | "critical" | "event";
   targetAudience: "all" | "room-specific";
   status: "draft" | "published";
+  isPinned?: boolean;
   isScheduled?: boolean;
   scheduledAt?: string;
   expiresAt?: string;
@@ -17,7 +18,10 @@ export interface UpdateAnnouncementDTO {
   title?: string;
   content?: string;
   type?: "info" | "warning" | "critical" | "event";
+  targetAudience?: "all" | "room-specific";
+  roomId?: string;
   status?: "draft" | "published" | "archived";
+  isPinned?: boolean;
   expiresAt?: string;
   actorId?: string;
   workspaceId?: string;
@@ -84,29 +88,69 @@ export interface GetAnnouncementsQueryDTO {
   sort?: string;
 }
 
+export interface AnnouncementCountsDTO {
+  all: number;
+  published: number;
+  draft: number;
+  archived: number;
+  pinned: number;
+}
+
 export interface AnnouncementAuthorDTO {
   id: string;
   name: string;
+  email?: string;
   avatar?: string;
+}
+
+export interface AnnouncementItemDTO {
+  id: string;
+  _id: string;
+  title: string;
+  content: string;
+  type: string;
+  status: "published" | "draft" | "archived";
+  isPinned: boolean;
+  targetAudience: "all" | "room-specific";
+  roomId?: string | null;
+  isRead: boolean;
+  readBy: string[];
+  readCount: number;
+  totalMembersCount?: number;
+  author: AnnouncementAuthorDTO;
+  audience: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  expiresAt?: Date | null;
 }
 
 export interface MemberAnnouncementDTO {
   id: string;
+  _id?: string;
   title: string;
   content: string;
   type: string;
+  status?: "published" | "draft" | "archived";
   isPinned: boolean;
   isRead: boolean;
+  readBy?: string[];
+  readCount?: number;
   author: AnnouncementAuthorDTO;
   audience: string;
   createdAt: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface PaginatedAnnouncementsResultDTO {
-  announcements: (AnnouncementResponseDTO | MemberAnnouncementDTO)[];
+  items: AnnouncementItemDTO[];
+  announcements?: (AnnouncementResponseDTO | MemberAnnouncementDTO | AnnouncementItemDTO)[];
+  pinnedItems?: AnnouncementItemDTO[];
   total: number;
-  page?: number;
-  totalPages?: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalMembersCount: number;
+  counts: AnnouncementCountsDTO;
   unreadCount?: number;
   pinnedCount?: number;
 }

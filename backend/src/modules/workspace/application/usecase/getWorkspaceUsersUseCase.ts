@@ -1,13 +1,13 @@
 import { IuseCase } from "../../../../shared/interface/IuseCase";
-import { IuserDTO } from "../../../../shared/User.utils/userDTO";
 import { IuserRepository } from "../../../workspaceAdmin/domain/IuserRepository";
 import { GetWorkspaceUsersDTO } from "../dto/workspaceDTOs";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
 import { IorganizaionRepository } from "../../../organization/domain/IorganizationRepository";
 import { AppError } from "../../../../common/Errors/AppError";
 import { MESSAGES } from "../../../../common/constant/messages";
+import { GetAllUsersResponseDTO } from "../../../workspaceAdmin/application/dtos/workspaceAdminDTO";
 
-export class GetWorkspaceUsersUseCase implements IuseCase<GetWorkspaceUsersDTO, { users: IuserDTO[]; total: number } | null> {
+export class GetWorkspaceUsersUseCase implements IuseCase<GetWorkspaceUsersDTO, GetAllUsersResponseDTO | null> {
   constructor(
     private readonly userRepository: IuserRepository,
     private readonly workspaceRepository: IworkspaceRepository,

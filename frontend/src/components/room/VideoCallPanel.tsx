@@ -17,7 +17,6 @@ import {
   MessageSquare,
   Sliders,
   LayoutGrid,
-  Sparkles,
   ChevronUp,
   Copy,
   Check,
@@ -30,6 +29,8 @@ import { ScreenShareModal } from "./ScreenShareModal";
 import { FloatingChatPanel } from "./FloatingChatPanel";
 import { FloatingParticipantsPanel } from "./FloatingParticipantsPanel";
 import { MeetingSettingsModal } from "./MeetingSettingsModal";
+import { VideoLobby } from "./workspace/VideoLobby";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 
 interface VideoCallPanelProps {
   roomId: string;
@@ -47,7 +48,7 @@ interface FloatingReaction {
 export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
   roomId,
   roomName,
-  roomType,
+  roomType: _roomType,
   currentUsername,
 }) => {
   const { socket } = useSocket();
@@ -68,9 +69,6 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
     toggleScreenShare,
   } = useCall(socket);
 
-  // Pre-join options
-  const [preMuted, setPreMuted] = useState(false);
-  const [preVideoOff, setPreVideoOff] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +86,7 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   // Hand Raise State
   const [hasHandRaised, setHasHandRaised] = useState(false);
@@ -211,6 +210,26 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
     };
   }, [socket]);
 
+  const [lobbyInCallUsers, setLobbyInCallUsers] = useState<
+    { userId: string; username: string; peerId?: string }[]
+  >([]);
+
+  useEffect(() => {
+    if (!socket || !roomId) return;
+    socket.emit("call:get-status", roomId);
+
+    const onCallStatus = (data: { roomId: string; inCallUsers: { userId: string; username: string; peerId?: string }[] }) => {
+      if (data.roomId === roomId && Array.isArray(data.inCallUsers)) {
+        setLobbyInCallUsers(data.inCallUsers);
+      }
+    };
+
+    socket.on("call:status", onCallStatus);
+    return () => {
+      socket.off("call:status", onCallStatus);
+    };
+  }, [socket, roomId]);
+
   const totalParticipants = participants.length + (isInCall ? 1 : 0);
 
   // Active Screen Sharer (local or remote)
@@ -311,119 +330,22 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
   };
 
   // ═════════════════════════════════════════════════════════════════════════
-  // PRE-JOIN LOBBY VIEW
+  // PRE-JOIN LOBBY VIEW (MODULAR PRODUCTION PREVIEW)
   // ═════════════════════════════════════════════════════════════════════════
   if (!isInCall) {
     return (
-      <div className="relative w-full rounded-3xl bg-gradient-to-b from-[#0D1222] to-[#07090F] border border-violet-500/25 p-6 sm:p-8 shadow-2xl text-white overflow-hidden">
-        {/* Ambient atmospheric glows */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Header */}
-        <div className="flex items-center justify-between pb-6 border-b border-violet-500/20 relative z-10">
-          <div className="flex items-center gap-3.5">
-            {/* AudioHive Hex Logo */}
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-violet-600 via-purple-600 to-indigo-500 p-0.5 shadow-lg shadow-violet-600/30 flex items-center justify-center">
-              <div className="w-full h-full bg-[#0B0F19] rounded-[14px] flex items-center justify-center text-violet-400">
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" />
-                  <path d="M12 22V12" />
-                  <path d="M22 7l-10 5" />
-                  <path d="M2 7l10 5" />
-                </svg>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white tracking-tight">AudioHive Conference</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30 uppercase tracking-wider">
-                  Full-Screen Experience
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {roomName || "Team Video Room"} · {roomType === "private" ? "Private Office" : "Collaborative Space"}
-              </p>
-            </div>
-          </div>
-
-          <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-950/50 text-violet-300 border border-violet-500/30">
-            <Radio className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
-            Ready to Connect
-          </span>
-        </div>
-
-        {/* Error notification */}
-        {error && (
-          <div className="mt-4 p-3.5 rounded-2xl bg-red-950/50 border border-red-500/40 flex items-start gap-2.5 text-xs text-red-200 relative z-10">
-            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Pre-join Stage Preview */}
-        <div className="my-6 p-6 sm:p-8 rounded-3xl bg-[#090C15]/80 border border-violet-500/20 flex flex-col items-center justify-center text-center relative z-10">
-          <div className="relative mb-4">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-violet-600/30 ring-4 ring-violet-500/20">
-              <Users className="w-8 h-8 text-white" />
-            </div>
-            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-[#090C15] flex items-center justify-center">
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            </span>
-          </div>
-
-          <h4 className="text-lg font-bold text-white tracking-tight">Enter Video Conference</h4>
-          <p className="text-xs text-slate-400 max-w-md mt-1.5 leading-relaxed">
-            Experience an immersive full-screen video calling layout with zero sidebar distractions, dynamic multi-participant grid, screen sharing, and floating glass controls.
-          </p>
-
-          {/* Quick Hardware Controls */}
-          <div className="flex items-center gap-3 my-6">
-            <button
-              type="button"
-              onClick={() => setPreMuted((prev) => !prev)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
-                preMuted
-                  ? "bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30"
-                  : "bg-slate-900 text-slate-200 border-violet-500/30 hover:border-violet-500/60 hover:bg-slate-850"
-              }`}
-            >
-              {preMuted ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4 text-emerald-400" />}
-              <span>{preMuted ? "Mic Muted" : "Mic Active"}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPreVideoOff((prev) => !prev)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
-                preVideoOff
-                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30"
-                  : "bg-slate-900 text-slate-200 border-violet-500/30 hover:border-violet-500/60 hover:bg-slate-850"
-              }`}
-            >
-              {preVideoOff ? <VideoOff className="w-4 h-4 text-amber-400" /> : <Video className="w-4 h-4 text-violet-400" />}
-              <span>{preVideoOff ? "Camera Off" : "Camera On"}</span>
-            </button>
-          </div>
-
-          {/* Join Call Action Button */}
-          <button
-            type="button"
-            onClick={() =>
-              joinCall(roomId, {
-                startMuted: preMuted,
-                startVideoOff: preVideoOff,
-              })
-            }
-            disabled={isConnecting}
-            className="flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:from-violet-700 active:to-indigo-700 text-white text-sm font-bold shadow-xl shadow-violet-600/40 hover:shadow-violet-600/60 transition-all disabled:opacity-50 cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>{isConnecting ? "Connecting to Conference..." : "Join Full-Screen Conference"}</span>
-          </button>
-        </div>
-      </div>
+      <VideoLobby
+        roomName={roomName || "Team Video Room"}
+        inCallUsers={lobbyInCallUsers}
+        isConnecting={isConnecting}
+        speakingPeers={speakingPeers}
+        onJoin={(options) =>
+          joinCall(roomId, {
+            startMuted: options.startMuted,
+            startVideoOff: options.startVideoOff,
+          })
+        }
+      />
     );
   }
 
@@ -569,7 +491,7 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
           {/* Header Quick Leave Button */}
           <button
             type="button"
-            onClick={leaveCall}
+            onClick={() => setShowLeaveModal(true)}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-600/80 hover:bg-red-500 active:bg-red-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
             title="Leave Conference"
           >
@@ -863,7 +785,7 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
           {/* Leave Meeting Button */}
           <button
             type="button"
-            onClick={leaveCall}
+            onClick={() => setShowLeaveModal(true)}
             title="Leave Conference"
             className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs font-bold shadow-lg shadow-red-600/35 transition-all cursor-pointer ml-1"
           >
@@ -920,6 +842,21 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
       <MeetingSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+      />
+
+      {/* Leave Meeting Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLeaveModal}
+        title="Leave Conference"
+        message="Are you sure you want to leave this call?"
+        confirmLabel="Leave Call"
+        cancelLabel="Stay in Call"
+        isDestructive
+        onConfirm={() => {
+          setShowLeaveModal(false);
+          leaveCall();
+        }}
+        onCancel={() => setShowLeaveModal(false)}
       />
     </div>
   );

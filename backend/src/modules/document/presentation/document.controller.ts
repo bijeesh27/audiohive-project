@@ -14,6 +14,7 @@ import { IRoomDocument } from "../../room/infrastructure/roomSchema.js";
 import { UserRoles } from "../../../common/constant/userRoles.js";
 import { IDocumentRepository } from "../domain/IdocumentRepository.js";
 import { s3Service } from "../../../services/s3.service.js";
+import { socketService } from "../../../socket/socketService.js";
 
 function resolveMimeType(mimeType?: string, fileName?: string): string {
   if (mimeType && mimeType !== "application/octet-stream" && mimeType.trim() !== "") {
@@ -101,12 +102,19 @@ export class DocumentController {
       throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
     }
 
-    const mimeType = resolveMimeType(file.mimetype, file.originalname);
+    const ext = (file.originalname.split(".").pop() || "").toLowerCase();
+    const blockedExtensions = ["exe", "bat", "cmd", "sh", "bin", "dll", "msi", "com", "vbs", "ps1", "scr", "jar"];
+    if (blockedExtensions.includes(ext)) {
+      throw new AppError("Executable files are not allowed for security reasons", HttpStatus.BAD_REQUEST);
+    }
+
+    const sanitizedName = file.originalname.replace(/[/\\?%*:|"<>]/g, "_").trim();
+    const mimeType = resolveMimeType(file.mimetype, sanitizedName);
     const dto: UploadDocumentDTO = {
       roomId,
       uploaderId: userId,
-      originalName: file.originalname,
-      fileName: file.originalname,
+      originalName: sanitizedName,
+      fileName: sanitizedName,
       mimeType,
       size: file.size,
       buffer: file.buffer,
@@ -136,9 +144,56 @@ export class DocumentController {
       }
       await this.getAccessibleRoom(req, roomId);
       const documents = await this.getRoomDocumentsUseCase.execute({ roomId });
-      return ApiResposne.success(res, MESSAGES.SUCCESS.DOCUMENTS_FETCHED, documents);
+      const enrichedDocs = documents.map((doc: any) => {
+        const docObj = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
+        if (!docObj.uploaderId || (typeof docObj.uploaderId === "object" && !docObj.uploaderId.username)) {
+          docObj.uploaderId = { username: "Former member" };
+        }
+        return docObj;
+      });
+      return ApiResposne.success(res, MESSAGES.SUCCESS.DOCUMENTS_FETCHED, enrichedDocs);
     } catch (error: unknown) {
       logger.error("Fetch documents error:", error);
+      next(error);
+    }
+  };
+
+  renameDocument = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const roomId = req.params.roomId as string;
+      const documentId = req.params.documentId as string;
+      const { name } = req.body;
+      const userId = req.user?.id;
+
+      if (!roomId || !documentId || !name?.trim()) {
+        throw new AppError("Invalid document name or ID", HttpStatus.BAD_REQUEST);
+      }
+
+      const { room } = await this.getAccessibleRoom(req, roomId);
+      const document = await this.documentRepository.findById(documentId);
+      if (!document || document.roomId.toString() !== roomId) {
+        throw new AppError(MESSAGES.ERRORS.DOCUMENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+      }
+
+      const isUploader = document.uploaderId?.toString() === userId;
+      const isRoomOwner = room.createdBy?.toString() === userId;
+      const isWorkspaceAdmin = req.user?.role === UserRoles.WORKSPACE_ADMIN;
+
+      if (!isUploader && !isRoomOwner && !isWorkspaceAdmin) {
+        throw new AppError("Only the uploader or room admins can rename this document", HttpStatus.FORBIDDEN);
+      }
+
+      const sanitizedName = name.trim().replace(/[/\\?%*:|"<>]/g, "_");
+      const updated = await (this.documentRepository as any).updateName(documentId, sanitizedName);
+
+      socketService.getIO().to(`room:${roomId}`).emit("room:rename-document", {
+        documentId,
+        originalName: sanitizedName,
+      });
+
+      return ApiResposne.success(res, "Document renamed successfully", updated);
+    } catch (error: unknown) {
+      logger.error("Rename document error:", error);
       next(error);
     }
   };
@@ -189,17 +244,21 @@ export class DocumentController {
       if (!roomId || !documentId) {
         throw new AppError(MESSAGES.ERRORS.DOCUMENT_NOT_FOUND, HttpStatus.NOT_FOUND);
       }
-      const { workspaceId } = await this.getAccessibleRoom(req, roomId);
+      const { room, workspaceId } = await this.getAccessibleRoom(req, roomId);
       
       if (!userId) {
         throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
       }
+
+      const isRoomAdminOrOwner =
+        room.createdBy?.toString() === userId || req.user?.role === UserRoles.WORKSPACE_ADMIN;
 
       const dto: DeleteDocumentDTO = {
         documentId,
         roomId,
         userId,
         workspaceId,
+        isRoomAdminOrOwner,
       };
 
       await this.deleteDocumentUseCase.execute(dto);

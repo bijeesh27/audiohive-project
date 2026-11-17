@@ -177,6 +177,8 @@ export const API_ENDPOINTS = {
     ACTIVE_USERS: (workspaceId: string) => `/api/workspaceadmin/activeusers/${workspaceId}`,
     USER_ANALYTICS: "/api/workspaceadmin/user-analytics",
     USER_ACTIVITY_HISTORY: (userId: string) => `/api/workspaceadmin/users/${userId}/activities`,
+    DASHBOARD: "/api/workspaceadmin/dashboard",
+    DASHBOARD_MEMBERS: "/api/workspaceadmin/dashboard/members",
   },
   SUBSCRIPTION: {
     GET_ALL: "/api/subscription/getallsubscriptions",
@@ -236,6 +238,7 @@ export const API_ENDPOINTS = {
   ANNOUNCEMENT: {
     GET_ALL: "/api/announcement",
     GET_ONE: (id: string) => `/api/announcement/${id}`,
+    GET_READERS: (id: string) => `/api/announcement/${id}/readers`,
     CREATE: "/api/announcement",
     UPDATE: (id: string) => `/api/announcement/${id}`,
     DELETE: (id: string) => `/api/announcement/${id}`,

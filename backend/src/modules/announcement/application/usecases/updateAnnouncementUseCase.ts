@@ -26,7 +26,7 @@ export class UpdateAnnouncementUseCase
       workspaceId: input.data.workspaceId, 
       targetType: "Announcement", 
       targetId: input.id, 
-      metadata: { changes: Object.keys(input.data) } 
+      metadata: { changes: Object.keys(input.data).join(", ") } 
     });
   }
 }
