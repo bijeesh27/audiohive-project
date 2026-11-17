@@ -24,6 +24,10 @@ import { setUserWorkspacesSchema } from "../../../common/validation/formValidati
 
 import { OrganizationAnalyticsRepository } from "../infrastructure/organizationAnalyticsRepository";
 import { GetOrganizationAnalyticsUseCase } from "../application/usecases/getOrganizationAnalyticsUseCase";
+import { GetOwnerDashboardUseCase } from "../application/usecases/getOwnerDashboardUseCase";
+import { UpdateOrgUserStatusUseCase } from "../application/usecases/updateOrgUserStatusUseCase";
+import { UpdateOrgUserRoleUseCase } from "../application/usecases/updateOrgUserRoleUseCase";
+import { RemoveOrgUserUseCase } from "../application/usecases/removeOrgUserUseCase";
 
 const router=express.Router()
 
@@ -40,6 +44,10 @@ const getAllOrganizationUsersUseCase=new GetAllOrganizationUsersUseCase(organiza
 const getOrgDashboardStatsUseCase=new GetOrgDashboardStatsUseCase(organizationRepository)
 const sendOrganizationInvitationUseCase = new SendOrganizationInvitationUseCase(organizationRepository,activityLogRepository)
 const getOrganizationAnalyticsUseCase = new GetOrganizationAnalyticsUseCase(organizationAnalyticsRepository);
+const getOwnerDashboardUseCase = new GetOwnerDashboardUseCase();
+const updateOrgUserStatusUseCase = new UpdateOrgUserStatusUseCase(organizationRepository, activityLogRepository);
+const updateOrgUserRoleUseCase = new UpdateOrgUserRoleUseCase(organizationRepository, activityLogRepository);
+const removeOrgUserUseCase = new RemoveOrgUserUseCase(organizationRepository, activityLogRepository);
 const setUserWorkspacesUseCase = new SetUserWorkspacesUseCase(
     organizationRepository,
     new WorkspaceReopsitory(),
@@ -59,7 +67,11 @@ getAllOrganizationUsersUseCase,
 getOrgDashboardStatsUseCase,
 sendOrganizationInvitationUseCase,
 setUserWorkspacesUseCase,
-getOrganizationAnalyticsUseCase
+getOrganizationAnalyticsUseCase,
+getOwnerDashboardUseCase,
+updateOrgUserStatusUseCase,
+updateOrgUserRoleUseCase,
+removeOrgUserUseCase
 )
 
 
@@ -83,6 +95,24 @@ router.get(
     roleMiddleware([UserRoles.ORGANIZATION_OWNER]) ,
     controller.getOrganizationUsers.bind(controller)
 )
+router.patch(
+    API_ROUTES.ORGANIZATION.UPDATE_USER_STATUS,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    controller.updateUserStatus.bind(controller)
+)
+router.patch(
+    API_ROUTES.ORGANIZATION.UPDATE_USER_ROLE,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    controller.updateUserRole.bind(controller)
+)
+router.delete(
+    API_ROUTES.ORGANIZATION.REMOVE_USER,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    controller.removeUser.bind(controller)
+)
 router.put(
     API_ROUTES.ORGANIZATION.SET_USER_WORKSPACES,
     authMiddleware,
@@ -101,6 +131,18 @@ router.get(
     authMiddleware,
     roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
     controller.getAnalytics.bind(controller)
+)
+router.get(
+    API_ROUTES.ORGANIZATION.DASHBOARD,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    controller.getOwnerDashboard.bind(controller)
+)
+router.get(
+    API_ROUTES.ORGANIZATION.OWNER_DASHBOARD,
+    authMiddleware,
+    roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+    controller.getOwnerDashboard.bind(controller)
 )
 
 export default router

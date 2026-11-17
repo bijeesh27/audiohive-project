@@ -12,14 +12,31 @@ export const updateOrganizationSchema = z.object({
 });
 
 export const createWorkspaceSchema = z.object({
-  workspaceName: z.string().min(2, "Workspace name is required"),
-  slug: z.string().min(3, "Slug is required"),
+  workspaceName: z.string().trim().min(2, "Workspace name is required").max(100, "Workspace name cannot exceed 100 characters"),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Slug must be at least 3 characters")
+    .max(63, "Slug cannot exceed 63 characters")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug can contain only lowercase letters, numbers, and hyphens without leading or trailing hyphens"),
+  description: z.string().max(500).optional(),
+  workspaceAdminEmail: z.string().trim().email("Invalid admin email").optional().or(z.literal("")),
 });
 
 export const updateWorkspaceSchema = z.object({
-  workspaceName: z.string().min(2, "Workspace name is required").optional(),
-  slug: z.string().min(3, "Slug is required").optional(),
+  workspaceName: z.string().trim().min(2, "Workspace name is required").max(100).optional(),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Slug must be at least 3 characters")
+    .max(63, "Slug cannot exceed 63 characters")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
   status: z.enum(["active", "suspended", "archived"]).optional(),
+  description: z.string().max(500).optional(),
+  workspaceAdminEmail: z.string().trim().email("Invalid admin email").optional().or(z.literal("")),
 });
 
 export const createSubscriptionSchema = z.object({

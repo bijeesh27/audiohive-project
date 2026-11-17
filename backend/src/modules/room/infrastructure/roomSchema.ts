@@ -111,5 +111,7 @@ roomSchema.index(
 );
 
 roomSchema.index({ workspaceId: 1, isDefault: -1, createdAt: -1 });
+roomSchema.index({ workspaceId: 1, status: 1 });
+roomSchema.index({ organizationId: 1, status: 1 });
 
 export const RoomModel = model<IRoomDocument>("Room", roomSchema);

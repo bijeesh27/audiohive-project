@@ -29,6 +29,10 @@ import {
   GetWorkspaceMembersActivityInputDTO,
   WorkspaceMembersActivityResponseDTO,
 } from "../application/dtos/workspaceDashboardDTO.ts";
+import { OrganizationModel } from "../../organization/infrastructure/organizationSchema.ts";
+import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema.ts";
+import { UserModel } from "../../../shared/User.utils/userSchema.ts";
+import { getUserWorkspaceIds } from "../../../shared/User.utils/workspaceMembership.ts";
 
 export class WorkspaceAdminController {
   constructor(
@@ -228,15 +232,33 @@ export class WorkspaceAdminController {
   getUserActivityHistory = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const adminEmail = req.user?.userEmail;
+      const userRole = req.user?.role;
       const userId = req.params.userId as string;
       if (!adminEmail || !userId || !this.getUserActivityHistoryUseCase) {
         throw new AccessDeniedError();
       }
 
-      const { workspaceId } = await this.resolveWorkspaceUseCase.execute({
-        userEmail: adminEmail,
-        role: UserRoles.WORKSPACE_ADMIN,
-      });
+      let workspaceId = req.query.workspaceId as string;
+      if (!workspaceId) {
+        if (userRole === UserRoles.ORGANIZATION_OWNER) {
+          const org = await OrganizationModel.findOne({ ownerEmail: adminEmail }).lean();
+          if (org) {
+            const orgWorkspaces = await WorkspaceModel.find({ organizationId: org._id }).select("_id").lean();
+            const orgWsIds = orgWorkspaces.map((w) => w._id.toString());
+            const targetUser = await UserModel.findById(userId).lean();
+            if (targetUser) {
+              const uWsIds = getUserWorkspaceIds(targetUser);
+              workspaceId = uWsIds.find((id) => orgWsIds.includes(id)) || orgWsIds[0] || "";
+            }
+          }
+        } else {
+          const resolved = await this.resolveWorkspaceUseCase.execute({
+            userEmail: adminEmail,
+            role: UserRoles.WORKSPACE_ADMIN,
+          });
+          workspaceId = resolved.workspaceId;
+        }
+      }
 
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 15;

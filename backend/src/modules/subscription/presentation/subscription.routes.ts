@@ -9,38 +9,68 @@ import { DeleteSubcriptionUseCase } from '../application/usecases/deleteSubcript
 import { GetAllSubscriptionsUseCase } from '../application/usecases/getAllSubscriptionsUseCase'
 import { CreateCheckoutSessionUseCase } from '../application/usecases/createCheckoutSessionUseCase'
 import { VerifyCheckoutSessionUseCase } from '../application/usecases/verifyCheckoutSessionUseCase'
+import { GetMySubscriptionUseCase } from '../application/usecases/getMySubscriptionUseCase'
+import { UpgradeSubscriptionUseCase } from '../application/usecases/upgradeSubscriptionUseCase'
+import { VerifyUpgradeUseCase } from '../application/usecases/verifyUpgradeUseCase'
 import { API_ROUTES } from '../../../common/constant/ApiRoutes'
 
 import { validateRequest } from "../../../middleware/validateRequest";
 import { createSubscriptionSchema, updateSubscriptionSchema } from "../../../common/validation/formValidation";
+import { authMiddleware, roleMiddleware } from "../../../middleware/authMiddleware";
+import { UserRoles } from "../../../common/constant/userRoles";
 
-const router=express.Router()
+const router = express.Router()
 
-const subscriptionRepository=new SubscriptionRepository()
-const createSubscriptionUseCase=new CreateSubscriptionUseCase(subscriptionRepository,activityLogRepository)
-const updateSubscriptionUseCase=new UpdateSubscriptionUseCase(subscriptionRepository,activityLogRepository)
-const deleteSubscriptionUseCase=new DeleteSubcriptionUseCase(subscriptionRepository,activityLogRepository)
-const getAllSubscriptionsUseCase=new GetAllSubscriptionsUseCase(subscriptionRepository)
-const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(subscriptionRepository,activityLogRepository)
+const subscriptionRepository = new SubscriptionRepository()
+const createSubscriptionUseCase = new CreateSubscriptionUseCase(subscriptionRepository, activityLogRepository)
+const updateSubscriptionUseCase = new UpdateSubscriptionUseCase(subscriptionRepository, activityLogRepository)
+const deleteSubscriptionUseCase = new DeleteSubcriptionUseCase(subscriptionRepository, activityLogRepository)
+const getAllSubscriptionsUseCase = new GetAllSubscriptionsUseCase(subscriptionRepository)
+const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(subscriptionRepository, activityLogRepository)
 const verifyCheckoutSessionUseCase = new VerifyCheckoutSessionUseCase(activityLogRepository)
+const getMySubscriptionUseCase = new GetMySubscriptionUseCase()
+const upgradeSubscriptionUseCase = new UpgradeSubscriptionUseCase(activityLogRepository)
+const verifyUpgradeUseCase = new VerifyUpgradeUseCase(activityLogRepository)
 
-
-
-const controller=new AuthController(
-    createSubscriptionUseCase,
-    updateSubscriptionUseCase,
-    deleteSubscriptionUseCase,
-    getAllSubscriptionsUseCase,
-    createCheckoutSessionUseCase,
-    verifyCheckoutSessionUseCase
+const controller = new AuthController(
+  createSubscriptionUseCase,
+  updateSubscriptionUseCase,
+  deleteSubscriptionUseCase,
+  getAllSubscriptionsUseCase,
+  createCheckoutSessionUseCase,
+  verifyCheckoutSessionUseCase,
+  getMySubscriptionUseCase,
+  upgradeSubscriptionUseCase,
+  verifyUpgradeUseCase
 )
 
 router.post(API_ROUTES.SUBSCRIPTION.CREATE_SUBSCRIPTION, validateRequest(createSubscriptionSchema), controller.createSubscription.bind(controller))
 router.post(API_ROUTES.SUBSCRIPTION.UPDATE_SUBSCRIPTION, validateRequest(updateSubscriptionSchema), controller.updateSubscription.bind(controller))
-router.post(API_ROUTES.SUBSCRIPTION.DELETE_SUBSCRIPTION,controller.deleteSubscription.bind(controller))
-router.get(API_ROUTES.SUBSCRIPTION.GET_ALL_SUBSCRIPTIONS,controller.getAllSubscriptions.bind(controller))
+router.post(API_ROUTES.SUBSCRIPTION.DELETE_SUBSCRIPTION, controller.deleteSubscription.bind(controller))
+router.get(API_ROUTES.SUBSCRIPTION.GET_ALL_SUBSCRIPTIONS, controller.getAllSubscriptions.bind(controller))
 router.post(API_ROUTES.SUBSCRIPTION.CREATE_CHECKOUT_SESSION, controller.createCheckoutSession.bind(controller))
 router.post(API_ROUTES.SUBSCRIPTION.VERIFY_SESSION, controller.verifyCheckoutSession.bind(controller))
 
+// Authenticated Owner endpoints
+router.get(
+  API_ROUTES.SUBSCRIPTION.GET_MY_SUBSCRIPTION,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.getMySubscription.bind(controller)
+)
+
+router.post(
+  API_ROUTES.SUBSCRIPTION.UPGRADE_SUBSCRIPTION,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.upgradeSubscription.bind(controller)
+)
+
+router.post(
+  API_ROUTES.SUBSCRIPTION.VERIFY_UPGRADE,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.verifyUpgrade.bind(controller)
+)
 
 export default router

@@ -12,7 +12,7 @@ export interface IworkspaceRepository {
   updateWorkspace(workspaceId: string, data: Partial<IWorkspaceDocument>): Promise<void>;
   deleteWorkspace(workspaceId: string): Promise<void>;
   getAllWorkspaces(page: number, limit: number, search?: string): Promise<{ workspaces: IWorkspaceDocument[]; total: number }>;
-  getWorkspacesByOrg(organizationId: string, page: number, limit: number, search?: string): Promise<{ workspaces: IWorkspaceDocument[]; total: number }>;
+  getWorkspacesByOrg(organizationId: string, page: number, limit: number, search?: string, status?: string, sort?: string): Promise<{ workspaces: IWorkspaceDocument[]; total: number }>;
   getWorkspacesByIds(workspaceIds: string[], activeOnly?: boolean): Promise<IWorkspaceDocument[]>;
   createInvitation(data: IInvitationDocument): Promise<void>;
   findInvitationByToken(token: string): Promise<IInvitationDocument | null>;

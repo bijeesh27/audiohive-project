@@ -187,6 +187,9 @@ export const API_ENDPOINTS = {
     DELETE: "/api/subscription/deletesubscription",
     CREATE_CHECKOUT_SESSION: "/api/subscription/create-checkout-session",
     VERIFY_SESSION: "/api/subscription/verify-session",
+    GET_MY_SUBSCRIPTION: "/api/subscription/my-subscription",
+    UPGRADE_SUBSCRIPTION: "/api/subscription/upgrade-subscription",
+    VERIFY_UPGRADE: "/api/subscription/verify-upgrade",
   },
   ORGANIZATION: {
     CREATE_ORGANIZATION: "/api/organization/create",
@@ -212,6 +215,11 @@ export const API_ENDPOINTS = {
     ANALYTICS: "/api/organization/analytics",
     GET_USERS: "/api/organization/get-users",
     SET_USER_WORKSPACES: (userId: string) => `/api/organization/users/${userId}/workspaces`,
+    UPDATE_USER_STATUS: (userId: string) => `/api/organization/users/${userId}/status`,
+    UPDATE_USER_ROLE: (userId: string) => `/api/organization/users/${userId}/role`,
+    REMOVE_USER: (userId: string) => `/api/organization/users/${userId}`,
+    DASHBOARD: "/api/owner/dashboard",
+    OWNER_DASHBOARD: "/api/owner/dashboard",
   },
   WORKSPACE: {
     GET_ALL: "/api/workspace/getallworkspaces",
@@ -224,6 +232,11 @@ export const API_ENDPOINTS = {
     INVITE: (workspaceId: string) => `/api/workspace/${workspaceId}/invite`,
     GET_USERS: (workspaceId: string) => `/api/workspace/${workspaceId}/users`,
     REMOVE_USER: (workspaceId: string, userId: string) => `/api/workspace/${workspaceId}/users/${userId}`,
+    GET_OVERVIEW: (workspaceId: string) => `/api/workspace/${workspaceId}/overview`,
+    GET_ROOMS: (workspaceId: string) => `/api/workspace/${workspaceId}/rooms`,
+    GET_ACTIVITIES: (workspaceId: string) => `/api/workspace/${workspaceId}/activities`,
+    UPDATE_USER_ROLE: (workspaceId: string, userId: string) => `/api/workspace/${workspaceId}/users/${userId}/role`,
+    UPDATE_USER_STATUS: (workspaceId: string, userId: string) => `/api/workspace/${workspaceId}/users/${userId}/status`,
   },
   ROOM: {
     GET_ALL: "/api/room",

@@ -107,7 +107,7 @@ router.get(
 router.get(
   API_ROUTES.WORKSPACE_ADMIN.USER_ACTIVITY_HISTORY,
   authMiddleware,
-  roleMiddleware([UserRoles.WORKSPACE_ADMIN]),
+  roleMiddleware([UserRoles.WORKSPACE_ADMIN, UserRoles.ORGANIZATION_OWNER]),
   controller.getUserActivityHistory.bind(controller),
 );
 

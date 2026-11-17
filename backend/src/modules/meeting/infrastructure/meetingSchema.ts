@@ -48,6 +48,8 @@ const meetingSchema = new Schema<IMeetingDocument>(
 meetingSchema.index({ workspaceId: 1, startTime: -1 });
 meetingSchema.index({ workspaceId: 1, hostId: 1 });
 meetingSchema.index({ workspaceId: 1, status: 1 });
+meetingSchema.index({ workspaceId: 1, status: 1, createdAt: -1 });
+meetingSchema.index({ workspaceId: 1, createdAt: -1 });
 
 export const MeetingModel = mongoose.model<IMeetingDocument>(
   "Meeting",

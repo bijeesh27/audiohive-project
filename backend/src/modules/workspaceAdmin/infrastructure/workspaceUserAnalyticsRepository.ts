@@ -24,6 +24,7 @@ import {
   RecentActivityFeedItem,
 } from "../application/dtos/workspaceDashboardDTO";
 import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema";
+import { OrganizationModel } from "../../organization/infrastructure/organizationSchema";
 import { UserModel } from "../../../shared/User.utils/userSchema";
 import { MeetingModel } from "../../meeting/infrastructure/meetingSchema";
 import { RoomModel } from "../../room/infrastructure/roomSchema";
@@ -38,6 +39,7 @@ import {
   buildWorkspaceMembershipQuery,
   buildWorkspaceMemberFilter,
 } from "../../../shared/User.utils/workspaceMembership";
+import { SharedMetricsService } from "../../../shared/metrics/sharedMetricsService";
 
 const workspaceMembershipQuery = buildWorkspaceMembershipQuery;
 
@@ -77,7 +79,13 @@ export class WorkspaceUserAnalyticsRepository
       throw new AppError(MESSAGES.ERRORS.WORKSPACE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    if (workspace.workspaceAdminEmail?.toLowerCase() !== input.adminEmail.toLowerCase()) {
+    const isWsAdmin = workspace.workspaceAdminEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    let isOrgOwner = false;
+    if (!isWsAdmin && workspace.organizationId) {
+      const org = await OrganizationModel.findById(workspace.organizationId).select("ownerEmail").lean();
+      isOrgOwner = org?.ownerEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    }
+    if (!isWsAdmin && !isOrgOwner) {
       throw new AppError(MESSAGES.ERRORS.ACCESS_DENIED, HttpStatus.FORBIDDEN);
     }
 
@@ -94,36 +102,23 @@ export class WorkspaceUserAnalyticsRepository
     const prevStart = new Date(start.getTime() - durationMs);
     const prevEnd = new Date(start.getTime());
 
-    // 2. Fetch workspace members
-    const baseMemberFilter = {
-      role: { $in: [UserRoles.MEMBER, UserRoles.WORKSPACE_ADMIN, "workspace-admin"] },
-      ...workspaceMembershipQuery(input.workspaceId),
-    };
+    // 2. Fetch workspace members via Unified SharedMetricsService
+    const membersMetrics = await SharedMetricsService.getMembersMetrics(
+      [input.workspaceId],
+      [{ _id: workspace._id, workspaceName: workspace.workspaceName, status: workspace.status }],
+      prevEnd
+    );
 
-    const allMembers = await UserModel.find(baseMemberFilter)
-      .select("-password")
-      .sort({ createdAt: -1 })
-      .lean();
-
+    const allMembers = membersMetrics.allMembers;
     const membersMap = new Map<string, { username: string; email: string }>();
     for (const m of allMembers) {
-      membersMap.set(m._id.toString(), { username: m.username, email: m.email });
+      membersMap.set(m._id, { username: m.username, email: m.email });
     }
 
-    const totalMembers = allMembers.length;
-    let onlineCount = 0;
-    for (const u of allMembers) {
-      if (socketService.isUserOnline(u._id.toString())) {
-        onlineCount++;
-      }
-    }
-    const offlineCount = Math.max(0, totalMembers - onlineCount);
-
-    const prevMembersCount = allMembers.filter((u) => {
-      const created = (u as { createdAt?: Date }).createdAt;
-      return created ? new Date(created) <= prevEnd : true;
-    }).length;
-    const totalMembersDelta = computeDelta(totalMembers, prevMembersCount);
+    const totalMembers = membersMetrics.totalMembers;
+    const onlineCount = membersMetrics.onlineCount;
+    const offlineCount = membersMetrics.offlineCount;
+    const totalMembersDelta = membersMetrics.membersDelta;
 
     // Find admin user for personalized greeting
     const adminUser = allMembers.find(
@@ -259,78 +254,36 @@ export class WorkspaceUserAnalyticsRepository
     });
 
     // 4. Meetings aggregation
-    const meetingsCurrent = await MeetingModel.find({
-      workspaceId: workspaceObjId,
-      $or: [
-        { startTime: { $gte: start, $lte: end } },
-        { createdAt: { $gte: start, $lte: end } },
-      ],
-    }).lean();
+    // 4. Meetings aggregation via Unified SharedMetricsService
+    const meetingsMetrics = await SharedMetricsService.getMeetingsMetrics(
+      [input.workspaceId],
+      start,
+      end,
+      prevStart,
+      prevEnd
+    );
 
-    const meetingsPrev = await MeetingModel.find({
-      workspaceId: workspaceObjId,
-      $or: [
-        { startTime: { $gte: prevStart, $lt: start } },
-        { createdAt: { $gte: prevStart, $lt: start } },
-      ],
-    }).lean();
-
-    let meetingsHeldCurrent = meetingsCurrent.length;
-    let totalMeetingMinutesCurrent = 0;
-    let scheduledMeetings = 0;
-    let completedMeetings = 0;
-    let liveMeetings = 0;
-
-    const userMeetingsMap = new Map<string, number>();
-    const userMeetingDurationMap = new Map<string, number>();
-
-    for (const m of meetingsCurrent) {
-      if (m.status === "scheduled") scheduledMeetings++;
-      else if (m.status === "completed") completedMeetings++;
-      else if (m.status === "live") liveMeetings++;
-
-      const duration = m.startTime && m.endTime
-        ? Math.max(0, Math.round((new Date(m.endTime).getTime() - new Date(m.startTime).getTime()) / 60000))
-        : 0;
-      totalMeetingMinutesCurrent += duration;
-
-      // Attribute meeting attendance to host and participants
-      const attendees = new Set<string>();
-      if (m.hostId) attendees.add(m.hostId.toString());
-      if (Array.isArray(m.participants)) {
-        for (const p of m.participants) {
-          if (p) attendees.add(p.toString());
-        }
-      }
-
-      for (const pId of attendees) {
-        userMeetingsMap.set(pId, (userMeetingsMap.get(pId) || 0) + 1);
-        userMeetingDurationMap.set(pId, (userMeetingDurationMap.get(pId) || 0) + duration);
-      }
-    }
-
-    const meetingsHeldPrev = meetingsPrev.length;
-    const meetingsDelta = computeDelta(meetingsHeldCurrent, meetingsHeldPrev);
+    const meetingsHeldCurrent = meetingsMetrics.meetingsConducted;
+    const totalMeetingMinutesCurrent = meetingsMetrics.totalDurationMinutes;
+    const scheduledMeetings = meetingsMetrics.scheduledMeetings;
+    const completedMeetings = meetingsMetrics.completedMeetings;
+    const liveMeetings = meetingsMetrics.liveMeetings;
+    const meetingsDelta = meetingsMetrics.meetingsDelta;
+    const userMeetingsMap = meetingsMetrics.userMeetingsMap;
 
     const avgDurationMinutes = meetingsHeldCurrent > 0
       ? Math.round(totalMeetingMinutesCurrent / meetingsHeldCurrent)
       : 0;
 
-    // 5. Rooms query
+    // 5. Rooms query via Unified SharedMetricsService
+    const roomsMetrics = await SharedMetricsService.getRoomsMetrics([input.workspaceId], prevEnd);
+    const totalRooms = roomsMetrics.totalRooms;
+    const activeRoomsCount = roomsMetrics.activeRooms;
+    const activeRoomsDelta = roomsMetrics.activeRoomsDelta;
+
     const workspaceRooms = await RoomModel.find({ workspaceId: workspaceObjId })
       .select("_id name type allowedUsers")
       .lean();
-    const totalRooms = workspaceRooms.length;
-
-    const activeRoomIdsCurrent = new Set<string>();
-    if (activityAggResult?.activeRoomsInRange) {
-      for (const r of activityAggResult.activeRoomsInRange) {
-        if (r._id) activeRoomIdsCurrent.add(String(r._id));
-      }
-    }
-    const prevActiveRoomsCount = activityAggResult?.prevActiveRooms?.length || 0;
-    const activeRoomsCount = activeRoomIdsCurrent.size;
-    const activeRoomsDelta = computeDelta(activeRoomsCount, prevActiveRoomsCount);
 
     // Room Usage list
     const roomActivityMap = new Map<string, number>();
@@ -532,7 +485,13 @@ export class WorkspaceUserAnalyticsRepository
       throw new AppError(MESSAGES.ERRORS.WORKSPACE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    if (workspace.workspaceAdminEmail?.toLowerCase() !== input.adminEmail.toLowerCase()) {
+    const isWsAdmin = workspace.workspaceAdminEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    let isOrgOwner = false;
+    if (!isWsAdmin && workspace.organizationId) {
+      const org = await OrganizationModel.findById(workspace.organizationId).select("ownerEmail").lean();
+      isOrgOwner = org?.ownerEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    }
+    if (!isWsAdmin && !isOrgOwner) {
       throw new AppError(MESSAGES.ERRORS.ACCESS_DENIED, HttpStatus.FORBIDDEN);
     }
 
@@ -595,36 +554,15 @@ export class WorkspaceUserAnalyticsRepository
       }
     }
 
-    // 3. Fetch meetings in range
-    const meetings = await MeetingModel.find({
-      workspaceId: workspaceObjId,
-      $or: [
-        { startTime: { $gte: start, $lte: end } },
-        { createdAt: { $gte: start, $lte: end } },
-      ],
-    }).lean();
+    // 3. Fetch meetings & duration via Unified SharedMetricsService
+    const meetingsMetrics = await SharedMetricsService.getMeetingsMetrics(
+      [input.workspaceId],
+      start,
+      end
+    );
 
-    const userMeetingsMap = new Map<string, number>();
-    const userMeetingDurationMap = new Map<string, number>();
-
-    for (const m of meetings) {
-      const duration = m.startTime && m.endTime
-        ? Math.max(0, Math.round((new Date(m.endTime).getTime() - new Date(m.startTime).getTime()) / 60000))
-        : 0;
-
-      const attendees = new Set<string>();
-      if (m.hostId) attendees.add(m.hostId.toString());
-      if (Array.isArray(m.participants)) {
-        for (const p of m.participants) {
-          if (p) attendees.add(p.toString());
-        }
-      }
-
-      for (const pId of attendees) {
-        userMeetingsMap.set(pId, (userMeetingsMap.get(pId) || 0) + 1);
-        userMeetingDurationMap.set(pId, (userMeetingDurationMap.get(pId) || 0) + duration);
-      }
-    }
+    const userMeetingsMap = meetingsMetrics.userMeetingsMap;
+    const userMeetingDurationMap = meetingsMetrics.userMeetingDurationMap;
 
     // 4. Fetch rooms
     const workspaceRooms = await RoomModel.find({ workspaceId: workspaceObjId })
@@ -743,7 +681,13 @@ export class WorkspaceUserAnalyticsRepository
       throw new AppError(MESSAGES.ERRORS.WORKSPACE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    if (workspace.workspaceAdminEmail?.toLowerCase() !== input.adminEmail.toLowerCase()) {
+    const isWsAdmin = workspace.workspaceAdminEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    let isOrgOwner = false;
+    if (!isWsAdmin && workspace.organizationId) {
+      const org = await OrganizationModel.findById(workspace.organizationId).select("ownerEmail").lean();
+      isOrgOwner = org?.ownerEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    }
+    if (!isWsAdmin && !isOrgOwner) {
       throw new AppError(MESSAGES.ERRORS.ACCESS_DENIED, HttpStatus.FORBIDDEN);
     }
 
@@ -997,7 +941,13 @@ export class WorkspaceUserAnalyticsRepository
       throw new AppError(MESSAGES.ERRORS.WORKSPACE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    if (workspace.workspaceAdminEmail?.toLowerCase() !== input.adminEmail.toLowerCase()) {
+    const isWsAdmin = workspace.workspaceAdminEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    let isOrgOwner = false;
+    if (!isWsAdmin && workspace.organizationId) {
+      const org = await OrganizationModel.findById(workspace.organizationId).select("ownerEmail").lean();
+      isOrgOwner = org?.ownerEmail?.toLowerCase() === input.adminEmail.toLowerCase();
+    }
+    if (!isWsAdmin && !isOrgOwner) {
       throw new AppError(MESSAGES.ERRORS.ACCESS_DENIED, HttpStatus.FORBIDDEN);
     }
 

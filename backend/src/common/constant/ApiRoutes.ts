@@ -5,6 +5,7 @@ export const BASE_API_ROUTES = {
   SUBSCRIPTION: "/api/subscription",
   WORKSPACE: "/api/workspace",
   ORGANIZATION: "/api/organization",
+  OWNER: "/api/owner",
   ROOM: "/api/room",
   ANNOUNCEMENT: "/api/announcement",
   ROOMS_DOCUMENTS: "/api/rooms",
@@ -71,6 +72,9 @@ export const API_ROUTES = {
     GET_ALL_SUBSCRIPTIONS: "/getallsubscriptions",
     CREATE_CHECKOUT_SESSION: "/create-checkout-session",
     VERIFY_SESSION: "/verify-session",
+    GET_MY_SUBSCRIPTION: "/my-subscription",
+    UPGRADE_SUBSCRIPTION: "/upgrade-subscription",
+    VERIFY_UPGRADE: "/verify-upgrade",
   },
 
   ORGANIZATION: {
@@ -81,9 +85,14 @@ export const API_ROUTES = {
     GET_USERS: "/get-users",
     GET_MY_ORGANIZATION: "/my-organization",
     SET_USER_WORKSPACES: "/users/:userId/workspaces",
+    UPDATE_USER_STATUS: "/users/:userId/status",
+    UPDATE_USER_ROLE: "/users/:userId/role",
+    REMOVE_USER: "/users/:userId",
     DASHBOARD_STATS: "/dashboard-stats",
     SEND_INVITATION: "/send-invitation",
     ANALYTICS: "/analytics",
+    DASHBOARD: "/dashboard",
+    OWNER_DASHBOARD: "/owner-dashboard",
   },
 
   WORKSPACE: {
@@ -97,6 +106,11 @@ export const API_ROUTES = {
     GET_WORKSPACE: "/getworkspace/:id",
     GET_USERS: "/:id/users",
     REMOVE_USER: "/:id/users/:userId",
+    GET_OVERVIEW: "/:id/overview",
+    GET_ROOMS: "/:id/rooms",
+    GET_ACTIVITIES: "/:id/activities",
+    UPDATE_USER_ROLE: "/:id/users/:userId/role",
+    UPDATE_USER_STATUS: "/:id/users/:userId/status",
   },
 
   ROOM: {

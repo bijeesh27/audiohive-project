@@ -13,6 +13,7 @@ import {
   SendWorkspaceInvitationDTO,
   UpdateWorkspaceDTO,
   WorkspacePaginationDTO,
+  WorkspacesListOutputDTO,
 } from "../application/dto/workspaceDTOs";
 import { IWorkspaceDocument } from "../infrastructure/workspaceSchema";
 import { AuthRequest } from "../../../middleware/authMiddleware";
@@ -22,6 +23,11 @@ import { GetMemberWorkspacesInput } from "../application/usecase/getMemberWorksp
 import { IworkspaceRepository } from "../domain/IworkspaceRepository";
 import { WorkspaceReopsitory } from "../infrastructure/workspaceRepository";
 import { UserRoles } from "../../../common/constant/userRoles";
+import { GetWorkspaceOverviewUseCase } from "../application/usecase/getWorkspaceOverviewUseCase";
+import { GetWorkspaceRoomsUseCase } from "../application/usecase/getWorkspaceRoomsUseCase";
+import { GetWorkspaceActivitiesUseCase } from "../application/usecase/getWorkspaceActivitiesUseCase";
+import { UpdateWorkspaceUserRoleUseCase } from "../application/usecase/updateWorkspaceUserRoleUseCase";
+import { UpdateWorkspaceUserStatusUseCase } from "../application/usecase/updateWorkspaceUserStatusUseCase";
 
 function sanitizeText(value: unknown): string {
   if (typeof value !== "string") return "";
@@ -52,7 +58,7 @@ export class WorkspaceController {
     >,
     private readonly getWorkspacesByOrgUseCase: IuseCase<
       GetWorkspacesByOrgDTO,
-      { workspaces: IWorkspaceDocument[]; total: number }
+      WorkspacesListOutputDTO | { workspaces: IWorkspaceDocument[]; total: number }
     >,
     private readonly sendWorkspaceInvitationUseCase: IuseCase<SendWorkspaceInvitationDTO, void>,
     private readonly getWorkspaceUsersUseCase: IuseCase<
@@ -61,7 +67,12 @@ export class WorkspaceController {
     >,
     private readonly removeWorkspaceUserUseCase: IuseCase<RemoveWorkspaceUserDTO, IuserDTO>,
     private readonly getMemberWorkspacesUseCase: IuseCase<GetMemberWorkspacesInput, IWorkspaceDocument[]>,
-    workspaceRepo?: IworkspaceRepository
+    workspaceRepo?: IworkspaceRepository,
+    private readonly getWorkspaceOverviewUseCase?: GetWorkspaceOverviewUseCase,
+    private readonly getWorkspaceRoomsUseCase?: GetWorkspaceRoomsUseCase,
+    private readonly getWorkspaceActivitiesUseCase?: GetWorkspaceActivitiesUseCase,
+    private readonly updateWorkspaceUserRoleUseCase?: UpdateWorkspaceUserRoleUseCase,
+    private readonly updateWorkspaceUserStatusUseCase?: UpdateWorkspaceUserStatusUseCase
   ) {
     this.workspaceRepo = workspaceRepo || new WorkspaceReopsitory();
   }
@@ -77,6 +88,8 @@ export class WorkspaceController {
         userEmail,
         workspaceName: req.body.workspaceName,
         slug: req.body.slug,
+        description: req.body.description,
+        workspaceAdminEmail: req.body.workspaceAdminEmail,
       });
 
       return ApiResposne.success(res, MESSAGES.SUCCESS.WORSPACE_CREATED, undefined, HttpStatus.CREATED);
@@ -85,20 +98,22 @@ export class WorkspaceController {
     }
   }
 
-  async updateWorkspace(req: Request, res: Response, next: NextFunction) {
+  async updateWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = req.params.id as string;
-      const response = await this.updateWorkspaceUseCase.execute({ id, ...req.body });
+      const userEmail = req.user?.userEmail;
+      const response = await this.updateWorkspaceUseCase.execute({ id, userEmail, ...req.body });
       return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_UPDATED, response, HttpStatus.OK);
     } catch (error) {
       next(error);
     }
   }
 
-  async deleteWorkspace(req: Request, res: Response, next: NextFunction) {
+  async deleteWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = req.params.id as string;
-      const response = await this.deleteWorkspaceUseCase.execute({ workspaceId: id });
+      const userEmail = req.user?.userEmail;
+      const response = await this.deleteWorkspaceUseCase.execute({ workspaceId: id, userEmail });
       return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_DELETED, response);
     } catch (error) {
       next(error);
@@ -127,9 +142,18 @@ export class WorkspaceController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search as string | undefined;
+      const status = req.query.status as "all" | "active" | "suspended" | "archived" | undefined;
+      const sort = req.query.sort as "newest" | "oldest" | "name" | "members" | undefined;
 
-      const data = await this.getWorkspacesByOrgUseCase.execute({ userEmail, page, limit, search });
-      return ApiResposne.success(res,MESSAGES.SUCCESS.WORKSPACE_GET_ALL, data);
+      const data = await this.getWorkspacesByOrgUseCase.execute({
+        userEmail,
+        page,
+        limit,
+        search,
+        status,
+        sort,
+      });
+      return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_GET_ALL, data);
     } catch (error) {
       next(error);
     }
@@ -173,11 +197,128 @@ export class WorkspaceController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search as string | undefined;
+      const role = req.query.role as string | undefined;
+      const status = req.query.status as string | undefined;
+      const sortField = req.query.sortField as string | undefined;
+      const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
       const ownerEmail = req.user?.userEmail;
       if (!ownerEmail) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
 
-      const data = await this.getWorkspaceUsersUseCase.execute({ workspaceId, ownerEmail, page, limit, search });
+      const data = await this.getWorkspaceUsersUseCase.execute({
+        workspaceId,
+        ownerEmail,
+        page,
+        limit,
+        search,
+        role,
+        status,
+        sortField,
+        sortOrder,
+      });
       return ApiResposne.success(res, MESSAGES.SUCCESS.USERS_FETCHED, data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getWorkspaceOverview(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.params.id as string;
+      const ownerEmail = req.user?.userEmail;
+      if (!ownerEmail) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      if (!this.getWorkspaceOverviewUseCase) {
+        throw new AppError("GetWorkspaceOverviewUseCase not configured", HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      const days = parseInt(req.query.days as string) || 30;
+      const data = await this.getWorkspaceOverviewUseCase.execute({ workspaceId, ownerEmail, days });
+      return ApiResposne.success(res, "Workspace overview retrieved successfully", data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getWorkspaceRooms(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.params.id as string;
+      const ownerEmail = req.user?.userEmail;
+      if (!ownerEmail) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      if (!this.getWorkspaceRoomsUseCase) {
+        throw new AppError("GetWorkspaceRoomsUseCase not configured", HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      const rooms = await this.getWorkspaceRoomsUseCase.execute({ workspaceId, ownerEmail });
+      return ApiResposne.success(res, "Workspace rooms retrieved successfully", { rooms });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getWorkspaceActivities(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.params.id as string;
+      const ownerEmail = req.user?.userEmail;
+      if (!ownerEmail) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      if (!this.getWorkspaceActivitiesUseCase) {
+        throw new AppError("GetWorkspaceActivitiesUseCase not configured", HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string | undefined;
+
+      const data = await this.getWorkspaceActivitiesUseCase.execute({ workspaceId, ownerEmail, page, limit, search });
+      return ApiResposne.success(res, "Workspace activities retrieved successfully", data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateWorkspaceUserRole(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.params.id as string;
+      const userId = req.params.userId as string;
+      const { role } = req.body;
+      const ownerEmail = req.user?.userEmail;
+      const actorId = req.user?.id;
+      if (!ownerEmail || !actorId) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      if (!this.updateWorkspaceUserRoleUseCase) {
+        throw new AppError("UpdateWorkspaceUserRoleUseCase not configured", HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      const updatedUser = await this.updateWorkspaceUserRoleUseCase.execute({
+        workspaceId,
+        userId,
+        role,
+        ownerEmail,
+        actorId,
+      });
+      return ApiResposne.success(res, "Workspace user role updated successfully", updatedUser);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateWorkspaceUserStatus(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const workspaceId = req.params.id as string;
+      const userId = req.params.userId as string;
+      const { status } = req.body;
+      const ownerEmail = req.user?.userEmail;
+      const actorId = req.user?.id;
+      if (!ownerEmail || !actorId) throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      if (!this.updateWorkspaceUserStatusUseCase) {
+        throw new AppError("UpdateWorkspaceUserStatusUseCase not configured", HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      const updatedUser = await this.updateWorkspaceUserStatusUseCase.execute({
+        workspaceId,
+        userId,
+        status: Boolean(status),
+        ownerEmail,
+        actorId,
+      });
+      return ApiResposne.success(res, "Workspace user status updated successfully", updatedUser);
     } catch (error) {
       next(error);
     }
@@ -213,7 +354,7 @@ export class WorkspaceController {
 
   async getCompanyProfile(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const workspaceId = req.params.id || req.user?.workspaceId;
+      const workspaceId = (req.params.id as string) || req.user?.workspaceId;
       if (!workspaceId) {
         throw new AppError("Workspace ID is required", HttpStatus.BAD_REQUEST);
       }
@@ -229,7 +370,7 @@ export class WorkspaceController {
 
   async updateCompanyProfile(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const workspaceId = req.params.id || req.user?.workspaceId;
+      const workspaceId = (req.params.id as string) || req.user?.workspaceId;
       if (!workspaceId) {
         throw new AppError("Workspace ID is required", HttpStatus.BAD_REQUEST);
       }
@@ -281,7 +422,7 @@ export class WorkspaceController {
 
   async addAnnouncement(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const workspaceId = req.params.id || req.user?.workspaceId;
+      const workspaceId = (req.params.id as string) || req.user?.workspaceId;
       if (!workspaceId) {
         throw new AppError("Workspace ID is required", HttpStatus.BAD_REQUEST);
       }

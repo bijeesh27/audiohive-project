@@ -23,6 +23,11 @@ import { RemoveWorkspaceUserUseCase } from "../application/usecase/removeWorkspa
 import { ActivityLogRepository } from "../../activityLog/infrastructure/activitylogRepository";
 import { GetMemberWorkspacesUseCase } from "../application/usecase/getMemberWorkspacesUseCase";
 import { UserRepository as AuthUserRepository } from "../../auth/infrastructure/userRepository";
+import { GetWorkspaceOverviewUseCase } from "../application/usecase/getWorkspaceOverviewUseCase";
+import { GetWorkspaceRoomsUseCase } from "../application/usecase/getWorkspaceRoomsUseCase";
+import { GetWorkspaceActivitiesUseCase } from "../application/usecase/getWorkspaceActivitiesUseCase";
+import { UpdateWorkspaceUserRoleUseCase } from "../application/usecase/updateWorkspaceUserRoleUseCase";
+import { UpdateWorkspaceUserStatusUseCase } from "../application/usecase/updateWorkspaceUserStatusUseCase";
 
 const router = express.Router();
 const activityLogRepository = new ActivityLogRepository();
@@ -55,6 +60,30 @@ const getMemberWorkspacesUseCase = new GetMemberWorkspacesUseCase(
   authUserRepository,
   workspaceRepository,
 );
+const getWorkspaceOverviewUseCase = new GetWorkspaceOverviewUseCase(
+  workspaceRepository,
+  organizationRepository
+);
+const getWorkspaceRoomsUseCase = new GetWorkspaceRoomsUseCase(
+  workspaceRepository,
+  organizationRepository
+);
+const getWorkspaceActivitiesUseCase = new GetWorkspaceActivitiesUseCase(
+  workspaceRepository,
+  organizationRepository
+);
+const updateWorkspaceUserRoleUseCase = new UpdateWorkspaceUserRoleUseCase(
+  userRepository,
+  workspaceRepository,
+  organizationRepository,
+  activityLogRepository
+);
+const updateWorkspaceUserStatusUseCase = new UpdateWorkspaceUserStatusUseCase(
+  userRepository,
+  workspaceRepository,
+  organizationRepository,
+  activityLogRepository
+);
 
 const controller = new WorkspaceController(
   createWorkspaceUseCase,
@@ -66,12 +95,18 @@ const controller = new WorkspaceController(
   sendWorkspaceInvitationUseCase,
   getWorkspaceUsersUseCase,
   removeWorkspaceUserUseCase,
-  getMemberWorkspacesUseCase
+  getMemberWorkspacesUseCase,
+  workspaceRepository,
+  getWorkspaceOverviewUseCase,
+  getWorkspaceRoomsUseCase,
+  getWorkspaceActivitiesUseCase,
+  updateWorkspaceUserRoleUseCase,
+  updateWorkspaceUserStatusUseCase
 );
 
 router.post(API_ROUTES.WORKSPACE.CREATE_WORKSPACE, authMiddleware, validateRequest(createWorkspaceSchema), controller.createWorkspace.bind(controller));
-router.put(API_ROUTES.WORKSPACE.UPDATE_WORKSPACE, validateRequest(updateWorkspaceSchema), controller.updateWorkspace.bind(controller));
-router.delete(API_ROUTES.WORKSPACE.DELETE_WORKSPACE, controller.deleteWorkspace.bind(controller));
+router.put(API_ROUTES.WORKSPACE.UPDATE_WORKSPACE, authMiddleware, validateRequest(updateWorkspaceSchema), controller.updateWorkspace.bind(controller));
+router.delete(API_ROUTES.WORKSPACE.DELETE_WORKSPACE, authMiddleware, controller.deleteWorkspace.bind(controller));
 router.get(API_ROUTES.WORKSPACE.GET_ALL_WORKSPACES, controller.getAllWorkspaces.bind(controller));
 router.get(API_ROUTES.WORKSPACE.GET_MY_WORKSPACES, authMiddleware, controller.getMyWorkspaces.bind(controller));
 router.get(
@@ -93,6 +128,36 @@ router.delete(
   authMiddleware,
   roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
   controller.removeWorkspaceUser.bind(controller),
+);
+router.get(
+  API_ROUTES.WORKSPACE.GET_OVERVIEW,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.getWorkspaceOverview.bind(controller)
+);
+router.get(
+  API_ROUTES.WORKSPACE.GET_ROOMS,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.getWorkspaceRooms.bind(controller)
+);
+router.get(
+  API_ROUTES.WORKSPACE.GET_ACTIVITIES,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.getWorkspaceActivities.bind(controller)
+);
+router.patch(
+  API_ROUTES.WORKSPACE.UPDATE_USER_ROLE,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.updateWorkspaceUserRole.bind(controller)
+);
+router.patch(
+  API_ROUTES.WORKSPACE.UPDATE_USER_STATUS,
+  authMiddleware,
+  roleMiddleware([UserRoles.ORGANIZATION_OWNER]),
+  controller.updateWorkspaceUserStatus.bind(controller)
 );
 
 // ── Company Profile & Announcements ─────────────────────────

@@ -58,6 +58,7 @@ export function connectApp() {
   app.use("/api/workspaces", workspaceRouter);
   app.use("/workspaces", workspaceRouter);
   app.use(BASE_API_ROUTES.ORGANIZATION, organizationRouter);
+  app.use(BASE_API_ROUTES.OWNER, organizationRouter);
   app.use(BASE_API_ROUTES.ROOM, roomRouter);
   app.use("/api/rooms", roomRouter);
   app.use(BASE_API_ROUTES.ANNOUNCEMENT, announcementRouter);

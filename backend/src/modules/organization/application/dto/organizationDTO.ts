@@ -41,16 +41,69 @@ export interface GetMyOrganizationDTO {
   ownerEmail: string;
 }
 
+export interface OrganizationUserItemDTO {
+  _id: string;
+  userId: string;
+  username: string;
+  email: string;
+  role: string;
+  status: boolean;
+  isOnline: boolean;
+  roomsCount: number;
+  lastActiveAt: string | null;
+  joinedAt: string;
+  workspaceIds?: Array<string | { _id: string; workspaceName: string }>;
+  workspaceId?: string | { _id: string; workspaceName: string };
+  workspaces?: Array<{ _id: string; workspaceName: string }>;
+  isSoleAdmin?: boolean;
+  soleAdminWorkspaceNames?: string[];
+  isOwner?: boolean;
+}
+
 export interface GetOrganizationUsersDTO {
   ownerEmail: string;
-  page: number;
-  limit: number;
+  page?: number;
+  limit?: number;
   search?: string;
+  workspaceId?: string;
+  role?: string;
+  status?: string;
+  presence?: string;
+  sortField?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface GetOrganizationUsersResultDTO {
-  users: IuserDocument[];
+  users: OrganizationUserItemDTO[];
   total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  metrics: {
+    totalMembers: number;
+    planLimit: number | null;
+    planName?: string;
+  };
+}
+
+export interface UpdateOrgUserStatusDTO {
+  ownerEmail: string;
+  actorId: string;
+  userId: string;
+  status: boolean;
+}
+
+export interface UpdateOrgUserRoleDTO {
+  ownerEmail: string;
+  actorId: string;
+  userId: string;
+  role: string;
+}
+
+export interface RemoveOrgUserDTO {
+  ownerEmail: string;
+  actorId: string;
+  userId: string;
 }
 
 export interface SetUserWorkspacesDTO {
