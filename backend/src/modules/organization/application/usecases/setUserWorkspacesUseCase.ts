@@ -26,8 +26,11 @@ export class SetUserWorkspacesUseCase
     if (!organization) throw new AppError(MESSAGES.ERRORS.ORANIZATION_NOT_FOUND, 404);
 
     const user = await this.userRepository.findUserById(input.userId);
-    if (!user || user.role !== UserRoles.MEMBER) {
+    if (!user) {
       throw new AppError(MESSAGES.ERRORS.MEMBER_NOT_FOUND, 404);
+    }
+    if (user.role === UserRoles.ORGANIZATION_OWNER || user.email?.toLowerCase() === input.ownerEmail.toLowerCase()) {
+      throw new AppError("Cannot change workspaces for the organization owner.", 403);
     }
 
     const existingWorkspaces = await this.workspaceRepository.getWorkspacesByIds(
@@ -46,6 +49,23 @@ export class SetUserWorkspacesUseCase
     }
     if (workspaceIds.some((id) => !mongoose.isValidObjectId(id))) {
       throw new AppError(MESSAGES.ERRORS.INVALID_WORKSPACE_IDS, 400);
+    }
+
+    // Check if user is being removed from a workspace where they are the designated admin or sole admin
+    const removedWsIds = existingOrganizationWorkspaceIds.filter((id) => !workspaceIds.includes(id));
+    if (removedWsIds.length > 0) {
+      for (const removedId of removedWsIds) {
+        const ws = existingWorkspaces.find((w) => w._id.toString() === removedId);
+        if (ws) {
+          const isDesignatedAdmin = ws.workspaceAdminEmail?.toLowerCase() === user.email?.toLowerCase();
+          if (isDesignatedAdmin) {
+            throw new AppError(
+              `Cannot remove user from workspace "${ws.workspaceName}" because they are the designated administrator. Assign another admin first.`,
+              400
+            );
+          }
+        }
+      }
     }
 
     const selectedWorkspaces = await this.workspaceRepository.getWorkspacesByIds(

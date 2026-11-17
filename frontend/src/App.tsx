@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import SuperAdminRoutes from "./routes/SuperAdminRoutes";
 import WorkspaceAdminRoutes from "./routes/WorkspaceAdminRoutes";
 import MemberRoutes from "./routes/MemberRoutes";
@@ -14,6 +14,9 @@ function App() {
       <Routes>
         <Route path={API_ROUTES.PUBLIC.LANDING} element={<AuthRoutes />} />
         
+        {/* Owner route aliases */}
+        <Route path="/owner/subscriptions" element={<Navigate to={API_ROUTES.ORGANIZATION_ADMIN.NAV.SUBSCRIPTION} replace />} />
+        <Route path="/owner/subscription" element={<Navigate to={API_ROUTES.ORGANIZATION_ADMIN.NAV.SUBSCRIPTION} replace />} />
 
         <Route element={<RoleGuard allowedRoles={[UserRoles.SUPER_ADMIN]} />}>
           <Route path={API_ROUTES.SUPER_ADMIN.ROOT} element={<SuperAdminRoutes />} />

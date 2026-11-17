@@ -19,6 +19,7 @@ import { UserRoles } from "../../../common/constant/userRoles";
 import { AppError } from "../../../common/Errors/AppError";
 import { HttpStatus } from "../../../common/constant/httpStatus";
 import { MESSAGES } from "../../../common/constant/messages";
+import { SharedMetricsService } from "../../../shared/metrics/sharedMetricsService";
 
 export class OrganizationAnalyticsRepository implements IOrganizationAnalyticsRepository {
   async getOrganizationAnalytics(
@@ -38,8 +39,7 @@ export class OrganizationAnalyticsRepository implements IOrganizationAnalyticsRe
 
     // 1. Fetch Workspaces for this Organization
     const workspaces = await WorkspaceModel.find({ organizationId: org._id }).lean();
-    const workspaceIds = workspaces.map((w) => w._id);
-    const workspaceIdStrings = workspaceIds.map((id) => id.toString());
+    const workspaceIdStrings = workspaces.map((w) => w._id.toString());
 
     const workspacesSummary = {
       total: workspaces.length,
@@ -49,91 +49,46 @@ export class OrganizationAnalyticsRepository implements IOrganizationAnalyticsRe
       pending: 0,
     };
 
-    // 2. Members Distribution
-    const memberRoleFilter = {
-      role: { $in: [UserRoles.WORKSPACE_ADMIN, UserRoles.MEMBER, "workspace-admin"] },
-      $or: [
-        { workspaceIds: { $in: workspaceIds } },
-        { workspaceId: { $in: workspaceIds } },
-      ],
-    };
+    // 2. Members & Distribution via Unified SharedMetricsService
+    const membersMetrics = await SharedMetricsService.getMembersMetrics(
+      workspaceIdStrings,
+      workspaces.map((w) => ({ _id: w._id, workspaceName: w.workspaceName, status: w.status }))
+    );
 
-    const allMembers = await UserModel.find(memberRoleFilter)
-      .select("_id username email role workspaceIds workspaceId")
-      .lean();
+    const totalMembers = membersMetrics.totalMembers;
+    const distribution: WorkspaceMemberDistributionItem[] = membersMetrics.distribution.map((d) => ({
+      workspaceId: d.workspaceId,
+      workspaceName: d.workspaceName,
+      memberCount: d.memberCount,
+      percentage: d.percentage,
+      status: d.status as "active" | "suspended" | "archived",
+    }));
 
-    const totalMembers = allMembers.length;
-
-    const distribution: WorkspaceMemberDistributionItem[] = workspaces.map((w) => {
-      const wIdStr = w._id.toString();
-      const count = allMembers.filter((m) => {
-        const inWorkspaceIds = Array.isArray(m.workspaceIds) &&
-          m.workspaceIds.some((id: unknown) => id && (id as Types.ObjectId).toString() === wIdStr);
-        const inWorkspaceId = m.workspaceId && (m.workspaceId as Types.ObjectId).toString() === wIdStr;
-        return inWorkspaceIds || inWorkspaceId;
-      }).length;
-
-      const percentage = totalMembers > 0 ? Math.round((count / totalMembers) * 100) : 0;
-
-      return {
-        workspaceId: wIdStr,
-        workspaceName: w.workspaceName,
-        memberCount: count,
-        percentage,
-        status: w.status,
-      };
-    });
-
-    // 3. Meetings Summary (scoped to date range and org workspaces)
-    const meetings = await MeetingModel.find({
-      workspaceId: { $in: workspaceIds },
-      createdAt: { $gte: start, $lte: end },
-    }).lean();
-
-    let totalDurationMinutes = 0;
-    let completedMeetings = 0;
-    let liveMeetings = 0;
-    let scheduledMeetings = 0;
-    let cancelledMeetings = 0;
-
-    for (const m of meetings) {
-      if (m.status === "completed") completedMeetings++;
-      else if (m.status === "live") liveMeetings++;
-      else if (m.status === "scheduled") scheduledMeetings++;
-      else if (m.status === "cancelled") cancelledMeetings++;
-
-      if (m.startTime && m.endTime) {
-        const dur = Math.max(
-          0,
-          Math.round((new Date(m.endTime).getTime() - new Date(m.startTime).getTime()) / (1000 * 60))
-        );
-        totalDurationMinutes += dur;
-      }
-    }
+    // 3. Meetings Summary via Unified SharedMetricsService
+    const meetingsMetrics = await SharedMetricsService.getMeetingsMetrics(
+      workspaceIdStrings,
+      start,
+      end
+    );
 
     const meetingsSummary = {
-      totalMeetings: meetings.length,
-      totalDurationMinutes,
-      completedMeetings,
-      liveMeetings,
-      scheduledMeetings,
-      cancelledMeetings,
+      totalMeetings: meetingsMetrics.meetingsConducted,
+      totalDurationMinutes: meetingsMetrics.totalDurationMinutes,
+      completedMeetings: meetingsMetrics.completedMeetings,
+      liveMeetings: meetingsMetrics.liveMeetings,
+      scheduledMeetings: meetingsMetrics.scheduledMeetings,
+      cancelledMeetings: meetingsMetrics.cancelledMeetings,
     };
 
-    // 4. Rooms Summary
-    const rooms = await RoomModel.find({
-      $or: [
-        { organizationId: org._id },
-        { workspaceId: { $in: workspaceIds } },
-      ],
-    }).lean();
+    // 4. Rooms Summary via Unified SharedMetricsService
+    const roomsMetrics = await SharedMetricsService.getRoomsMetrics(workspaceIdStrings);
 
     const roomsSummary = {
-      totalRooms: rooms.length,
-      activeRooms: rooms.filter((r) => r.status === "active").length,
-      blockedRooms: rooms.filter((r) => r.status === "blocked").length,
-      publicRooms: rooms.filter((r) => r.type === "public").length,
-      privateRooms: rooms.filter((r) => r.type === "private").length,
+      totalRooms: roomsMetrics.totalRooms,
+      activeRooms: roomsMetrics.activeRooms,
+      blockedRooms: roomsMetrics.blockedRooms,
+      publicRooms: roomsMetrics.publicRooms,
+      privateRooms: roomsMetrics.privateRooms,
     };
 
     // 5. Activity Trends across time buckets
@@ -153,8 +108,13 @@ export class OrganizationAnalyticsRepository implements IOrganizationAnalyticsRe
       activityCountByDay.set(day, (activityCountByDay.get(day) || 0) + 1);
     }
 
+    const meetingsInRange = await MeetingModel.find({
+      workspaceId: { $in: workspaceIdStrings.map((id) => new Types.ObjectId(id)) },
+      createdAt: { $gte: start, $lte: end },
+    }).select("createdAt").lean();
+
     const meetingCountByDay = new Map<string, number>();
-    for (const m of meetings) {
+    for (const m of meetingsInRange) {
       const day = new Date(m.createdAt).toISOString().slice(0, 10);
       meetingCountByDay.set(day, (meetingCountByDay.get(day) || 0) + 1);
     }
@@ -178,12 +138,14 @@ export class OrganizationAnalyticsRepository implements IOrganizationAnalyticsRe
     }
 
     const workspaceMeetingCounts = new Map<string, number>();
-    for (const m of meetings) {
-      const wIdStr = m.workspaceId.toString();
-      workspaceMeetingCounts.set(
-        wIdStr,
-        (workspaceMeetingCounts.get(wIdStr) || 0) + 1
-      );
+    for (const m of meetingsInRange) {
+      const wIdStr = (m as { workspaceId?: Types.ObjectId }).workspaceId?.toString();
+      if (wIdStr) {
+        workspaceMeetingCounts.set(
+          wIdStr,
+          (workspaceMeetingCounts.get(wIdStr) || 0) + 1
+        );
+      }
     }
 
     const mostActiveWorkspaces: MostActiveWorkspaceItem[] = workspaces

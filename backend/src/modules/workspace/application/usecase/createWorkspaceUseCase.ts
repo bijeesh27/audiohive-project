@@ -52,10 +52,11 @@ export class CreateWorkspaceUseCase implements IuseCase<CreateWorkspaceDTO, void
                     organizationId: organization._id,
                     workspaceName: data.workspaceName,
                     slug: data.slug,
+                    workspaceAdminEmail: data.workspaceAdminEmail || undefined,
                     companyProfile: {
                         name: data.workspaceName,
                         tagline: "Welcome to our virtual office",
-                        about: "Connect, collaborate, and listen to music together.",
+                        about: data.description || "Connect, collaborate, and listen to music together.",
                         mission: "",
                         website: "",
                         logoUrl: "",
@@ -70,7 +71,7 @@ export class CreateWorkspaceUseCase implements IuseCase<CreateWorkspaceDTO, void
                         ],
                     },
                 } as unknown as IWorkspaceDocument,
-                organization.ownerId?.toString()
+                (organization as unknown as { ownerId?: { toString(): string } }).ownerId?.toString()
             );
         } catch (error: unknown) {
             if (

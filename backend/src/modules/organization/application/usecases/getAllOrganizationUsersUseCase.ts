@@ -6,17 +6,25 @@ import { GetOrganizationUsersDTO, GetOrganizationUsersResultDTO } from "../dto/o
 export class GetAllOrganizationUsersUseCase implements IuseCase<GetOrganizationUsersDTO, GetOrganizationUsersResultDTO> {
   constructor(private readonly organizationRepository: IorganizaionRepository) {}
 
-  async execute({ ownerEmail, page, limit, search }: GetOrganizationUsersDTO): Promise<GetOrganizationUsersResultDTO> {
-    const organization = await this.organizationRepository.findByOwnerEmail(ownerEmail);
+  async execute(dto: GetOrganizationUsersDTO): Promise<GetOrganizationUsersResultDTO> {
+    const organization = await this.organizationRepository.findByOwnerEmail(dto.ownerEmail);
     if (!organization) {
       throw new OrganizationNotFound();
     }
 
     return await this.organizationRepository.getUsersByOrganization(
       organization._id as unknown as string,
-      page,
-      limit,
-      search
+      {
+        page: dto.page,
+        limit: dto.limit,
+        searchQuery: dto.search,
+        workspaceId: dto.workspaceId,
+        role: dto.role,
+        status: dto.status,
+        presence: dto.presence,
+        sortField: dto.sortField,
+        sortOrder: dto.sortOrder,
+      }
     );
   }
 }

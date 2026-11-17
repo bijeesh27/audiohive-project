@@ -30,6 +30,19 @@ export class RemoveWorkspaceUserUseCase
       throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED_REMOVE_WORKSPACE_MEMBERS, 403);
     }
 
+    const userToRemove = await this.userRepository.findUserById(userId);
+    if (!userToRemove) {
+      throw new AppError(MESSAGES.ERRORS.USER_NOT_FOUND, 404);
+    }
+
+    if (
+      (workspace.workspaceAdminEmail && workspace.workspaceAdminEmail.toLowerCase() === userToRemove.email.toLowerCase()) ||
+      userToRemove.role === "workspaceadmin" ||
+      userToRemove.role === "workspace-admin"
+    ) {
+      throw new AppError("Cannot remove the designated workspace administrator. Please assign another admin first.", 400);
+    }
+
     const updatedUser = await this.userRepository.removeUserFromWorkspace(userId, workspaceId);
 
     if (!updatedUser) {

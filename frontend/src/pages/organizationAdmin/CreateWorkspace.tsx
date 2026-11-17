@@ -12,6 +12,7 @@ interface IFormData {
 
 const CreateWorkspace = () => {
   const navigate = useNavigate();
+  const [slugManual, setSlugManual] = useState(false);
   const [formData, setFormData] = useState<IFormData>({
     workspaceName: "",
     slug: "",
@@ -22,10 +23,29 @@ const CreateWorkspace = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (name === "workspaceName") {
+      setFormData((prev) => {
+        const nextSlug = !slugManual
+          ? value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+          : prev.slug;
+        return {
+          ...prev,
+          workspaceName: value,
+          slug: nextSlug,
+        };
+      });
+    } else if (name === "slug") {
+      setSlugManual(true);
+      setFormData((prev) => ({
+        ...prev,
+        slug: value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -38,8 +58,10 @@ const CreateWorkspace = () => {
     }
     if (!formData.slug.trim()) {
       newErrors.slug = "Slug is required.";
-    } else if (!/^[a-z0-9-]{3,63}$/.test(formData.slug.trim())) {
-      newErrors.slug = "Slug must be 3–63 characters: lowercase letters, numbers, hyphens only.";
+    } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.slug.trim())) {
+      newErrors.slug = "Slug must contain only lowercase letters, numbers, and hyphens without leading or trailing hyphens.";
+    } else if (formData.slug.trim().length < 3 || formData.slug.trim().length > 63) {
+      newErrors.slug = "Slug must be 3–63 characters.";
     }
 
     if (Object.keys(newErrors).length > 0) {

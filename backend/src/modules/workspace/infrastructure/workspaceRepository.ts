@@ -88,17 +88,41 @@ export class WorkspaceReopsitory extends BaseRepository<IWorkspaceDocument> impl
   return { workspaces, total };
 }
 
- async getWorkspacesByOrg(organizationId: string, page: number, limit: number, search?: string) {
+ async getWorkspacesByOrg(
+  organizationId: string,
+  page: number,
+  limit: number,
+  search?: string,
+  status?: string,
+  sort?: string
+ ) {
   const query: Record<string, unknown> = { organizationId };
-  if (search) {
-    query.workspaceName = { $regex: search, $options: "i" };
+
+  if (status && status !== "all") {
+    query.status = status;
+  }
+
+  if (search && search.trim()) {
+    const term = search.trim();
+    query.$or = [
+      { workspaceName: { $regex: term, $options: "i" } },
+      { slug: { $regex: term, $options: "i" } },
+      { workspaceAdminEmail: { $regex: term, $options: "i" } },
+    ];
+  }
+
+  let sortQuery: Record<string, 1 | -1> = { createdAt: -1 };
+  if (sort === "oldest") {
+    sortQuery = { createdAt: 1 };
+  } else if (sort === "name") {
+    sortQuery = { workspaceName: 1 };
   }
 
   const workspaces = await this.model
     .find(query)
     .skip((page - 1) * limit)
     .limit(limit)
-    .sort({ createdAt: -1 });
+    .sort(sortQuery);
 
   const total = await this.model.countDocuments(query);
 

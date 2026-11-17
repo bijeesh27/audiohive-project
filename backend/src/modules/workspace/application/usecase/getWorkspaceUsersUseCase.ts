@@ -22,6 +22,15 @@ export class GetWorkspaceUsersUseCase implements IuseCase<GetWorkspaceUsersDTO, 
     if (!organization || !workspace || workspace.organizationId.toString() !== organization._id.toString()) {
       throw new AppError(MESSAGES.ERRORS.UNAUTHORIZED_VIEW_WORKSPACE_MEMBERS, 403);
     }
-    return await this.userRepository.getAllUsers(data.workspaceId, data.page, data.limit, data.search);
+    return await this.userRepository.getAllUsers({
+      workspaceId: data.workspaceId,
+      page: data.page,
+      limit: data.limit,
+      search: data.search,
+      role: data.role,
+      status: data.status,
+      sortField: data.sortField,
+      sortOrder: data.sortOrder,
+    });
   }
 }

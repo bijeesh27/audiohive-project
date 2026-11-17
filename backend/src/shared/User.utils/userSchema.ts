@@ -49,5 +49,7 @@ const userSchema = new Schema<IuserDocument>(
 );
 
 userSchema.index({ workspaceIds: 1, role: 1 });
+userSchema.index({ workspaceIds: 1, status: 1 });
+userSchema.index({ role: 1, status: 1 });
 
 export const UserModel = mongoose.model<IuserDocument>("User", userSchema);

@@ -67,12 +67,64 @@ export const worspaceAdminGetUsers = (
   return axiosInstance.get(url).then((res) => res.data);
 };
 
-export const organizationOwnerGetUsers = (page: number = 1, limit: number = 10, search: string = "") => {
-  let url = `${API_ENDPOINTS.ORGANIZATION_ADMIN.GET_USERS}?page=${page}&limit=${limit}`;
-  if (search) {
-    url += `&search=${encodeURIComponent(search)}`;
+export interface OrganizationGetUsersParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  workspaceId?: string;
+  role?: string;
+  status?: string;
+  presence?: string;
+  sortField?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export const organizationOwnerGetUsers = (
+  paramsOrPage: OrganizationGetUsersParams | number = 1,
+  limitArg: number = 10,
+  searchArg: string = ""
+) => {
+  let url = API_ENDPOINTS.ORGANIZATION_ADMIN.GET_USERS;
+  if (typeof paramsOrPage === "number") {
+    url += `?page=${paramsOrPage}&limit=${limitArg}`;
+    if (searchArg) {
+      url += `&search=${encodeURIComponent(searchArg)}`;
+    }
+  } else {
+    const params = new URLSearchParams();
+    if (paramsOrPage.page) params.set("page", String(paramsOrPage.page));
+    if (paramsOrPage.limit) params.set("limit", String(paramsOrPage.limit));
+    if (paramsOrPage.search) params.set("search", paramsOrPage.search);
+    if (paramsOrPage.workspaceId && paramsOrPage.workspaceId !== "all") params.set("workspaceId", paramsOrPage.workspaceId);
+    if (paramsOrPage.role && paramsOrPage.role !== "all") params.set("role", paramsOrPage.role);
+    if (paramsOrPage.status && paramsOrPage.status !== "all") params.set("status", paramsOrPage.status);
+    if (paramsOrPage.presence && paramsOrPage.presence !== "all") params.set("presence", paramsOrPage.presence);
+    if (paramsOrPage.sortField) params.set("sortField", paramsOrPage.sortField);
+    if (paramsOrPage.sortOrder) params.set("sortOrder", paramsOrPage.sortOrder);
+    const queryString = params.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
   }
   return axiosInstance.get(url).then((res) => res.data);
+};
+
+export const organizationUpdateUserStatus = (userId: string, status: boolean) => {
+  return axiosInstance
+    .patch(API_ENDPOINTS.ORGANIZATION_ADMIN.UPDATE_USER_STATUS(userId), { status })
+    .then((res) => res.data);
+};
+
+export const organizationUpdateUserRole = (userId: string, role: string) => {
+  return axiosInstance
+    .patch(API_ENDPOINTS.ORGANIZATION_ADMIN.UPDATE_USER_ROLE(userId), { role })
+    .then((res) => res.data);
+};
+
+export const organizationRemoveUser = (userId: string) => {
+  return axiosInstance
+    .delete(API_ENDPOINTS.ORGANIZATION_ADMIN.REMOVE_USER(userId))
+    .then((res) => res.data);
 };
 
 export const updateUserWorkspaces = (userId: string, workspaceIds: string[]) => {

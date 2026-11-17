@@ -1,7 +1,19 @@
 import { IuserDocument } from "../../../shared/User.utils/userSchema";
-import { CreateOrganizationDTO } from "../application/dto/organizationDTO";
+import { CreateOrganizationDTO, GetOrganizationUsersResultDTO } from "../application/dto/organizationDTO";
 import { ICreateOrganizationInvitation } from "../infrastructure/organizationInvitationSchema";
 import { IorganizationDocument } from "../infrastructure/organizationSchema";
+
+export interface GetOrgUsersQueryOptions {
+    page?: number;
+    limit?: number;
+    searchQuery?: string;
+    workspaceId?: string;
+    role?: string;
+    status?: string;
+    presence?: string;
+    sortField?: string;
+    sortOrder?: "asc" | "desc";
+}
 
 export interface IorganizaionRepository{
     createOrganization(data:CreateOrganizationDTO):Promise<IorganizationDocument>
@@ -15,10 +27,10 @@ export interface IorganizaionRepository{
     findByOwnerEmail(ownerEmail:string):Promise<IorganizationDocument | null>
     getUsersByOrganization(
         organizationId: string,
-        page: number,
-        limit: number,
+        pageOrOptions?: number | GetOrgUsersQueryOptions,
+        limit?: number,
         searchQuery?: string
-    ): Promise<{ users: IuserDocument[], total: number }>;
+    ): Promise<GetOrganizationUsersResultDTO>;
     getTotalWorkspacesByOrg(organizationId: string): Promise<number>;
     getTotalUsersByOrg(organizationId: string): Promise<number>;
 }
