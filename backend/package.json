@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "tsx src/server.ts",
     "test": "tsx --test tests/lounge.test.ts",
     "migrate:lounge": "tsx src/modules/workspace/infrastructure/migrations/createDefaultLoungeMigration.ts",
     "dev": "tsx watch src/server.ts",

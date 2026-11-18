@@ -1,0 +1,60 @@
+services:
+  # Redis for BullMQ queues and caching
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - audiohive-network
+
+  # Express + Node.js Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CLIENT_URL=http://localhost:5173
+      - CORS_ORIGIN=http://localhost:5173
+      - NODE_ENV=development
+    volumes:
+      - backend_logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - audiohive-network
+
+  # React + Vite Frontend (Served via Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:3000
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - audiohive-network
+
+networks:
+  audiohive-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local
+  backend_logs:
+    driver: local
