@@ -17,6 +17,7 @@ import {
   X,
   RotateCcw,
   Users as UsersIcon,
+  Building2,
 } from "lucide-react";
 import { API_ROUTES } from "../../constants/Api_Routes";
 
@@ -42,6 +43,13 @@ export interface MemberRowData {
   isSoleAdmin?: boolean;
   soleAdminWorkspaceNames?: string[];
   isOwner?: boolean;
+  organization?: {
+    _id: string;
+    companyName: string;
+    slug: string;
+  } | null;
+  organizationId?: string;
+  organizationName?: string;
 }
 
 export type SortField = "name" | "role" | "status" | "rooms" | "lastActive" | "joined";
@@ -66,6 +74,7 @@ export interface MembersTableProps {
   currentUserId?: string;
   currentUserEmail?: string;
   showWorkspaceColumn?: boolean;
+  showOrganizationColumn?: boolean;
   workspaceLinkBase?: string;
   sortField: SortField;
   sortOrder: SortOrder;
@@ -100,11 +109,14 @@ export interface MembersTableProps {
 
 export const formatRoleBadge = (role: string): string => {
   const normalized = role?.toLowerCase() || "";
+  if (normalized === "superadmin" || normalized === "super-admin") {
+    return "Super Admin";
+  }
   if (normalized === "workspaceadmin" || normalized === "workspace-admin" || normalized === "admin") {
-    return "Admin";
+    return "Workspace Admin";
   }
   if (normalized === "organization-owner" || normalized === "owner") {
-    return "Owner";
+    return "Organization Owner";
   }
   if (normalized === "member") {
     return "Member";
@@ -166,6 +178,7 @@ export const MembersTable: React.FC<MembersTableProps> = ({
   currentUserId,
   currentUserEmail,
   showWorkspaceColumn = false,
+  showOrganizationColumn = false,
   sortField,
   sortOrder,
   onSort,
@@ -251,6 +264,13 @@ export const MembersTable: React.FC<MembersTableProps> = ({
                 </button>
               </th>
 
+              {/* Organization column */}
+              {showOrganizationColumn && (
+                <th scope="col" className="py-3.5 px-4 font-semibold text-gray-700">
+                  <span>Organization</span>
+                </th>
+              )}
+
               {/* Workspace column */}
               {showWorkspaceColumn && (
                 <th scope="col" className="py-3.5 px-4 font-semibold text-gray-700">
@@ -331,6 +351,11 @@ export const MembersTable: React.FC<MembersTableProps> = ({
                       </div>
                     </div>
                   </td>
+                  {showOrganizationColumn && (
+                    <td className="py-4 px-4">
+                      <div className="w-24 h-5 bg-gray-200 rounded-md" />
+                    </td>
+                  )}
                   {showWorkspaceColumn && (
                     <td className="py-4 px-4">
                       <div className="w-24 h-5 bg-gray-200 rounded-md" />
@@ -356,7 +381,10 @@ export const MembersTable: React.FC<MembersTableProps> = ({
             ) : error ? (
               /* Error State */
               <tr>
-                <td colSpan={showWorkspaceColumn ? 7 : 6} className="py-12 text-center">
+                <td
+                  colSpan={6 + (showWorkspaceColumn ? 1 : 0) + (showOrganizationColumn ? 1 : 0)}
+                  className="py-12 text-center"
+                >
                   <div className="max-w-sm mx-auto space-y-3">
                     <AlertCircle className="w-10 h-10 text-red-500 mx-auto" />
                     <h3 className="text-base font-semibold text-gray-900">Failed to load users</h3>
@@ -377,7 +405,10 @@ export const MembersTable: React.FC<MembersTableProps> = ({
             ) : users.length === 0 ? (
               /* Empty / No-Results State */
               <tr>
-                <td colSpan={showWorkspaceColumn ? 7 : 6} className="py-16 text-center">
+                <td
+                  colSpan={6 + (showWorkspaceColumn ? 1 : 0) + (showOrganizationColumn ? 1 : 0)}
+                  className="py-16 text-center"
+                >
                   <div className="max-w-sm mx-auto space-y-3">
                     <UsersIcon className="w-12 h-12 text-gray-300 mx-auto" />
                     <h3 className="text-base font-semibold text-gray-900">
@@ -498,6 +529,28 @@ export const MembersTable: React.FC<MembersTableProps> = ({
                       </div>
                     </td>
 
+                    {/* Organization Column */}
+                    {showOrganizationColumn && (
+                      <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                        {user.organization ? (
+                          <Link
+                            to={`/superadmin/organizations/${user.organization._id}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-purple-50/80 text-purple-700 hover:bg-purple-100 hover:text-purple-800 border border-purple-200/60 transition-colors"
+                            title={`View organization: ${user.organization.companyName}`}
+                          >
+                            <Building2 className="w-3 h-3 text-purple-500 shrink-0" />
+                            <span className="truncate max-w-[130px] font-medium">
+                              {user.organization.companyName}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="text-xs font-medium text-gray-400 italic">
+                            Platform
+                          </span>
+                        )}
+                      </td>
+                    )}
+
                     {/* Workspace Column */}
                     {showWorkspaceColumn && (
                       <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
@@ -513,6 +566,10 @@ export const MembersTable: React.FC<MembersTableProps> = ({
                                 {ws.workspaceName}
                               </Link>
                             ))
+                          ) : isOwner ? (
+                            <span className="text-xs font-semibold text-gray-400">
+                              –
+                            </span>
                           ) : (
                             <span className="text-xs font-medium text-gray-400 italic">
                               Unassigned
@@ -524,16 +581,33 @@ export const MembersTable: React.FC<MembersTableProps> = ({
 
                     {/* Role Cell: Badge */}
                     <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                          isAdmin || isOwner
-                            ? "bg-indigo-50 text-indigo-700 border-indigo-200/80"
-                            : "bg-gray-100 text-gray-700 border-gray-200"
-                        }`}
-                      >
-                        {(isAdmin || isOwner) && <Shield className="w-3 h-3 text-indigo-600" />}
-                        <span>{roleText}</span>
-                      </span>
+                      {(() => {
+                        const isSuperAdmin =
+                          user.role?.toLowerCase() === "superadmin" ||
+                          user.role?.toLowerCase() === "super-admin";
+                        let badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
+                        let iconColor = "text-gray-500";
+                        if (isSuperAdmin) {
+                          badgeClass = "bg-purple-50 text-purple-700 border-purple-200/80";
+                          iconColor = "text-purple-600";
+                        } else if (isOwner) {
+                          badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200/80";
+                          iconColor = "text-indigo-600";
+                        } else if (isAdmin) {
+                          badgeClass = "bg-blue-50 text-blue-700 border-blue-200/80";
+                          iconColor = "text-blue-600";
+                        }
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeClass}`}
+                          >
+                            {(isAdmin || isOwner || isSuperAdmin) && (
+                              <Shield className={`w-3 h-3 ${iconColor}`} />
+                            )}
+                            <span>{roleText}</span>
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* Status Cell: Badge with Dot */}
@@ -782,10 +856,6 @@ export const MembersTable: React.FC<MembersTableProps> = ({
               <ChevronLeft className="w-4 h-4" />
               Previous
             </button>
-
-            <span className="px-2 text-xs font-semibold text-gray-700">
-              {page} / {totalPages}
-            </span>
 
             <button
               type="button"
