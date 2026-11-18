@@ -52,6 +52,7 @@ export function connectApp() {
 
   app.use(BASE_API_ROUTES.AUTH, authRouter);
   app.use(BASE_API_ROUTES.SUPER_ADMIN, superAdminRouter);
+  app.use("/api/superadmin", superAdminRouter);
   app.use(BASE_API_ROUTES.WORKSPACE_ADMIN, workspaceAdminRouter);
   app.use(BASE_API_ROUTES.SUBSCRIPTION, subscriptionRouter);
   app.use(BASE_API_ROUTES.WORKSPACE, workspaceRouter);

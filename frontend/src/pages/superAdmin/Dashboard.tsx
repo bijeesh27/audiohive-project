@@ -1,58 +1,165 @@
-import { useEffect, useState } from "react";
-import { Building2, Users } from "lucide-react";
-import { getSuperAdminDashboardStats } from "../../services/superAdminServices";
+import { useEffect, useState, useCallback } from "react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import {
+  getSuperAdminDashboardAnalytics,
+} from "../../services/superAdminServices";
+import type {
+  SuperAdminDashboardData,
+  DashboardQueryParams,
+} from "../../services/superAdminServices";
+import { DashboardHeader } from "../../components/superAdmin/dashboard/DashboardHeader";
+import type { DateRangePreset } from "../../components/superAdmin/dashboard/DashboardHeader";
+import { SuperAdminKpiCards } from "../../components/superAdmin/dashboard/SuperAdminKpiCards";
+import { GrowthChart } from "../../components/superAdmin/dashboard/GrowthChart";
+import { PlatformActivityChart } from "../../components/superAdmin/dashboard/PlatformActivityChart";
+import { PlanDistributionCard } from "../../components/superAdmin/dashboard/PlanDistributionCard";
+import { TopOrganizationsCard } from "../../components/superAdmin/dashboard/TopOrganizationsCard";
+import { NeedsAttentionCard } from "../../components/superAdmin/dashboard/NeedsAttentionCard";
+import { RecentPlatformActivityCard } from "../../components/superAdmin/dashboard/RecentPlatformActivityCard";
 
 export default function Dashboard() {
   const { username } = useAuth();
-  const [stats, setStats] = useState({ totalOrganizations: 0, totalUsers: 0 });
+
+  const [data, setData] = useState<SuperAdminDashboardData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedRange, setSelectedRange] = useState<DateRangePreset>("7d");
+  const [customStartDate, setCustomStartDate] = useState<string | undefined>();
+  const [customEndDate, setCustomEndDate] = useState<string | undefined>();
+
+  const loadData = useCallback(
+    (params: DashboardQueryParams, isManualRefresh = false) => {
+      let cancelled = false;
+      if (isManualRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      getSuperAdminDashboardAnalytics(params)
+        .then((res) => {
+          if (!cancelled && res?.data) {
+            setData(res.data);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setError(
+              err?.response?.data?.message ||
+                "Failed to load platform analytics. Please try again."
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoading(false);
+            setIsRefreshing(false);
+          }
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    },
+    []
+  );
 
   useEffect(() => {
-    getSuperAdminDashboardStats()
-      .then((res) => {
-        if (res?.data) setStats(res.data);
-      })
-      .catch(() => {});
-  }, []);
+    const params: DashboardQueryParams = {
+      range: selectedRange,
+      startDate: customStartDate,
+      endDate: customEndDate,
+    };
+    return loadData(params);
+  }, [loadData, selectedRange, customStartDate, customEndDate]);
+
+  const handleRangeChange = (params: DashboardQueryParams) => {
+    if (params.range) {
+      setSelectedRange(params.range as DateRangePreset);
+    }
+    setCustomStartDate(params.startDate);
+    setCustomEndDate(params.endDate);
+  };
+
+  const handleRefresh = () => {
+    loadData(
+      {
+        range: selectedRange,
+        startDate: customStartDate,
+        endDate: customEndDate,
+      },
+      true
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+    <div className="space-y-6 pb-12">
+      {/* 1. Header with greeting, date-range controls, and refresh */}
+      <DashboardHeader
+        adminName={username || "Super Admin"}
+        selectedRange={selectedRange}
+        onRangeChange={handleRangeChange}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+        lastUpdated={data?.lastUpdated}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+      />
+
+      {/* Global Error Banner with Retry */}
+      {error && (
+        <div
+          role="alert"
+          className="rounded-2xl bg-rose-50 border border-rose-200 p-4 flex items-center justify-between text-xs text-rose-800"
+        >
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 text-white font-semibold hover:bg-rose-700 transition-colors shadow-xs"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
+      {/* 2. KPI Cards Row (6 cards) */}
+      <SuperAdminKpiCards kpis={data?.kpis} loading={loading} />
+
+      {/* 3. Analytics Charts Grid (Growth Chart & Activity Chart) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GrowthChart data={data?.growthChart} loading={loading} />
+        <PlatformActivityChart data={data?.activityChart} loading={loading} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex items-center gap-4">
-          <div className="bg-indigo-50 p-3 rounded-lg">
-            <Building2 className="text-indigo-600 w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Total Organizations</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalOrganizations}</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex items-center gap-4">
-          <div className="bg-violet-50 p-3 rounded-lg">
-            <Users className="text-violet-600 w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Total Users</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
-          </div>
-        </div>
+      {/* 4. Plan Distribution & Needs Attention Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PlanDistributionCard
+          distribution={data?.planDistribution}
+          loading={loading}
+        />
+        <NeedsAttentionCard items={data?.needsAttention} loading={loading} />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-        <div className="max-w-3xl">
-          <h2 className="text-xl font-medium text-gray-800 mb-3">Welcome back, {username || "there"}!</h2>
-          <p className="text-gray-500 text-sm leading-relaxed">
-            This is your centralized dashboard to oversee and manage the AudioHive platform.
-            From here, you will be able to monitor system health, manage users, workspaces,
-            and handle platform subscriptions.
-          </p>
-        </div>
-      </div>
+      {/* 5. Top Organizations Table */}
+      <TopOrganizationsCard
+        organizations={data?.topOrganizations}
+        loading={loading}
+      />
+
+      {/* 6. Recent Platform Activity Feed */}
+      <RecentPlatformActivityCard
+        activities={data?.recentActivity}
+        loading={loading}
+      />
     </div>
   );
 }

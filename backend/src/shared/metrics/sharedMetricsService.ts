@@ -37,6 +37,22 @@ import { buildWorkspaceMembershipQuery, WORKSPACE_MEMBER_ROLES } from "../User.u
  *      plus any verified call durations from CALL_ATTENDED activity logs.
  *    - "Scheduled Meetings": status === "scheduled" (future / upcoming).
  *    - "Cancelled Meetings": status === "cancelled".
+ *
+ * 4. WHAT COUNTS AS A "USER" (PLATFORM-WIDE):
+ *    - Platform users are all non-superadmin accounts across all organizations and workspaces
+ *      (roles in [organization-owner, workspaceadmin, workspace-admin, member]).
+ *    - "Total Users": All non-superadmin accounts (active + disabled).
+ *    - "Active Users": Non-superadmin accounts with status !== false.
+ *    - "Online Users": Non-superadmin accounts currently possessing an active socket connection.
+ *    - "Disabled Users": Non-superadmin accounts with status === false.
+ *    - Consistent with Workspace Admin and Org Owner portals: Workspace Admin counts members assigned
+ *      to its workspace; Org Owner counts members across its workspaces; Super Admin counts platform-wide
+ *      users across all organizations plus organization owners.
+ *
+ * 5. WHAT COUNTS AS AN "ACTIVE ORGANIZATION":
+ *    - An organization whose status is "active" (not suspended or archived) AND has recorded
+ *      at least one conducted meeting, room activity, or audit activity within the last 30 days
+ *      (or was created within the last 30 days).
  * ============================================================================
  */
 
