@@ -34,21 +34,6 @@ services:
     networks:
       - audiohive-network
 
-  # React + Vite Frontend (Served via Nginx)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_URL=http://localhost:3000
-    restart: unless-stopped
-    ports:
-      - "5173:80"
-    depends_on:
-      - backend
-    networks:
-      - audiohive-network
-
 networks:
   audiohive-network:
     driver: bridge
