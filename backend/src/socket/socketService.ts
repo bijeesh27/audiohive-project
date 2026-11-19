@@ -13,6 +13,7 @@ import { ValidateCallAccessUseCase } from "../modules/meeting/application/usecas
 import { WhiteboardRepository } from "../modules/whiteboard/infrastructure/whiteboardRepository.js";
 import { loungeMusicManager } from "../modules/room/infrastructure/loungeMusicManager.js";
 import { UserRoles } from "../common/constant/userRoles.js";
+import { corsOriginChecker } from "../shared/utils/cors.utils.ts";
 
 export interface CallParticipantSession {
   peerId: string;
@@ -43,13 +44,9 @@ let io: SocketIOServer;
 
 export const socketService = {
   init(httpServer: HttpServer) {
-    const corsOrigin = process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-      : process.env.CLIENT_URL || "http://localhost:5173";
-
     io = new SocketIOServer(httpServer, {
       cors: {
-        origin: corsOrigin,
+        origin: corsOriginChecker,
         credentials: true,
       },
     });
