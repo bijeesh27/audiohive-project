@@ -24,19 +24,16 @@ import cookieParser from "cookie-parser";
 import { morganMiddleware } from "./middleware/morganMiddleware.ts";
 import logger from "./shared/utils/logger.ts";
 import { socketService } from "./socket/socketService.ts";
+import { corsOriginChecker } from "./shared/utils/cors.utils.ts";
 
 export function connectApp() {
   const app = express();
   const httpServer = createServer(app);
   app.use(morganMiddleware);
 
-  const allowedOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
-    : [process.env.CLIENT_URL || "http://localhost:5173"];
-
   app.use(
     cors({
-      origin: allowedOrigins,
+      origin: corsOriginChecker,
       credentials: true,
       exposedHeaders: ["Content-Disposition", "Content-Type", "Content-Length"],
     })

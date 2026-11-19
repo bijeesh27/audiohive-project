@@ -28,8 +28,6 @@ services:
       - PORT=3000
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - CLIENT_URL=http://localhost:5173
-      - CORS_ORIGIN=http://localhost:5173
       - NODE_ENV=development
     depends_on:
       - redis
