@@ -30,9 +30,9 @@ export function connectApp() {
   const httpServer = createServer(app);
   app.use(morganMiddleware);
 
-  const allowedOrigins = [
-    "https://audiohive.bijeesh.in",
-  ];
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+    : [process.env.CLIENT_URL || "http://localhost:5173"];
 
   app.use(
     cors({
