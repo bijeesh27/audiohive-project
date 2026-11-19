@@ -43,9 +43,13 @@ let io: SocketIOServer;
 
 export const socketService = {
   init(httpServer: HttpServer) {
+    const corsOrigin = process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+      : process.env.CLIENT_URL || "http://localhost:5173";
+
     io = new SocketIOServer(httpServer, {
       cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+        origin: corsOrigin,
         credentials: true,
       },
     });
