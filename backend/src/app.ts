@@ -31,9 +31,7 @@ export function connectApp() {
   app.use(morganMiddleware);
 
   const allowedOrigins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://10.20.10.137:5173",
+    "https://audiohive.bijeesh.in",
   ];
 
   app.use(
