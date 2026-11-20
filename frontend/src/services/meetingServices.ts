@@ -73,3 +73,19 @@ export const cancelMeeting = (id: string) => {
 export const deleteMeeting = (id: string) => {
   return axiosInstance.delete(API_ENDPOINTS.MEETING.DELETE(id));
 };
+
+export const getMeetingSummary = (meetingId: string) => {
+  return axiosInstance.get(`/api/meeting/${meetingId}/summary`);
+};
+
+export const generateMeetingSummary = (meetingId: string, customNotes?: string) => {
+  return axiosInstance.post(`/api/meeting/${meetingId}/summary`, { customNotes });
+};
+
+export const toggleSummaryActionItem = (meetingId: string, index: number, completed: boolean) => {
+  return axiosInstance.patch(`/api/meeting/${meetingId}/summary/action-items/${index}`, { completed });
+};
+
+export const getMeetingTranscript = (meetingId: string) => {
+  return axiosInstance.get(`/api/meeting/${meetingId}/live-transcript`);
+};

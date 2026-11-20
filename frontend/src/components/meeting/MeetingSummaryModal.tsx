@@ -25,7 +25,7 @@ import {
   toggleSummaryActionItem,
   getMeetingTranscript,
 } from "../../services/meetingServices";
-import type { MeetingItem, MeetingSummary } from "../../types/meetings";
+import type { MeetingItem, MeetingSummary, MeetingSummaryActionItem } from "../../types/meetings";
 
 interface MeetingSummaryModalProps {
   isOpen: boolean;
@@ -132,7 +132,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
     // Optimistic UI update
     const nextCompleted = !currentCompleted;
-    setSummary((prev) => {
+    setSummary((prev: MeetingSummary | null) => {
       if (!prev) return null;
       const updatedActions = [...prev.actionItems];
       if (updatedActions[index]) {
@@ -148,7 +148,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
       await toggleSummaryActionItem(meetingId, index, nextCompleted);
     } catch {
       // Revert on error
-      setSummary((prev) => {
+      setSummary((prev: MeetingSummary | null) => {
         if (!prev) return null;
         const revertedActions = [...prev.actionItems];
         if (revertedActions[index]) {
@@ -172,7 +172,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
     if (summary.keyPoints?.length > 0) {
       md += `## Key Discussion Points\n`;
-      summary.keyPoints.forEach((point) => {
+      summary.keyPoints.forEach((point: string) => {
         md += `- ${point}\n`;
       });
       md += `\n`;
@@ -180,7 +180,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
     if (summary.actionItems?.length > 0) {
       md += `## Action Items\n`;
-      summary.actionItems.forEach((action) => {
+      summary.actionItems.forEach((action: MeetingSummaryActionItem) => {
         const check = action.completed ? "[x]" : "[ ]";
         const assignee = action.assignee ? ` (@${action.assignee})` : "";
         const due = action.dueDate ? ` - Due: ${action.dueDate}` : "";
@@ -191,7 +191,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
     if (summary.decisions?.length > 0) {
       md += `## Decisions Made\n`;
-      summary.decisions.forEach((dec) => {
+      summary.decisions.forEach((dec: string) => {
         md += `- ${dec}\n`;
       });
       md += `\n`;
@@ -218,7 +218,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
     if (summary.keyPoints?.length > 0) {
       md += `## Key Discussion Points\n`;
-      summary.keyPoints.forEach((point) => {
+      summary.keyPoints.forEach((point: string) => {
         md += `- ${point}\n`;
       });
       md += `\n`;
@@ -226,7 +226,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
     if (summary.actionItems?.length > 0) {
       md += `## Action Items\n`;
-      summary.actionItems.forEach((item) => {
+      summary.actionItems.forEach((item: MeetingSummaryActionItem) => {
         md += `- [${item.completed ? "x" : " "}] ${item.task}${item.assignee ? ` (Assigned: ${item.assignee})` : ""
           }${item.dueDate ? ` (Due: ${item.dueDate})` : ""}\n`;
       });
@@ -235,7 +235,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
     if (summary.decisions?.length > 0) {
       md += `## Decisions Made\n`;
-      summary.decisions.forEach((d) => {
+      summary.decisions.forEach((d: string) => {
         md += `- ${d}\n`;
       });
       md += `\n`;
@@ -401,7 +401,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
               Action Items
               {summary.actionItems?.length > 0 && (
                 <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-violet-500/20 text-violet-300 font-bold">
-                  {summary.actionItems.filter((a) => a.completed).length}/
+                  {summary.actionItems.filter((a: MeetingSummaryActionItem) => a.completed).length}/
                   {summary.actionItems.length}
                 </span>
               )}
@@ -574,7 +574,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
                 </div>
                 {summary.keyPoints && summary.keyPoints.length > 0 ? (
                   <ul className="space-y-2.5">
-                    {summary.keyPoints.map((point, idx) => (
+                    {summary.keyPoints.map((point: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-3 text-sm text-slate-300">
                         <span className="flex items-center justify-center w-5 h-5 rounded-full bg-violet-600/20 text-violet-300 text-xs font-bold shrink-0 mt-0.5 border border-violet-500/30">
                           {idx + 1}
@@ -597,7 +597,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
                   </span>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {summary.keywords && summary.keywords.length > 0 ? (
-                      summary.keywords.map((kw, i) => (
+                      summary.keywords.map((kw: string, i: number) => (
                         <span
                           key={i}
                           className="px-2.5 py-1 rounded-lg text-xs bg-slate-800 text-slate-300 border border-violet-500/20 font-medium"
@@ -619,7 +619,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
                   </span>
                   <div className="flex flex-wrap gap-2 pt-1">
                     {summary.speakers && summary.speakers.length > 0 ? (
-                      summary.speakers.map((spk, i) => (
+                      summary.speakers.map((spk: string, i: number) => (
                         <span
                           key={i}
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-indigo-950/60 text-indigo-300 border border-indigo-500/30 font-medium"
@@ -651,14 +651,14 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
                   </p>
                 </div>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-violet-600/20 text-violet-300 border border-violet-500/30">
-                  {summary.actionItems.filter((a) => a.completed).length} of{" "}
+                  {summary.actionItems.filter((a: MeetingSummaryActionItem) => a.completed).length} of{" "}
                   {summary.actionItems.length} Done
                 </span>
               </div>
 
               {summary.actionItems && summary.actionItems.length > 0 ? (
                 <div className="space-y-2.5">
-                  {summary.actionItems.map((action, idx) => (
+                  {summary.actionItems.map((action: MeetingSummaryActionItem, idx: number) => (
                     <div
                       key={idx}
                       onClick={() => handleToggleAction(idx, action.completed)}
@@ -726,7 +726,7 @@ export const MeetingSummaryModal: React.FC<MeetingSummaryModalProps> = ({
 
               {summary.decisions && summary.decisions.length > 0 ? (
                 <div className="space-y-3">
-                  {summary.decisions.map((decision, idx) => (
+                  {summary.decisions.map((decision: string, idx: number) => (
                     <div
                       key={idx}
                       className="flex items-start gap-3 p-4 rounded-xl bg-slate-800/40 border border-emerald-500/20 text-slate-200"
