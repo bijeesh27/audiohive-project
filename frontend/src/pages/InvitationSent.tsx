@@ -43,7 +43,7 @@ const InvitationSent = () => {
               </h1>
               
               <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-500">
-                {/* eslint-disable-next-line react/no-unescaped-entities */}
+                { }
                 We've sent an invitation email to{" "}
                 <span className="font-medium text-gray-700">
                   {ownerEmail}
@@ -65,7 +65,7 @@ const InvitationSent = () => {
           </div>
 
           <p className="mt-5 text-center text-xs text-gray-400">
-            {/* eslint-disable-next-line react/no-unescaped-entities */}
+            { }
             Didn't receive the email? Contact our support team.
           </p>
         </div>

@@ -35,7 +35,7 @@ export default function RoomAccessModal({
 
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setSelectedUsers(new Set(initialAllowedUsers));
       // eslint-disable-next-line react-hooks/immutability
       fetchWorkspaceUsers();

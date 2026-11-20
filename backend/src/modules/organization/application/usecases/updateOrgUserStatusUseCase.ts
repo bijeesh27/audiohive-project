@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import { IuseCase } from "../../../../shared/interface/IuseCase";
 import { IorganizaionRepository } from "../../domain/IorganizationRepository";
 import { IactivityLogRepository } from "../../../activityLog/domain/IactivitylogRepository";
@@ -8,7 +7,7 @@ import { AppError } from "../../../../common/Errors/AppError";
 import { HttpStatus } from "../../../../common/constant/httpStatus";
 import { UserRoles } from "../../../../common/constant/userRoles";
 import { UpdateOrgUserStatusDTO } from "../dto/organizationDTO";
-import { getUserWorkspaceIds, buildWorkspaceMembershipQuery, WORKSPACE_MEMBER_ROLES } from "../../../../shared/User.utils/workspaceMembership";
+import { getUserWorkspaceIds, buildWorkspaceMembershipQuery } from "../../../../shared/User.utils/workspaceMembership";
 
 export class UpdateOrgUserStatusUseCase implements IuseCase<UpdateOrgUserStatusDTO, { success: boolean; status: boolean }> {
   constructor(

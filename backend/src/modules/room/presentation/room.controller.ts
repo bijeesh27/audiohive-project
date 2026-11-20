@@ -170,7 +170,7 @@ export class RoomController {
       } else {
         const allowedCount = (room.allowedUsers || []).length;
         const ownerIncluded = (room.allowedUsers || []).some(
-          (u: any) => u.toString() === room.createdBy?.toString()
+          (u: { toString(): string } | unknown) => String(u) === room.createdBy?.toString()
         );
         memberCount = ownerIncluded ? allowedCount : allowedCount + 1;
       }
@@ -178,7 +178,9 @@ export class RoomController {
       const liveParticipants = socketService.getRoomLiveParticipants(roomId);
       const onlineCount = liveParticipants.length;
 
-      const roomObj = typeof (room as any).toObject === "function" ? (room as any).toObject() : { ...room };
+      const roomObj = ('toObject' in room && typeof (room as { toObject: () => Record<string, unknown> }).toObject === "function")
+        ? (room as { toObject: () => Record<string, unknown> }).toObject()
+        : { ...room };
       const enrichedRoom = {
         ...roomObj,
         isDefault,
@@ -211,21 +213,21 @@ export class RoomController {
       });
 
       let liveRoomsCount = 0;
-      const enrichedRooms = (data.rooms || []).map((roomDoc: any) => {
+      const enrichedRooms = (data.rooms || []).map((roomDoc: { toObject?: () => Record<string, unknown> } & Record<string, unknown>) => {
         const r = typeof roomDoc.toObject === "function" ? roomDoc.toObject() : { ...roomDoc };
-        const roomIdStr = r._id.toString();
+        const roomIdStr = String(r._id);
         const liveParticipants = socketService.getRoomLiveParticipants(roomIdStr);
         const onlineCount = liveParticipants ? liveParticipants.length : 0;
         if (onlineCount > 0) liveRoomsCount++;
 
         const isDefault = Boolean(r.isDefault || r.name === "Lounge" || r.name === "Office Common Room");
-        let memberCount = 0;
+        let memberCount: number;
         if (r.type === "public" || r.type === "lounge" || isDefault) {
           memberCount = totalWorkspaceUsers;
         } else {
           const allowedCount = Array.isArray(r.allowedUsers) ? r.allowedUsers.length : 0;
           const ownerIncluded = Array.isArray(r.allowedUsers) && r.allowedUsers.some(
-            (u: any) => (u?.toString ? u.toString() : String(u)) === (r.createdBy?.toString ? r.createdBy.toString() : String(r.createdBy))
+            (u: { toString?: () => string } | unknown) => String(u) === (r.createdBy ? String(r.createdBy) : "")
           );
           memberCount = ownerIncluded ? allowedCount : allowedCount + 1;
         }

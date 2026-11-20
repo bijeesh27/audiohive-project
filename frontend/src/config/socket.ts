@@ -1,7 +1,8 @@
 import { io, Socket } from "socket.io-client";
+import { API_BASE_URL } from "./axios";
 
 const socket: Socket = io(
-  import.meta.env.VITE_API_URL || "http://localhost:3000",
+  API_BASE_URL,
   {
     autoConnect: false,
     withCredentials: true,

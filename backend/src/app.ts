@@ -29,6 +29,7 @@ import { corsOriginChecker } from "./shared/utils/cors.utils.ts";
 export function connectApp() {
   const app = express();
   const httpServer = createServer(app);
+  app.set("trust proxy", 1);
   app.use(morganMiddleware);
 
   app.use(

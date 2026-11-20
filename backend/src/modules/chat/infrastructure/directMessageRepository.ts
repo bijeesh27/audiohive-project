@@ -88,14 +88,14 @@ export class DirectMessageRepository implements IDirectMessageRepository {
       const currentUnread =
         (typeof conv.unreadCounts.get === "function"
           ? conv.unreadCounts.get(data.receiverId)
-          : (conv.unreadCounts as any)?.[data.receiverId]) || 0;
+          : (conv.unreadCounts as unknown as Record<string, number>)?.[data.receiverId]) || 0;
 
       if (typeof conv.unreadCounts.set === "function") {
         conv.unreadCounts.set(data.receiverId, currentUnread + 1);
         conv.unreadCounts.set(data.senderId, 0);
       } else {
-        (conv.unreadCounts as any)[data.receiverId] = currentUnread + 1;
-        (conv.unreadCounts as any)[data.senderId] = 0;
+        (conv.unreadCounts as unknown as Record<string, number>)[data.receiverId] = currentUnread + 1;
+        (conv.unreadCounts as unknown as Record<string, number>)[data.senderId] = 0;
       }
       conv.markModified("unreadCounts");
       await conv.save();
@@ -159,7 +159,7 @@ export class DirectMessageRepository implements IDirectMessageRepository {
       if (typeof conv.unreadCounts.set === "function") {
         conv.unreadCounts.set(userId, 0);
       } else {
-        (conv.unreadCounts as any)[userId] = 0;
+        (conv.unreadCounts as unknown as Record<string, number>)[userId] = 0;
       }
       conv.markModified("unreadCounts");
       await conv.save();

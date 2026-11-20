@@ -12,6 +12,7 @@ import { ActivityLogModel } from "../modules/activityLog/infrastructure/activity
 import { ValidateCallAccessUseCase } from "../modules/meeting/application/usecases/validateCallAccessUseCase.js";
 import { WhiteboardRepository } from "../modules/whiteboard/infrastructure/whiteboardRepository.js";
 import { loungeMusicManager } from "../modules/room/infrastructure/loungeMusicManager.js";
+import type { TrackItem } from "../modules/room/domain/IAudioSourceService.js";
 import { UserRoles } from "../common/constant/userRoles.js";
 import { corsOriginChecker } from "../shared/utils/cors.utils.ts";
 import { groqTranscriptionService } from "../services/groqTranscription.service.js";
@@ -273,7 +274,7 @@ export const socketService = {
         }
       });
 
-      socket.on(SOCKET_EVENTS.MUSIC_ADD_QUEUE, async ({ roomId: targetRoomId, track }: { roomId: string; track: any }) => {
+      socket.on(SOCKET_EVENTS.MUSIC_ADD_QUEUE, async ({ roomId: targetRoomId, track }: { roomId: string; track: TrackItem }) => {
         try {
           const allowed = await verifyLoungeMusicAccess(targetRoomId);
           if (!allowed) return;
@@ -921,7 +922,6 @@ export const socketService = {
           speakerId?: string;
         }) => {
           try {
-            console.log(`[LiveTranscript] Received audio chunk from socket ${socket.id}, effectiveRoom=${socketCallRoom.get(socket.id) || payload?.roomId}`);
             logger.info(`[LiveTranscript] Received audio chunk from socket ${socket.id}, roomId=${payload?.roomId}, type=${typeof payload?.audioData}`);
 
             if (!payload || !payload.audioData) {

@@ -136,8 +136,8 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
             setWorkspaceId(tokenWorkspaceId ?? null);
           }
         }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
+        console.warn("Auth initialization failed on refresh:", error);
         setToken(null);
         setAccessToken(null);
         setUserRole(null);
@@ -189,7 +189,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

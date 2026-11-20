@@ -35,7 +35,7 @@ export const RoomTabs: React.FC<RoomTabsProps> = ({
   ];
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-    let nextIndex = index;
+    let nextIndex: number;
     if (e.key === "ArrowRight") {
       nextIndex = (index + 1) % tabs.length;
     } else if (e.key === "ArrowLeft") {

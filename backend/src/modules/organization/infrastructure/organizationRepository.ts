@@ -11,7 +11,7 @@ import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema";
 import { UserModel } from "../../../shared/User.utils/userSchema";
 import { UserRoles } from "../../../common/constant/userRoles";
 import { buildMultiWorkspaceMembershipQuery, SharedMetricsService } from "../../../shared/metrics/sharedMetricsService";
-import { WORKSPACE_MEMBER_ROLES, getUserWorkspaceIds } from "../../../shared/User.utils/workspaceMembership";
+import { WORKSPACE_MEMBER_ROLES } from "../../../shared/User.utils/workspaceMembership";
 import { RoomModel } from "../../room/infrastructure/roomSchema";
 import { ActivityLogModel } from "../../activityLog/infrastructure/activitylogSchema";
 import { SubscriptionModel } from "../../subscription/infrastructure/subscriptionSchema";

@@ -32,7 +32,13 @@ export class AnnouncementController {
     private readonly resolveWorkspaceUseCase: IuseCase<ResolveWorkspaceDTO, ResolvedWorkspaceDTO>,
     private readonly markAsUnreadFn?: (id: string, workspaceId: string, userId: string) => Promise<void>,
     private readonly markAllAsReadFn?: (workspaceId: string, userId: string) => Promise<number>,
-    private readonly getAnnouncementReadersUseCase?: IuseCase<{ id: string; workspaceId: string }, any>
+    private readonly getAnnouncementReadersUseCase?: IuseCase<{ id: string; workspaceId: string }, {
+      readMembers: Array<{ _id: string; username: string; email: string; avatar?: string }>;
+      unreadMembers: Array<{ _id: string; username: string; email: string; avatar?: string }>;
+      totalMembers: number;
+      readCount: number;
+      unreadCount: number;
+    }>
   ) {}
 
   private async resolveWorkspace(req: AuthRequest) {

@@ -13,7 +13,13 @@ import {
   CancelMeetingDTO,
   DeleteMeetingDTO,
 } from "../application/dto/meetingDTO.js";
+import {
+  GenerateMeetingSummaryDTO,
+  GetMeetingSummaryDTO,
+  UpdateMeetingActionItemDTO,
+} from "../application/dto/meetingSummaryDTO.js";
 import { IMeetingDocument } from "../infrastructure/meetingSchema.js";
+import { IMeetingSummaryDocument } from "../infrastructure/meetingSummarySchema.js";
 import { liveTranscriptRepository } from "../infrastructure/liveTranscriptRepository.js";
 
 export class MeetingController {
@@ -32,8 +38,20 @@ export class MeetingController {
     private readonly getMeetingByIdUseCase: IuseCase<GetMeetingByIdDTO, IMeetingDocument>,
     private readonly updateMeetingUseCase: IuseCase<UpdateMeetingDTO, IMeetingDocument>,
     private readonly cancelMeetingUseCase: IuseCase<CancelMeetingDTO, IMeetingDocument>,
-    private readonly deleteMeetingUseCase: IuseCase<DeleteMeetingDTO, void>
-  ) {}
+    private readonly deleteMeetingUseCase: IuseCase<DeleteMeetingDTO, void>,
+    private readonly generateMeetingSummaryUseCase: IuseCase<
+      GenerateMeetingSummaryDTO,
+      IMeetingSummaryDocument
+    >,
+    private readonly getMeetingSummaryUseCase: IuseCase<
+      GetMeetingSummaryDTO,
+      IMeetingSummaryDocument | null
+    >,
+    private readonly updateMeetingSummaryActionItemUseCase: IuseCase<
+      UpdateMeetingActionItemDTO,
+      IMeetingSummaryDocument | null
+    >
+  ) { }
 
   private getAuthenticatedWorkspaceContext(req: AuthRequest) {
     const user = req.user;
@@ -95,12 +113,16 @@ export class MeetingController {
         const hostName = hostObj?.username || "Host";
 
         const participantsList = Array.isArray(m.participants) ? m.participants : [];
-        const attendees = participantsList.slice(0, 3).map((p: any) => ({
-          id: p?._id ? String(p._id) : typeof p === "string" ? p : "",
-          name: p?.username || "Attendee",
-          email: p?.email || "",
-          avatar: p?.username ? p.username[0].toUpperCase() : "A",
-        }));
+        const attendees = participantsList.slice(0, 3).map((p: { _id?: unknown; username?: string; email?: string } | string) => {
+          const isObj = typeof p === "object" && p !== null;
+          const pObj = isObj ? p : null;
+          return {
+            id: pObj?._id ? String(pObj._id) : typeof p === "string" ? p : "",
+            name: pObj?.username || "Attendee",
+            email: pObj?.email || "",
+            avatar: pObj?.username ? pObj.username[0].toUpperCase() : "A",
+          };
+        });
 
         const isHost = Boolean(user.id && (hostIdStr === user.id || m.hostId?.toString() === user.id));
 
@@ -191,12 +213,16 @@ export class MeetingController {
           avatar: hostObj?.username ? hostObj.username[0].toUpperCase() : "H",
         },
         hostId: meeting.hostId,
-        attendees: (Array.isArray(meeting.participants) ? meeting.participants : []).slice(0, 3).map((p: any) => ({
-          id: p?._id ? String(p._id) : typeof p === "string" ? p : "",
-          name: p?.username || "Attendee",
-          email: p?.email || "",
-          avatar: p?.username ? p.username[0].toUpperCase() : "A",
-        })),
+        attendees: (Array.isArray(meeting.participants) ? meeting.participants : []).slice(0, 3).map((p: { _id?: unknown; username?: string; email?: string } | string) => {
+          const isObj = typeof p === "object" && p !== null;
+          const pObj = isObj ? p : null;
+          return {
+            id: pObj?._id ? String(pObj._id) : typeof p === "string" ? p : "",
+            name: pObj?.username || "Attendee",
+            email: pObj?.email || "",
+            avatar: pObj?.username ? pObj.username[0].toUpperCase() : "A",
+          };
+        }),
         participants: meeting.participants,
         attendeeCount: Array.isArray(meeting.participants) ? meeting.participants.length : 0,
         isHost: Boolean(user.id && hostIdStr === user.id),
@@ -295,6 +321,76 @@ export class MeetingController {
         res,
         "Meeting transcript retrieved",
         transcript || { meetingId, turns: [] }
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getSummary = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const user = this.getAuthenticatedWorkspaceContext(req);
+      const meetingId = req.params.id as string;
+
+      const summary = await this.getMeetingSummaryUseCase.execute({
+        meetingId,
+        workspaceId: user.workspaceId,
+      });
+
+      return ApiResposne.success(
+        res,
+        "Meeting summary retrieved",
+        summary || null
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  generateSummary = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const user = this.getAuthenticatedWorkspaceContext(req);
+      const meetingId = req.params.id as string;
+      const { customNotes } = req.body || {};
+
+      const summary = await this.generateMeetingSummaryUseCase.execute({
+        meetingId,
+        workspaceId: user.workspaceId,
+        userId: user.id,
+        customNotes,
+      });
+
+      return ApiResposne.success(
+        res,
+        "AI Meeting summary generated successfully",
+        summary,
+        HttpStatus.OK
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  toggleActionItem = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const meetingId = req.params.id as string;
+      const index = parseInt(req.params.index as string, 10);
+      const { completed } = req.body;
+
+      if (isNaN(index) || typeof completed !== "boolean") {
+        throw new AppError("Invalid action item parameters", HttpStatus.BAD_REQUEST);
+      }
+
+      const updated = await this.updateMeetingSummaryActionItemUseCase.execute({
+        meetingId,
+        itemIndex: index,
+        completed,
+      });
+
+      return ApiResposne.success(
+        res,
+        "Action item status updated",
+        updated
       );
     } catch (error) {
       next(error);

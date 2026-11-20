@@ -1,3 +1,4 @@
+import { Model } from "mongoose";
 import { BaseRepository } from "../../../shared/common/baseRepository.js";
 import { IAnnouncementRepository } from "../domain/IAnnouncementRepository.js";
 import { AnnouncementModel } from "./announcementSchema.js";
@@ -14,11 +15,27 @@ function escapeRegex(s: string): string {
   return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 }
 
+interface RawAnnouncementDoc {
+  _id: { toString(): string };
+  title: string;
+  content: string;
+  type: "info" | "warning" | "critical" | "event";
+  status?: "draft" | "published" | "archived";
+  isPinned?: boolean;
+  targetAudience?: "all" | "room-specific";
+  roomId?: { toString(): string } | null;
+  readBy?: Array<{ toString(): string }>;
+  createdBy?: { _id?: { toString(): string }; username?: string; email?: string } | { toString(): string };
+  createdAt: Date;
+  updatedAt: Date;
+  expiresAt?: Date;
+}
+
 export class AnnouncementRepository
   extends BaseRepository<AnnouncementResponseDTO>
   implements IAnnouncementRepository {
   constructor() {
-    super(AnnouncementModel as any);
+    super(AnnouncementModel as unknown as Model<AnnouncementResponseDTO>);
   }
 
   async createAnnouncement(
@@ -128,17 +145,17 @@ export class AnnouncementRepository
       ]);
 
     // Pinned announcements group for page 1 of "all" tab
-    let rawPinnedDocs: any[] = [];
+    let rawPinnedDocs: RawAnnouncementDoc[] = [];
     const isAllTab = currentTab === "all" || currentTab === "";
     if (page === 1 && isAllTab) {
       const pinnedQuery: Record<string, unknown> = { workspaceId, isPinned: true };
       if (query.$or) pinnedQuery.$or = query.$or;
       if (query.type) pinnedQuery.type = query.type;
-      rawPinnedDocs = await this.model
+      rawPinnedDocs = (await this.model
         .find(pinnedQuery)
         .sort({ createdAt: -1 })
         .populate("createdBy", "username email")
-        .lean();
+        .lean()) as unknown as RawAnnouncementDoc[];
     }
 
     // Query for main list (exclude pinned docs on page 1 of All so they are not duplicated)
@@ -147,12 +164,12 @@ export class AnnouncementRepository
       mainQuery.isPinned = { $ne: true };
     }
 
-    let rawDocs: any[] = [];
+    let rawDocs: RawAnnouncementDoc[];
     const sort = filters?.sort || "newest";
 
     if (sort === "most_read" || sort === "least_read") {
       const sortDir = sort === "most_read" ? -1 : 1;
-      rawDocs = await this.model.aggregate([
+      rawDocs = (await this.model.aggregate([
         { $match: mainQuery },
         { $addFields: { readCount: { $size: { $ifNull: ["$readBy", []] } } } },
         { $sort: { readCount: sortDir, createdAt: -1 } },
@@ -172,25 +189,27 @@ export class AnnouncementRepository
           },
         },
         { $project: { authorUser: 0 } },
-      ]);
+      ])) as unknown as RawAnnouncementDoc[];
     } else {
       const sortField: Record<string, 1 | -1> =
         sort === "oldest" ? { createdAt: 1 } : { createdAt: -1 };
-      rawDocs = await this.model
+      rawDocs = (await this.model
         .find(mainQuery)
         .sort(sortField)
         .skip(skip)
         .limit(limit)
         .populate("createdBy", "username email")
-        .lean();
+        .lean()) as unknown as RawAnnouncementDoc[];
     }
 
     const total = await this.model.countDocuments(query);
 
-    const mapDoc = (doc: any): AnnouncementItemDTO => {
-      const readByList = (doc.readBy || []).map((r: any) => r.toString());
+    const mapDoc = (doc: RawAnnouncementDoc): AnnouncementItemDTO => {
+      const readByList = (doc.readBy || []).map((r) => r.toString());
       const isRead = userId ? readByList.includes(userId) : false;
-      const authorName = doc.createdBy?.username || "Admin";
+      const authorName = (doc.createdBy && typeof doc.createdBy === "object" && "username" in doc.createdBy)
+        ? (doc.createdBy as { username?: string }).username || "Admin"
+        : "Admin";
 
       return {
         id: doc._id.toString(),
@@ -207,9 +226,13 @@ export class AnnouncementRepository
         readCount: readByList.length,
         totalMembersCount,
         author: {
-          id: doc.createdBy?._id?.toString() || (doc.createdBy || "").toString(),
+          id: (doc.createdBy && typeof doc.createdBy === "object" && "_id" in doc.createdBy && doc.createdBy._id)
+            ? doc.createdBy._id.toString()
+            : (doc.createdBy || "").toString(),
           name: authorName,
-          email: doc.createdBy?.email || "",
+          email: (doc.createdBy && typeof doc.createdBy === "object" && "email" in doc.createdBy)
+            ? (doc.createdBy as { email?: string }).email || ""
+            : "",
           avatar: "",
         },
         audience: doc.targetAudience === "room-specific" ? "Room" : "Everyone",
@@ -260,20 +283,21 @@ export class AnnouncementRepository
       throw new AppError("Announcement not found", 404);
     }
 
-    const readBySet = new Set((announcement.readBy || []).map((uid: any) => uid.toString()));
+    const readBySet = new Set((announcement.readBy || []).map((uid) => String(uid)));
     const memberFilter = buildWorkspaceMemberFilter(workspaceId);
     const users = await UserModel.find(memberFilter, "_id username email role avatar createdAt").lean();
 
-    const readMembers: any[] = [];
-    const unreadMembers: any[] = [];
+    type ReaderMemberItem = { _id: string; username: string; email: string; role?: string; avatar?: string };
+    const readMembers: ReaderMemberItem[] = [];
+    const unreadMembers: ReaderMemberItem[] = [];
 
     for (const user of users) {
-      const uDto = {
+      const uDto: ReaderMemberItem = {
         _id: user._id.toString(),
         username: user.username,
         email: user.email,
         role: user.role || "member",
-        avatar: (user as any).avatar || "",
+        avatar: (user as { avatar?: string }).avatar || "",
       };
       if (readBySet.has(user._id.toString())) {
         readMembers.push(uDto);

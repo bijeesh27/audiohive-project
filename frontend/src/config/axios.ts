@@ -2,8 +2,11 @@ import axios from "axios";
 import { HttpStatus } from "../constants/httpStatus";
 import { API_ENDPOINTS } from "../constants/Api_Routes";
 
+const rawBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -47,7 +50,7 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const res = await axios.post(
-          `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${API_ENDPOINTS.AUTH.REFRESH}`,
+          `${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`,
           {},
           {
             withCredentials: true,

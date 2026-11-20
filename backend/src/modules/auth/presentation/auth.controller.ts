@@ -47,6 +47,16 @@ interface InvitationDetails {
   ownerEmail?: string;
 }
 
+const getRefreshTokenCookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
+    maxAge: parseInt(process.env.MAX_AGE || "604800000", 10),
+  };
+};
+
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: IuseCase<RegisterDTO, void>,
@@ -153,12 +163,7 @@ export class AuthController {
         { expiresIn: "7d" },
       );
 
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: parseInt(process.env.MAX_AGE!),
-      });
+      res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
 
       if (workspaceId) {
         ActivityLogModel.create({
@@ -313,11 +318,9 @@ export class AuthController {
 
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-      });
+      const clearOptions = { ...getRefreshTokenCookieOptions() };
+      delete (clearOptions as { maxAge?: number }).maxAge;
+      res.clearCookie("refreshToken", clearOptions);
 
       return ApiResposne.success(
         res,
@@ -347,12 +350,7 @@ export class AuthController {
       const accessToken = jwt.sign(tokenPayload, process.env.JWT_SECRET!, { expiresIn: "15m" });
       const refreshToken = jwt.sign(tokenPayload, process.env.JWT_REFRESH_SECRET!, { expiresIn: "7d" });
 
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: parseInt(process.env.MAX_AGE!),
-      });
+      res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
 
       return ApiResposne.success(res, MESSAGES.SUCCESS.WORKSPACE_SWITCHED, {
         accessToken,

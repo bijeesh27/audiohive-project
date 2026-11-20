@@ -15,7 +15,7 @@ const SubscriptionSuccess = () => {
 
   useEffect(() => {
     if (!sessionId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setStatus("error");
       setErrorMessage("No session ID found.");
       return;
@@ -55,7 +55,7 @@ const SubscriptionSuccess = () => {
         }
       } catch (e: unknown) {
       const error = e as { response?: { data?: { message?: string } }; message?: string };
-        // eslint-disable-next-line no-console
+         
         console.error("Verification/Invitation Error:", error);
         setStatus("error");
         setErrorMessage(

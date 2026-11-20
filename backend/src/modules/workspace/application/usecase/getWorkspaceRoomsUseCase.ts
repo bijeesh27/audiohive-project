@@ -76,7 +76,7 @@ export class GetWorkspaceRoomsUseCase implements IuseCase<GetWorkspaceRoomsInput
 
     const roomActivityMap = new Map<string, Date>();
     for (const log of latestLogs) {
-      const targetId = log.targetId?.toString() || (log.metadata as any)?.roomId?.toString();
+      const targetId = log.targetId?.toString() || (log.metadata as { roomId?: unknown } | undefined)?.roomId?.toString();
       if (targetId && !roomActivityMap.has(targetId)) {
         roomActivityMap.set(targetId, new Date(log.occurredAt));
       }

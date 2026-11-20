@@ -1,5 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React from "react";
 import { TrendingUp, BarChart3 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 import type { GrowthDataPoint } from "../../../services/superAdminServices";
 
 interface GrowthChartProps {
@@ -7,24 +17,41 @@ interface GrowthChartProps {
   loading?: boolean;
 }
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>;
+  label?: string;
+}
+
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const users = payload.find((p) => p.name === "newUsers")?.value ?? 0;
+  const orgs = payload.find((p) => p.name === "newOrganizations")?.value ?? 0;
+
+  return (
+    <div className="bg-gray-900/95 text-white text-[11px] rounded-xl px-3 py-1.5 shadow-lg flex items-center gap-3.5 backdrop-blur-xs border border-gray-800">
+      <span className="font-semibold text-gray-200">{label}</span>
+      <span className="flex items-center gap-1 font-mono text-violet-300">
+        <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+        {users} users
+      </span>
+      <span className="flex items-center gap-1 font-mono text-indigo-300">
+        <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
+        {orgs} orgs
+      </span>
+    </div>
+  );
+};
+
 export const GrowthChart: React.FC<GrowthChartProps> = ({
   data = [],
   loading = false,
 }) => {
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-
-  const maxUsers = useMemo(() => {
-    if (!data || data.length === 0) return 5;
-    const peak = Math.max(...data.map((d) => d.newUsers || 0));
-    return peak > 0 ? Math.ceil(peak * 1.25) : 5;
-  }, [data]);
-
-  const maxOrgs = useMemo(() => {
-    if (!data || data.length === 0) return 5;
-    const peak = Math.max(...data.map((d) => d.newOrganizations || 0));
-    return peak > 0 ? Math.ceil(peak * 1.25) : 5;
-  }, [data]);
-
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-gray-200/90 p-5 shadow-xs h-80 flex flex-col justify-between animate-pulse">
@@ -41,51 +68,6 @@ export const GrowthChart: React.FC<GrowthChartProps> = ({
     !data ||
     data.length === 0 ||
     data.every((d) => d.newOrganizations === 0 && d.newUsers === 0);
-
-  const height = 240;
-  const width = 640;
-  const paddingLeft = 40;
-  const paddingRight = 40;
-  const paddingTop = 28;
-  const paddingBottom = 34;
-
-  const chartW = width - paddingLeft - paddingRight;
-  const chartH = height - paddingTop - paddingBottom;
-
-  const getX = (idx: number) => {
-    if (data.length <= 1) return paddingLeft + chartW / 2;
-    return paddingLeft + (idx / (data.length - 1)) * chartW;
-  };
-
-  const getYUsers = (val: number) => {
-    return paddingTop + chartH - (val / maxUsers) * chartH;
-  };
-
-  const getYOrgs = (val: number) => {
-    return paddingTop + chartH - (val / maxOrgs) * chartH;
-  };
-
-  const pointsUsers = data
-    .map((d, i) => `${getX(i)},${getYUsers(d.newUsers)}`)
-    .join(" ");
-
-  const areaUsers =
-    data.length > 0
-      ? `${getX(0)},${paddingTop + chartH} ` +
-        pointsUsers +
-        ` ${getX(data.length - 1)},${paddingTop + chartH}`
-      : "";
-
-  const pointsOrgs = data
-    .map((d, i) => `${getX(i)},${getYOrgs(d.newOrganizations)}`)
-    .join(" ");
-
-  const areaOrgs =
-    data.length > 0
-      ? `${getX(0)},${paddingTop + chartH} ` +
-        pointsOrgs +
-        ` ${getX(data.length - 1)},${paddingTop + chartH}`
-      : "";
 
   return (
     <div className="bg-white rounded-xl border border-gray-200/90 p-5 shadow-xs flex flex-col justify-between h-full">
@@ -129,170 +111,75 @@ export const GrowthChart: React.FC<GrowthChartProps> = ({
           </p>
         </div>
       ) : (
-        <div className="relative pt-3 select-none">
-          {/* Tooltip Box */}
-          {hoverIndex !== null && data[hoverIndex] && (
-            <div className="absolute top-1 right-2 bg-gray-900/95 text-white text-[11px] rounded-xl px-3 py-1.5 shadow-lg flex items-center gap-3.5 z-20 backdrop-blur-xs transition-opacity duration-150">
-              <span className="font-semibold text-gray-200">
-                {data[hoverIndex].date}
-              </span>
-              <span className="flex items-center gap-1 font-mono text-violet-300">
-                <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
-                {data[hoverIndex].newUsers} users
-              </span>
-              <span className="flex items-center gap-1 font-mono text-indigo-300">
-                <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
-                {data[hoverIndex].newOrganizations} orgs
-              </span>
-            </div>
-          )}
-
-          {/* SVG Chart */}
-          <div className="w-full overflow-hidden">
-            <svg
-              viewBox={`0 0 ${width} ${height}`}
-              className="w-full h-56 overflow-visible"
-              onMouseLeave={() => setHoverIndex(null)}
+        <div className="pt-3 h-64 w-full select-none">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={data}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
               <defs>
                 <linearGradient id="usersGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
-                </linearGradient>
-                <linearGradient id="orgsGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
+                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.01" />
                 </linearGradient>
               </defs>
 
-              {/* Grid Lines */}
-              {[0, 0.25, 0.5, 0.75, 1].map((pct) => {
-                const y = paddingTop + chartH * (1 - pct);
-                return (
-                  <g key={pct}>
-                    <line
-                      x1={paddingLeft}
-                      y1={y}
-                      x2={width - paddingRight}
-                      y2={y}
-                      stroke="#f1f5f9"
-                      strokeWidth="1"
-                    />
-                    <text
-                      x={paddingLeft - 8}
-                      y={y + 3.5}
-                      textAnchor="end"
-                      fontSize="9"
-                      fill="#94a3b8"
-                      className="font-mono"
-                    >
-                      {Math.round(maxUsers * pct)}
-                    </text>
-                    <text
-                      x={width - paddingRight + 8}
-                      y={y + 3.5}
-                      textAnchor="start"
-                      fontSize="9"
-                      fill="#94a3b8"
-                      className="font-mono"
-                    >
-                      {Math.round(maxOrgs * pct)}
-                    </text>
-                  </g>
-                );
-              })}
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
 
-              {/* Areas */}
-              <polygon points={areaUsers} fill="url(#usersGradient)" />
-              <polygon points={areaOrgs} fill="url(#orgsGradient)" />
+              <XAxis
+                dataKey="date"
+                stroke="#94a3b8"
+                fontSize={10}
+                tickLine={false}
+                axisLine={{ stroke: "#f1f5f9" }}
+              />
 
-              {/* Lines */}
-              <polyline
-                points={pointsUsers}
-                fill="none"
+              {/* Left YAxis: Users */}
+              <YAxis
+                yAxisId="left"
                 stroke="#8b5cf6"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
               />
-              <polyline
-                points={pointsOrgs}
-                fill="none"
+
+              {/* Right YAxis: Orgs */}
+              <YAxis
+                yAxisId="right"
+                orientation="right"
                 stroke="#6366f1"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
               />
 
-              {/* Interactive Points and Hover Columns */}
-              {data.map((d, i) => {
-                const cx = getX(i);
-                const cyUsers = getYUsers(d.newUsers);
-                const cyOrgs = getYOrgs(d.newOrganizations);
-                const isHovered = hoverIndex === i;
+              <Tooltip content={<CustomTooltip />} />
 
-                return (
-                  <g
-                    key={i}
-                    className="cursor-pointer"
-                    onMouseEnter={() => setHoverIndex(i)}
-                  >
-                    {/* Hover vertical line */}
-                    {isHovered && (
-                      <line
-                        x1={cx}
-                        y1={paddingTop}
-                        x2={cx}
-                        y2={paddingTop + chartH}
-                        stroke="#cbd5e1"
-                        strokeWidth="1"
-                        strokeDasharray="3 3"
-                      />
-                    )}
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey="newUsers"
+                name="newUsers"
+                stroke="#8b5cf6"
+                strokeWidth={2.5}
+                fillOpacity={1}
+                fill="url(#usersGradient)"
+              />
 
-                    {/* Point for Users */}
-                    <circle
-                      cx={cx}
-                      cy={cyUsers}
-                      r={isHovered ? 5 : 3}
-                      fill="#8b5cf6"
-                      stroke="#ffffff"
-                      strokeWidth="1.5"
-                      className="transition-all"
-                    />
-
-                    {/* Point for Orgs */}
-                    <circle
-                      cx={cx}
-                      cy={cyOrgs}
-                      r={isHovered ? 5 : 3}
-                      fill="#6366f1"
-                      stroke="#ffffff"
-                      strokeWidth="1.5"
-                      className="transition-all"
-                    />
-
-                    {/* X-axis date labels */}
-                    {(data.length <= 8 ||
-                      i === 0 ||
-                      i === data.length - 1 ||
-                      i % Math.ceil(data.length / 5) === 0) && (
-                      <text
-                        x={cx}
-                        y={height - 10}
-                        textAnchor="middle"
-                        fontSize="9"
-                        fill="#64748b"
-                        className="font-medium"
-                      >
-                        {d.date.slice(5)}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="newOrganizations"
+                name="newOrganizations"
+                stroke="#6366f1"
+                strokeWidth={2}
+                dot={{ r: 2.5, fill: "#ffffff", stroke: "#6366f1", strokeWidth: 2 }}
+                activeDot={{ r: 4.5, fill: "#ffffff", stroke: "#6366f1", strokeWidth: 2 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>

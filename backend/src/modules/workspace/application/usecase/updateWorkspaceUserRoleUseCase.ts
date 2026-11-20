@@ -7,7 +7,6 @@ import { IactivityLogRepository } from "../../../activityLog/domain/Iactivitylog
 import { UpdateWorkspaceUserRoleDTO } from "../dto/workspaceDTOs";
 import { IworkspaceRepository } from "../../domain/IworkspaceRepository";
 import { IorganizaionRepository } from "../../../organization/domain/IorganizationRepository";
-import { UserRoles } from "../../../../common/constant/userRoles";
 
 export class UpdateWorkspaceUserRoleUseCase implements IuseCase<UpdateWorkspaceUserRoleDTO, IuserDTO> {
   constructor(

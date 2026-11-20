@@ -1,4 +1,3 @@
-import { IuserDocument } from "../../../shared/User.utils/userSchema";
 import { CreateOrganizationDTO, GetOrganizationUsersResultDTO } from "../application/dto/organizationDTO";
 import { ICreateOrganizationInvitation } from "../infrastructure/organizationInvitationSchema";
 import { IorganizationDocument } from "../infrastructure/organizationSchema";

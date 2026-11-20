@@ -20,7 +20,13 @@ export default tseslint.config(
     rules: {
       'no-console': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: ['**/migrations/**'],
+    rules: {
+      'no-console': 'off',
     },
   },
 );

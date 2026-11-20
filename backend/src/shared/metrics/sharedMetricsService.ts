@@ -1,12 +1,11 @@
 import { Types } from "mongoose";
 import { UserModel } from "../User.utils/userSchema.js";
-import { WorkspaceModel } from "../../modules/workspace/infrastructure/workspaceSchema.js";
 import { RoomModel } from "../../modules/room/infrastructure/roomSchema.js";
 import { MeetingModel } from "../../modules/meeting/infrastructure/meetingSchema.js";
 import { ActivityLogModel } from "../../modules/activityLog/infrastructure/activitylogSchema.js";
 import { socketService } from "../../socket/socketService.js";
 import { UserRoles } from "../../common/constant/userRoles.js";
-import { buildWorkspaceMembershipQuery, WORKSPACE_MEMBER_ROLES } from "../User.utils/workspaceMembership.js";
+import { WORKSPACE_MEMBER_ROLES } from "../User.utils/workspaceMembership.js";
 
 /**
  * ============================================================================

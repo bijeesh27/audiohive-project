@@ -1,4 +1,5 @@
-import { TrackItem } from "../domain/IAudioSourceService.ts";
+import type { TrackItem } from "../domain/IAudioSourceService.ts";
+export type { TrackItem };
 import { RoyaltyFreeAudioSource } from "./royaltyFreeAudioSource.ts";
 
 export interface InternalPlaybackState {

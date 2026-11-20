@@ -1,4 +1,3 @@
-import { IuserDocument } from "../../../../shared/User.utils/userSchema";
 import { IorganizationDocument } from "../../infrastructure/organizationSchema";
 
 export interface CreateOrganizationDTO {
