@@ -442,8 +442,8 @@ export class WorkspaceController {
         throw new AppError("Announcement body must be at least 5 characters", HttpStatus.BAD_REQUEST);
       }
 
-      const createdBy =
-        (req.user as any)?.username || (req.user as any)?.name || req.user?.userEmail || "Workspace Admin";
+      const userObj = req.user as { username?: string; name?: string; userEmail?: string } | undefined;
+      const createdBy = userObj?.username || userObj?.name || req.user?.userEmail || "Workspace Admin";
 
       const announcement = await this.workspaceRepo.addAnnouncement(workspaceId, {
         title,

@@ -496,11 +496,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
                       setLayoutMode(item.id);
                       setShowLayoutMenu(false);
                     }}
-                    className={`w-full flex flex-col items-start px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
-                      layoutMode === item.id
-                        ? "bg-violet-600/30 text-white font-semibold"
-                        : "text-slate-300 hover:bg-slate-800/80"
-                    }`}
+                    className={`w-full flex flex-col items-start px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${layoutMode === item.id
+                      ? "bg-violet-600/30 text-white font-semibold"
+                      : "text-slate-300 hover:bg-slate-800/80"
+                      }`}
                   >
                     <span>{item.label}</span>
                     <span className="text-[10px] text-slate-400">{item.desc}</span>
@@ -693,11 +692,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
             type="button"
             onClick={toggleMute}
             title={isMuted ? "Unmute Microphone (M)" : "Mute Microphone (M)"}
-            className={`p-3 rounded-full transition-all cursor-pointer ${
-              isMuted
-                ? "bg-red-500/25 text-red-300 border border-red-500/40 hover:bg-red-500/35 shadow-inner"
-                : "bg-slate-900/90 text-white border border-violet-500/30 hover:border-violet-500/60 hover:bg-slate-800"
-            }`}
+            className={`p-3 rounded-full transition-all cursor-pointer ${isMuted
+              ? "bg-red-500/25 text-red-300 border border-red-500/40 hover:bg-red-500/35 shadow-inner"
+              : "bg-slate-900/90 text-white border border-violet-500/30 hover:border-violet-500/60 hover:bg-slate-800"
+              }`}
           >
             {isMuted ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4 text-emerald-400" />}
           </button>
@@ -707,11 +705,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
             type="button"
             onClick={toggleVideo}
             title={isVideoOff ? "Start Camera (V)" : "Stop Camera (V)"}
-            className={`p-3 rounded-full transition-all cursor-pointer ${
-              isVideoOff
-                ? "bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:bg-amber-500/35 shadow-inner"
-                : "bg-slate-900/90 text-white border border-violet-500/30 hover:border-violet-500/60 hover:bg-slate-800"
-            }`}
+            className={`p-3 rounded-full transition-all cursor-pointer ${isVideoOff
+              ? "bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:bg-amber-500/35 shadow-inner"
+              : "bg-slate-900/90 text-white border border-violet-500/30 hover:border-violet-500/60 hover:bg-slate-800"
+              }`}
           >
             {isVideoOff ? <VideoOff className="w-4 h-4 text-amber-400" /> : <Video className="w-4 h-4 text-violet-400" />}
           </button>
@@ -727,11 +724,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
               }
             }}
             title={isScreenSharing ? "Stop Sharing Screen" : "Share Screen"}
-            className={`p-3 rounded-full transition-all cursor-pointer ${
-              isScreenSharing
-                ? "bg-violet-600 text-white border border-violet-400 shadow-lg shadow-violet-600/40"
-                : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
-            }`}
+            className={`p-3 rounded-full transition-all cursor-pointer ${isScreenSharing
+              ? "bg-violet-600 text-white border border-violet-400 shadow-lg shadow-violet-600/40"
+              : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
+              }`}
           >
             {isScreenSharing ? <ScreenShareOff className="w-4 h-4" /> : <ScreenShare className="w-4 h-4" />}
           </button>
@@ -741,11 +737,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
             type="button"
             onClick={() => setHasHandRaised((prev) => !prev)}
             title={hasHandRaised ? "Lower Hand (H)" : "Raise Hand (H)"}
-            className={`p-3 rounded-full transition-all cursor-pointer ${
-              hasHandRaised
-                ? "bg-amber-500 text-slate-950 font-bold border border-amber-300 shadow-lg shadow-amber-500/30 scale-105"
-                : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
-            }`}
+            className={`p-3 rounded-full transition-all cursor-pointer ${hasHandRaised
+              ? "bg-amber-500 text-slate-950 font-bold border border-amber-300 shadow-lg shadow-amber-500/30 scale-105"
+              : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
+              }`}
           >
             <Hand className="w-4 h-4" />
           </button>
@@ -756,11 +751,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
               type="button"
               onClick={() => setIsReactionPickerOpen((prev) => !prev)}
               title="React with Emoji"
-              className={`p-3 rounded-full transition-all cursor-pointer ${
-                isReactionPickerOpen
-                  ? "bg-violet-600/30 text-violet-300 border border-violet-400"
-                  : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
-              }`}
+              className={`p-3 rounded-full transition-all cursor-pointer ${isReactionPickerOpen
+                ? "bg-violet-600/30 text-violet-300 border border-violet-400"
+                : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
+                }`}
             >
               <Smile className="w-4 h-4" />
             </button>
@@ -792,11 +786,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
               setUnreadChatCount(0);
             }}
             title="Meeting Chat (C)"
-            className={`relative p-3 rounded-full transition-all cursor-pointer ${
-              isChatOpen
-                ? "bg-violet-600 text-white border border-violet-400 shadow-md shadow-violet-600/30"
-                : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
-            }`}
+            className={`relative p-3 rounded-full transition-all cursor-pointer ${isChatOpen
+              ? "bg-violet-600 text-white border border-violet-400 shadow-md shadow-violet-600/30"
+              : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
+              }`}
           >
             <MessageSquare className="w-4 h-4" />
             {unreadChatCount > 0 && !isChatOpen && (
@@ -811,11 +804,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
             type="button"
             onClick={() => setIsParticipantsOpen((prev) => !prev)}
             title="Participants List"
-            className={`relative p-3 rounded-full transition-all cursor-pointer ${
-              isParticipantsOpen
-                ? "bg-violet-600 text-white border border-violet-400 shadow-md shadow-violet-600/30"
-                : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
-            }`}
+            className={`relative p-3 rounded-full transition-all cursor-pointer ${isParticipantsOpen
+              ? "bg-violet-600 text-white border border-violet-400 shadow-md shadow-violet-600/30"
+              : "bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
+              }`}
           >
             <Users className="w-4 h-4" />
             <span className="absolute -top-1 -right-1 px-1 rounded-full bg-violet-600 text-[9px] font-bold text-white min-w-[14px] text-center border border-slate-950">
@@ -838,11 +830,10 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
             type="button"
             onClick={() => setIsCaptionsEnabled((prev) => !prev)}
             title={isCaptionsEnabled ? "Turn off subtitles (CC)" : "Turn on subtitles (CC)"}
-            className={`relative p-3 rounded-full transition-all cursor-pointer ${
-              isCaptionsEnabled
-                ? "bg-violet-600 text-white border border-violet-400 shadow-md shadow-violet-600/30"
-                : "bg-slate-900/90 text-slate-400 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
-            }`}
+            className={`relative p-3 rounded-full transition-all cursor-pointer ${isCaptionsEnabled
+              ? "bg-violet-600 text-white border border-violet-400 shadow-md shadow-violet-600/30"
+              : "bg-slate-900/90 text-slate-400 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
+              }`}
           >
             <Subtitles className="w-4 h-4" />
             {isCaptionsEnabled && (

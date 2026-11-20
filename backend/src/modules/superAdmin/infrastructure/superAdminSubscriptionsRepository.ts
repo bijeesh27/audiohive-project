@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { IsuperAdminSubscriptionsRepository } from "../domain/IsuperAdminSubscriptionsRepository.ts";
-import { SubscriptionModel, ISubscriptionDocument } from "../../subscription/infrastructure/subscriptionSchema.ts";
+import { SubscriptionModel } from "../../subscription/infrastructure/subscriptionSchema.ts";
 import { OrganizationModel } from "../../organization/infrastructure/organizationSchema.ts";
 import { WorkspaceModel } from "../../workspace/infrastructure/workspaceSchema.ts";
 import { ActivityLogModel } from "../../activityLog/infrastructure/activitylogSchema.ts";

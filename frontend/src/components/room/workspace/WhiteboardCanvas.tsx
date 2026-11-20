@@ -11,6 +11,7 @@ import {
   type StickyNote as StickyNoteType,
 } from "../../../services/whiteboardServices";
 import { WhiteboardToolbar } from "./WhiteboardToolbar";
+
 import { StickyNote } from "./StickyNote";
 
 interface WhiteboardCanvasProps {
@@ -42,7 +43,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     let active = true;
     getWhiteboardNotes(roomId).then((data) => {
       if (active && Array.isArray(data)) setNotes(data);
-    }).catch(() => {});
+    }).catch(() => { });
     return () => { active = false; };
   }, [roomId]);
 
@@ -99,6 +100,29 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       socket.off("whiteboard:note:editing", onEditing);
     };
   }, [socket, roomId]);
+
+
+  // Delete with Undo toast
+  const handleDeleteNote = (id: string) => {
+    const target = notes.find((n) => n.id === id);
+    if (!target) return;
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setDeletedNoteUndo(target);
+
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+    undoTimeoutRef.current = setTimeout(async () => {
+      try {
+        if (socket && socket.connected) {
+          socket.emit("whiteboard:note:delete", { roomId, noteId: id });
+        } else {
+          await deleteStickyNote(roomId, id);
+        }
+      } catch {
+        // Ignored
+      }
+      setDeletedNoteUndo(null);
+    }, 4500);
+  };
 
   // Keyboard navigation & Shortcuts (Delete, Esc)
   useEffect(() => {
@@ -187,7 +211,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     if (socket && socket.connected) {
       socket.emit("whiteboard:note:update", { roomId, noteId: id, content });
     } else {
-      updateStickyNote(roomId, id, { content }).catch(() => {});
+      updateStickyNote(roomId, id, { content }).catch(() => { });
     }
   };
 
@@ -212,31 +236,10 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     if (socket && socket.connected) {
       socket.emit("whiteboard:note:color", { roomId, noteId: id, color });
     } else {
-      updateStickyNoteColor(roomId, id, color).catch(() => {});
+      updateStickyNoteColor(roomId, id, color).catch(() => { });
     }
   };
 
-  // Delete with Undo toast
-  const handleDeleteNote = (id: string) => {
-    const target = notes.find((n) => n.id === id);
-    if (!target) return;
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    setDeletedNoteUndo(target);
-
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-    undoTimeoutRef.current = setTimeout(async () => {
-      try {
-        if (socket && socket.connected) {
-          socket.emit("whiteboard:note:delete", { roomId, noteId: id });
-        } else {
-          await deleteStickyNote(roomId, id);
-        }
-      } catch {
-        // Ignored
-      }
-      setDeletedNoteUndo(null);
-    }, 4500);
-  };
 
   const handleUndoDelete = () => {
     if (!deletedNoteUndo) return;

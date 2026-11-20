@@ -17,7 +17,7 @@ export class GetWorkspacesByOrgUseCase implements IuseCase<GetWorkspacesByOrgDTO
     constructor(
         private readonly workspaceRepository: IworkspaceRepository,
         private readonly organizationRepository: IorganizaionRepository,
-    ) {}
+    ) { }
 
     async execute(data: GetWorkspacesByOrgDTO): Promise<WorkspacesListOutputDTO> {
         const organization = await this.organizationRepository.findByOwnerEmail(data.userEmail);
@@ -67,9 +67,6 @@ export class GetWorkspacesByOrgUseCase implements IuseCase<GetWorkspacesByOrgDTO
         const enrichedWorkspaces: EnrichedWorkspaceDTO[] = await Promise.all(
             workspaces.map(async (ws: IWorkspaceDocument) => {
                 const wsIdStr = ws._id.toString();
-                const wsIdObj = Types.ObjectId.isValid(wsIdStr) ? new Types.ObjectId(wsIdStr) : ws._id;
-                const wsIds = [wsIdStr, wsIdObj];
-
                 // Members count & Online now
                 const memberFilter = {
                     ...buildMultiWorkspaceMembershipQuery([ws._id]),

@@ -16,7 +16,7 @@ const PricingPage = () => {
         const response = await subscriptionService.getAllSubscriptions();
         setPlans(response.data || []);
       } catch (error) {
-        // eslint-disable-next-line no-console
+         
         console.error("Failed to fetch plans", error);
       } finally {
         setLoading(false);

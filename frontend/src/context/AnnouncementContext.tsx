@@ -55,7 +55,7 @@ const AnnouncementContextProvider = ({ children }: { children: React.ReactNode }
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export const useAnnouncementContext = () => {
   const context = useContext(AnnouncementContext);
   if (!context) {

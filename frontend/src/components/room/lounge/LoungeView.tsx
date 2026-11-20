@@ -187,7 +187,9 @@ export const LoungeView: React.FC<LoungeViewProps> = ({
           audio.onloadedmetadata = () => {
             try {
               audio.currentTime = targetPos;
-            } catch {}
+            } catch {
+              // Ignore media playback errors during initialization
+            }
             setDisplayPosition(targetPos);
             audio.pause();
           };

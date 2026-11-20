@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import { IsuperAdminOrganizationsRepository } from "../domain/IsuperAdminOrganizationsRepository.ts";
 import {
   SuperAdminOrgQueryDTO,
@@ -124,10 +123,10 @@ export class SuperAdminOrganizationsRepository
       const orgIdStr = org._id.toString();
       const rawPlanId = org.planId || "free";
 
-      let planName = "Free";
+      let planName: string;
       let planPrice = 0;
       let planMissing = false;
-      let maxWorkspaces = 2;
+      let maxWorkspaces: number;
 
       if (rawPlanId === "free") {
         planName = freePlanDoc?.subscriptionName || "Free";
@@ -183,7 +182,7 @@ export class SuperAdminOrganizationsRepository
     const activeCount = enrichedList.filter((o) => o.status === "active").length;
 
     // 3. Apply Filters
-    let filtered = enrichedList.filter((item) => {
+    const filtered = enrichedList.filter((item) => {
       // Search
       if (searchQuery) {
         const matchName = item.companyName.toLowerCase().includes(searchQuery);
@@ -263,7 +262,7 @@ export class SuperAdminOrganizationsRepository
     const rawPlanId = org.planId || "free";
 
     // 1. Resolve Plan
-    const [allPlans, workspaces, orgUsers, thirtyDaysAgoMeetings, activityLogs] =
+    const [allPlans, workspaces, , thirtyDaysAgoMeetings, activityLogs] =
       await Promise.all([
         SubscriptionModel.find().lean(),
         WorkspaceModel.find({ organizationId: org._id }).lean(),

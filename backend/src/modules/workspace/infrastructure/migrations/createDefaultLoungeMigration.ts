@@ -85,9 +85,9 @@ export async function migrateDefaultLounges(): Promise<MigrationResult> {
       }
 
       createdCount++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // If concurrent run created it (E11000 duplicate key on partial index)
-      if (err?.code === 11000) {
+      if (typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === 11000) {
         skippedCount++;
       } else {
         throw err;

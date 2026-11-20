@@ -106,7 +106,7 @@ export class UserRepository implements IuserRepository {
       const lastActive = userLastActiveMap.get(uId) || (u as { updatedAt?: Date }).updatedAt || null;
       const roomsCount = workspaceRooms.filter((r) => {
         if (r.type === "public") return true;
-        return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: any) => id && id.toString() === uId);
+        return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: unknown) => id && String(id) === uId);
       }).length;
 
       return {

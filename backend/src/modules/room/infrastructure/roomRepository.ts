@@ -158,7 +158,7 @@ export class RoomRepository
         email: user.email,
         role: user._id?.toString() === ownerId ? "owner" : (user.role ?? UserRoles.MEMBER),
         status: user.status ?? true,
-        createdAt: (user as any).createdAt,
+        createdAt: (user as { createdAt?: Date }).createdAt,
       }));
     } else {
       const userMap = new Map<string, Participant>();
@@ -171,7 +171,7 @@ export class RoomRepository
           email: user.email,
           role: uid === ownerId ? "owner" : (user.role ?? UserRoles.MEMBER),
           status: user.status ?? true,
-          createdAt: (user as any).createdAt,
+          createdAt: (user as { createdAt?: Date }).createdAt,
         });
       });
 

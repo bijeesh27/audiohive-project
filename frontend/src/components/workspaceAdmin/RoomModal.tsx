@@ -22,7 +22,7 @@ export default function RoomModal({ isOpen, onClose, onSuccess, room }: RoomModa
 
   useEffect(() => {
     if (room) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setFormData({
         name: room.name || "",
         description: room.description || "",

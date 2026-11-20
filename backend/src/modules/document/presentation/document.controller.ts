@@ -144,9 +144,9 @@ export class DocumentController {
       }
       await this.getAccessibleRoom(req, roomId);
       const documents = await this.getRoomDocumentsUseCase.execute({ roomId });
-      const enrichedDocs = documents.map((doc: any) => {
-        const docObj = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
-        if (!docObj.uploaderId || (typeof docObj.uploaderId === "object" && !docObj.uploaderId.username)) {
+      const enrichedDocs = documents.map((doc: IDocument | Record<string, unknown>) => {
+        const docObj = (typeof (doc as IDocument).toObject === "function" ? (doc as IDocument).toObject() : { ...doc }) as Record<string, unknown>;
+        if (!docObj.uploaderId || (typeof docObj.uploaderId === "object" && !(docObj.uploaderId as { username?: string }).username)) {
           docObj.uploaderId = { username: "Former member" };
         }
         return docObj;
@@ -184,7 +184,10 @@ export class DocumentController {
       }
 
       const sanitizedName = name.trim().replace(/[/\\?%*:|"<>]/g, "_");
-      const updated = await (this.documentRepository as any).updateName(documentId, sanitizedName);
+      if (!this.documentRepository.updateName) {
+        throw new AppError("Rename operation not supported", HttpStatus.NOT_IMPLEMENTED);
+      }
+      const updated = await this.documentRepository.updateName(documentId, sanitizedName);
 
       socketService.getIO().to(`room:${roomId}`).emit("room:rename-document", {
         documentId,

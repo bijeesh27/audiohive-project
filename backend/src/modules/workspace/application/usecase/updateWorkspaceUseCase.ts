@@ -12,7 +12,7 @@ export class updateWorkspaceUsecase implements IuseCase<UpdateWorkspaceDTO,void>
     ){}
     async execute(data?: UpdateWorkspaceDTO): Promise<void> {
         if (!data || !data.id) throw new CreateWorkspaceError(MESSAGES.ERRORS.WORKSPACE_INVALID_ID)
-        const { id, userEmail, description, ...rest } = data;
+        const { id, description, userEmail: _userEmail, ...rest } = data;
         const docToUpdate: Record<string, unknown> = { ...rest };
         if (description !== undefined) {
             docToUpdate["companyProfile.about"] = description;

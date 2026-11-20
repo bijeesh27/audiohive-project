@@ -12,7 +12,7 @@ export const MeetingItem: React.FC<MeetingItemProps> = ({ meeting, onJoin }) => 
   const now = new Date();
   const diffMinutes = Math.round((startDate.getTime() - now.getTime()) / (1000 * 60));
 
-  let timeBadge = { text: "", color: "bg-gray-100 text-gray-700" };
+  let timeBadge: { text: string; color: string };
   const isHappeningNow = meeting.status === "live" || (diffMinutes <= 0 && diffMinutes >= -60);
 
   if (isHappeningNow) {

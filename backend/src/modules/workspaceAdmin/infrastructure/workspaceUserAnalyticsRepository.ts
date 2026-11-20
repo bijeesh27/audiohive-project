@@ -19,7 +19,6 @@ import {
   WorkspaceMemberActivityRecordItem,
   LiveMemberItem,
   RecentlyJoinedItem,
-  EngagementUserItem,
   RoomUsageItem,
   RecentActivityFeedItem,
 } from "../application/dtos/workspaceDashboardDTO";
@@ -37,7 +36,6 @@ import { HttpStatus } from "../../../common/constant/httpStatus";
 import { MESSAGES } from "../../../common/constant/messages";
 import {
   buildWorkspaceMembershipQuery,
-  buildWorkspaceMemberFilter,
 } from "../../../shared/User.utils/workspaceMembership";
 import { SharedMetricsService } from "../../../shared/metrics/sharedMetricsService";
 
@@ -398,8 +396,17 @@ export class WorkspaceUserAnalyticsRepository
     const needsEngagementUsers = remainingForNeedsEngagement.slice(0, 5);
 
     // 8. Recent Activities Feed
+    interface RawRecentLog {
+      _id?: unknown;
+      action?: string;
+      actorId?: unknown;
+      targetType?: string;
+      targetId?: string;
+      occurredAt?: Date | string;
+      metadata?: Record<string, unknown>;
+    }
     const recentActivities: RecentActivityFeedItem[] = (activityAggResult?.recentLogs || []).map(
-      (l: any) => {
+      (l: RawRecentLog) => {
         const actorIdStr = l.actorId ? String(l.actorId) : null;
         const memberInfo = actorIdStr ? membersMap.get(actorIdStr) : null;
         return {
@@ -574,13 +581,13 @@ export class WorkspaceUserAnalyticsRepository
       const uId = u._id.toString();
       const count = workspaceRooms.filter((r) => {
         if (r.type === "public") return true;
-        return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: any) => id && id.toString() === uId);
+        return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: unknown) => id && String(id) === uId);
       }).length;
       userRoomsCountMap.set(uId, count);
     }
 
     // 5. Build full items list
-    let recordItems: WorkspaceMemberActivityRecordItem[] = members.map((u) => {
+    const recordItems: WorkspaceMemberActivityRecordItem[] = members.map((u) => {
       const uId = u._id.toString();
       const lastActive = userLastActiveMap.get(uId) || (u as { updatedAt?: Date }).updatedAt || null;
       const lastLogin = userLastLoginMap.get(uId) || null;
@@ -612,8 +619,8 @@ export class WorkspaceUserAnalyticsRepository
     const sortOrder = input.sortOrder === "asc" ? 1 : -1;
 
     recordItems.sort((a, b) => {
-      let valA: number | string = 0;
-      let valB: number | string = 0;
+      let valA: number | string;
+      let valB: number | string;
 
       switch (sortField) {
         case "logins":
@@ -1001,7 +1008,7 @@ export class WorkspaceUserAnalyticsRepository
 
     const accessibleRooms = workspaceRooms.filter((r) => {
       if (r.type === "public") return true;
-      return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: any) => id && id.toString() === input.userId);
+      return Array.isArray(r.allowedUsers) && r.allowedUsers.some((id: unknown) => id && String(id) === input.userId);
     });
 
     const items: UserActivityHistoryItem[] = logs.map((l) => ({
