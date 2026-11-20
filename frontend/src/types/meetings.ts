@@ -62,3 +62,28 @@ export interface GetMeetingsResponse {
   counts: MeetingTabCounts;
 }
 
+export interface MeetingSummaryActionItem {
+  task: string;
+  assignee?: string;
+  completed: boolean;
+  dueDate?: string;
+}
+
+export interface MeetingSummary {
+  _id?: string;
+  id?: string;
+  meetingId: string;
+  title: string;
+  overview: string;
+  keyPoints: string[];
+  actionItems: MeetingSummaryActionItem[];
+  decisions: string[];
+  keywords: string[];
+  sentiment: string;
+  modelUsed: string;
+  totalTurns: number;
+  speakers?: string[];
+  generatedAt: string;
+  customNotes?: string;
+}
+
