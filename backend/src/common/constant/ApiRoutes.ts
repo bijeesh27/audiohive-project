@@ -174,6 +174,7 @@ export const API_ROUTES = {
     CREATE_MEETING: "/",
     GET_ALL_MEETINGS: "/",
     GET_MEETING: "/:id",
+    GET_LIVE_TRANSCRIPT: "/:id/live-transcript",
     VALIDATE_CODE: "/validate-code/:code",
     UPDATE_MEETING: "/:id",
     CANCEL_MEETING: "/:id/cancel",
