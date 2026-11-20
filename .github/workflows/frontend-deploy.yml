@@ -29,10 +29,11 @@ jobs:
         working-directory: ./frontend
         run: npm install --legacy-peer-deps
 
+      - name: Create .env file
+        run: echo "${{ secrets.FRONTEND_ENV }}" > frontend/.env
+
       - name: Build Frontend
         working-directory: ./frontend
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: npm run build
 
       - name: Configure AWS Credentials
