@@ -31,6 +31,11 @@ export const SOCKET_EVENTS = {
   CALL_ICE_CANDIDATE: "call:ice-candidate",
   CALL_PARTICIPANTS: "call:participants",
   CALL_MEDIA_STATE_CHANGED: "call:media-state-changed",
+  // ── Live Transcription (Groq Whisper AI) ───────────────────
+  CALL_LIVE_AUDIO_CHUNK: "call:live-audio-chunk",
+  CALL_LIVE_TRANSCRIPT: "call:live-transcript",
+  CALL_GET_LIVE_TRANSCRIPTS: "call:get-live-transcripts",
+  CALL_LIVE_TRANSCRIPT_ERROR: "call:live-transcript-error",
   // ── Voice / WebRTC (Backwards Compatibility) ────────────────
   VOICE_JOIN: "voice:join",
   VOICE_LEAVE: "voice:leave",

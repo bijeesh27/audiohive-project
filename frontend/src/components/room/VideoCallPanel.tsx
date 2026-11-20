@@ -21,9 +21,12 @@ import {
   Copy,
   Check,
   Disc,
+  Subtitles,
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 import { useCall } from "../../hooks/useCall";
+import { useLiveTranscript } from "../../hooks/useLiveTranscript";
+import { useLiveAudioStreamer } from "../../hooks/useLiveAudioStreamer";
 import { ParticipantVideoCard } from "./ParticipantVideoCard";
 import { ScreenShareModal } from "./ScreenShareModal";
 import { FloatingChatPanel } from "./FloatingChatPanel";
@@ -90,6 +93,27 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
 
   // Hand Raise State
   const [hasHandRaised, setHasHandRaised] = useState(false);
+
+  // Live Subtitles State
+  const [isCaptionsEnabled, setIsCaptionsEnabled] = useState(true);
+
+  const { activeCaptions, addTurn } = useLiveTranscript({
+    socket,
+    roomId,
+    isCaptionsEnabled,
+  });
+
+  useLiveAudioStreamer({
+    localStream,
+    isMuted,
+    isInCall,
+    isCaptionsEnabled,
+    roomId,
+    speakerName: currentUsername,
+    speakerId: socket?.id || "local",
+    socket,
+    onTurn: addTurn,
+  });
 
   // Floating Emojis
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
@@ -433,6 +457,14 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
             <Radio className="w-3.5 h-3.5 text-emerald-400" />
             <span>HD 1080p</span>
           </div>
+
+          {/* Live Captions Status Pill */}
+          {isCaptionsEnabled && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-300 border border-violet-500/25">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>CC Live (Groq AI)</span>
+            </div>
+          )}
         </div>
 
         {/* Right: Layout Switcher, Fullscreen, and Header Leave */}
@@ -630,6 +662,27 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
         )}
       </main>
 
+      {/* ── Movie / Meeting Style In-Video Subtitles ── */}
+      {isCaptionsEnabled && activeCaptions.length > 0 && (
+        <div className="absolute bottom-24 left-0 right-0 z-30 pointer-events-none flex flex-col items-center px-6">
+          <div className="flex flex-col items-center gap-2 max-w-3xl w-auto text-center">
+            {activeCaptions.map((caption) => (
+              <div
+                key={caption.id}
+                className="inline-block bg-black/85 backdrop-blur-md px-5 py-2 rounded-xl border border-white/15 shadow-2xl text-center"
+              >
+                <span className="text-violet-400 font-semibold text-xs sm:text-sm mr-2 select-none">
+                  {caption.speakerName}:
+                </span>
+                <span className="text-white font-medium text-sm sm:text-base md:text-lg tracking-wide leading-relaxed drop-shadow-sm select-text">
+                  {caption.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 3. FLOATING BOTTOM CONTROL DOCK (GLASSMORPHISM, CENTERED)           */}
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -778,6 +831,23 @@ export const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
             className="p-3 rounded-full bg-slate-900/90 text-slate-300 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
           >
             <Sliders className="w-4 h-4" />
+          </button>
+
+          {/* Closed Captions Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsCaptionsEnabled((prev) => !prev)}
+            title={isCaptionsEnabled ? "Turn off subtitles (CC)" : "Turn on subtitles (CC)"}
+            className={`relative p-3 rounded-full transition-all cursor-pointer ${
+              isCaptionsEnabled
+                ? "bg-violet-600 text-white border border-violet-400 shadow-md shadow-violet-600/30"
+                : "bg-slate-900/90 text-slate-400 border border-violet-500/30 hover:border-violet-500/60 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Subtitles className="w-4 h-4" />
+            {isCaptionsEnabled && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+            )}
           </button>
 
           <div className="w-[1px] h-6 bg-violet-500/20 mx-1" />

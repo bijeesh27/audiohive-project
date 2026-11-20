@@ -14,6 +14,7 @@ import {
   DeleteMeetingDTO,
 } from "../application/dto/meetingDTO.js";
 import { IMeetingDocument } from "../infrastructure/meetingSchema.js";
+import { liveTranscriptRepository } from "../infrastructure/liveTranscriptRepository.js";
 
 export class MeetingController {
   constructor(
@@ -281,6 +282,20 @@ export class MeetingController {
       });
 
       return ApiResposne.success(res, MESSAGES.SUCCESS.MEETING_DELETED);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getLiveTranscript = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const meetingId = req.params.id as string;
+      const transcript = await liveTranscriptRepository.getTranscriptByMeetingId(meetingId);
+      return ApiResposne.success(
+        res,
+        "Meeting transcript retrieved",
+        transcript || { meetingId, turns: [] }
+      );
     } catch (error) {
       next(error);
     }

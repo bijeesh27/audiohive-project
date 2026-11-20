@@ -43,6 +43,7 @@ meetingRouter.use(roleMiddleware(allowedRoles));
 meetingRouter.post(API_ROUTES.MEETING.CREATE_MEETING, meetingController.createMeeting);
 meetingRouter.get(API_ROUTES.MEETING.GET_ALL_MEETINGS, meetingController.getMeetings);
 meetingRouter.get(API_ROUTES.MEETING.VALIDATE_CODE, meetingController.validateMeetingCode);
+meetingRouter.get(API_ROUTES.MEETING.GET_LIVE_TRANSCRIPT, meetingController.getLiveTranscript);
 meetingRouter.get(API_ROUTES.MEETING.GET_MEETING, meetingController.getMeetingById);
 meetingRouter.put(API_ROUTES.MEETING.UPDATE_MEETING, meetingController.updateMeeting);
 meetingRouter.patch(API_ROUTES.MEETING.CANCEL_MEETING, meetingController.cancelMeeting);

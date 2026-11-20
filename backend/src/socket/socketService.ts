@@ -14,6 +14,8 @@ import { WhiteboardRepository } from "../modules/whiteboard/infrastructure/white
 import { loungeMusicManager } from "../modules/room/infrastructure/loungeMusicManager.js";
 import { UserRoles } from "../common/constant/userRoles.js";
 import { corsOriginChecker } from "../shared/utils/cors.utils.ts";
+import { groqTranscriptionService } from "../services/groqTranscription.service.js";
+import { liveTranscriptRepository } from "../modules/meeting/infrastructure/liveTranscriptRepository.js";
 
 export interface CallParticipantSession {
   peerId: string;
@@ -907,6 +909,178 @@ export const socketService = {
       };
       socket.on(SOCKET_EVENTS.CALL_ICE_CANDIDATE, handleIceCandidate);
       socket.on(SOCKET_EVENTS.VOICE_ICE_CANDIDATE, handleIceCandidate);
+
+      // ── Live Transcription (Groq Whisper AI) ───────────────────
+      socket.on(
+        SOCKET_EVENTS.CALL_LIVE_AUDIO_CHUNK,
+        async (payload: {
+          roomId: string;
+          audioData: Buffer | ArrayBuffer | Uint8Array;
+          mimeType?: string;
+          speakerName?: string;
+          speakerId?: string;
+        }) => {
+          try {
+            console.log(`[LiveTranscript] Received audio chunk from socket ${socket.id}, effectiveRoom=${socketCallRoom.get(socket.id) || payload?.roomId}`);
+            logger.info(`[LiveTranscript] Received audio chunk from socket ${socket.id}, roomId=${payload?.roomId}, type=${typeof payload?.audioData}`);
+
+            if (!payload || !payload.audioData) {
+              logger.warn("[LiveTranscript] Invalid payload - missing audioData");
+              return;
+            }
+
+            const effectiveRoomId = socketCallRoom.get(socket.id) || payload.roomId;
+            if (!effectiveRoomId) {
+              logger.warn(`[LiveTranscript] Socket ${socket.id} has no associated call room`);
+              return;
+            }
+
+            // Ensure socket is in the call room
+            socket.join(`call:${effectiveRoomId}`);
+            if (!socketCallRoom.has(socket.id)) {
+              socketCallRoom.set(socket.id, effectiveRoomId);
+            }
+
+            const callMap = callRooms.get(effectiveRoomId);
+            const participant = callMap?.get(socket.id);
+
+            const speakerName =
+              participant?.username ||
+              payload.speakerName ||
+              user?.username ||
+              (user as unknown as { name?: string })?.name ||
+              "Participant";
+            const speakerId = participant?.userId || user?.id || socket.id;
+
+            let buffer: Buffer;
+            if (Buffer.isBuffer(payload.audioData)) {
+              buffer = payload.audioData;
+            } else if (payload.audioData instanceof ArrayBuffer) {
+              buffer = Buffer.from(payload.audioData);
+            } else if (ArrayBuffer.isView(payload.audioData)) {
+              buffer = Buffer.from(
+                (payload.audioData as Uint8Array).buffer,
+                (payload.audioData as Uint8Array).byteOffset,
+                (payload.audioData as Uint8Array).byteLength
+              );
+            } else {
+              try {
+                const raw = payload.audioData as unknown as { type: string; data: number[] };
+                if (raw && raw.data && Array.isArray(raw.data)) {
+                  buffer = Buffer.from(raw.data);
+                } else {
+                  buffer = Buffer.from(payload.audioData as unknown as ArrayBuffer);
+                }
+              } catch {
+                buffer = Buffer.from(payload.audioData as unknown as ArrayBuffer);
+              }
+            }
+
+            logger.info(`[LiveTranscript] Buffer resolved: ${buffer.length} bytes, mimeType=${payload.mimeType}`);
+
+            if (buffer.length < 300) {
+              logger.info(`[LiveTranscript] Chunk too small (${buffer.length} bytes), skipping`);
+              return;
+            }
+
+            const mimeType = payload.mimeType || "audio/webm";
+            const ext = mimeType.includes("wav") ? "audio.wav" : "audio.webm";
+
+            logger.info(`[LiveTranscript] Calling Groq API for ${buffer.length} bytes from ${speakerName}`);
+            const result = await groqTranscriptionService.transcribeAudio(
+              buffer,
+              mimeType,
+              ext
+            );
+
+            logger.info(`[LiveTranscript] Groq result: success=${result.success}, text="${result.text}", error="${result.error}"`);
+
+            if (!result.success) {
+              if (result.error?.includes("GROQ_API_KEY")) {
+                socket.emit(SOCKET_EVENTS.CALL_LIVE_TRANSCRIPT_ERROR, {
+                  message: "GROQ_API_KEY is not configured on the server",
+                });
+              }
+              return;
+            }
+
+            const text = result.text?.trim();
+            if (!text) {
+              logger.info("[LiveTranscript] Groq returned empty/filtered text, skipping");
+              return;
+            }
+
+            const turn = {
+              id: new mongoose.Types.ObjectId().toString(),
+              speakerId,
+              speakerName,
+              text,
+              timestamp: Date.now(),
+            };
+
+            // Broadcast real-time live transcript turn to all participants in this call room
+            io.to(`call:${effectiveRoomId}`).emit(
+              SOCKET_EVENTS.CALL_LIVE_TRANSCRIPT,
+              turn
+            );
+
+            // Persist turn in MongoDB for history & drawer export
+            liveTranscriptRepository
+              .addTurn(effectiveRoomId, workspaceId, turn)
+              .catch((err) => {
+                logger.error("[Socket] Failed to save transcript turn:", err);
+              });
+          } catch (err) {
+            logger.error("[Socket] Error handling live audio chunk:", err);
+          }
+        }
+      );
+
+      // Peer live transcript broadcast & persistence
+      socket.on(
+        SOCKET_EVENTS.CALL_LIVE_TRANSCRIPT,
+        (turn: {
+          id: string;
+          roomId?: string;
+          speakerId: string;
+          speakerName: string;
+          text: string;
+          timestamp: number;
+        }) => {
+          try {
+            if (!turn || !turn.text) return;
+            const targetRoomId = turn.roomId || socketCallRoom.get(socket.id);
+            if (!targetRoomId) return;
+
+            // Broadcast to all other peers in this room
+            socket.to(`call:${targetRoomId}`).emit(SOCKET_EVENTS.CALL_LIVE_TRANSCRIPT, turn);
+
+            // Persist to MongoDB
+            liveTranscriptRepository
+              .addTurn(targetRoomId, workspaceId, turn)
+              .catch(() => {});
+          } catch (err) {
+            logger.error("[Socket] Error broadcasting live transcript:", err);
+          }
+        }
+      );
+
+      socket.on(
+        SOCKET_EVENTS.CALL_GET_LIVE_TRANSCRIPTS,
+        async (roomId: string) => {
+          try {
+            if (!roomId) return;
+            const transcript =
+              await liveTranscriptRepository.getTranscriptByMeetingId(roomId);
+            socket.emit(SOCKET_EVENTS.CALL_GET_LIVE_TRANSCRIPTS, {
+              roomId,
+              turns: transcript?.turns || [],
+            });
+          } catch (err) {
+            logger.error("[Socket] Error getting live transcripts:", err);
+          }
+        }
+      );
 
       socket.on("disconnect", () => {
         // ── Clean up online users ──
