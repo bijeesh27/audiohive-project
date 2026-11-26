@@ -7,7 +7,7 @@ export default function MemberLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] antialiased text-gray-900">
+    <div className="flex h-dvh bg-[#F8FAFC] antialiased text-gray-900">
       {/* Desktop Sidebar */}
       <MemberSidebar />
 

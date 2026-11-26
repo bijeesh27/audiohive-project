@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Bell, User, Settings, LogOut, ChevronDown, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
 import { API_ROUTES } from "../../../constants/Api_Routes";
 
-export default function Navbar() {
+interface NavbarProps {
+  onOpenMobileMenu?: () => void;
+}
+
+export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const navigate = useNavigate();
   const { username, setAccessToken, setUserRole } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -57,9 +61,18 @@ export default function Navbar() {
     : "WA";
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200/90 flex items-center justify-between px-6 flex-shrink-0 z-20">
-      <div className="flex-1 max-w-lg">
-        {/* Placeholder for optional breadcrumb or global search */}
+    <header className="h-16 bg-white border-b border-gray-200/90 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-20">
+      <div className="flex items-center gap-2 flex-1 max-w-lg">
+        {onOpenMobileMenu && (
+          <button
+            type="button"
+            onClick={onOpenMobileMenu}
+            aria-label="Open navigation menu"
+            className="md:hidden p-2 rounded-xl text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-3 pl-4">

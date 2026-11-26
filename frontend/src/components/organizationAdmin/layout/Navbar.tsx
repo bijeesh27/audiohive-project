@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, LogOut, ChevronDown, Building2, Sparkles } from "lucide-react";
+import { Bell, LogOut, ChevronDown, Building2, Sparkles, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useOrganization } from "../../../context/OrganizationContext";
@@ -7,7 +7,11 @@ import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
 import { API_ROUTES } from "../../../constants/Api_Routes";
 
-export default function Navbar() {
+interface NavbarProps {
+  onOpenMobileMenu?: () => void;
+}
+
+export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const navigate = useNavigate();
   const { username, setAccessToken, setUserRole } = useAuth();
   const { organization } = useOrganization();
@@ -61,15 +65,25 @@ export default function Navbar() {
   const planName = organization?.planName || "Free Plan";
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200/90 flex items-center justify-between px-6 flex-shrink-0 z-20">
-      {/* Left: Organization Badge & Plan */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-50 border border-gray-200/80">
+    <header className="h-16 bg-white border-b border-gray-200/90 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-20 gap-2">
+      {/* Left: Mobile Menu + Organization Badge & Plan */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {onOpenMobileMenu && (
+          <button
+            type="button"
+            onClick={onOpenMobileMenu}
+            aria-label="Open navigation menu"
+            className="md:hidden p-2 rounded-xl text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-50 border border-gray-200/80 min-w-0">
           <Building2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-          <span className="text-xs font-semibold text-gray-900 truncate max-w-[180px] sm:max-w-[280px]">
+          <span className="text-xs font-semibold text-gray-900 truncate max-w-[110px] sm:max-w-[260px]">
             {orgName}
           </span>
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
+          <span className="hidden xs:inline-flex sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider flex-shrink-0">
             <Sparkles className="w-2.5 h-2.5" />
             {planName}
           </span>

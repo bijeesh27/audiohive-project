@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, LogOut, ChevronDown, ShieldCheck, User } from "lucide-react";
+import { Bell, LogOut, ChevronDown, ShieldCheck, User, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { logout } from "../../../services/authServices";
 import { setToken } from "../../../config/axios";
 import { API_ROUTES } from "../../../constants/Api_Routes";
 
-export default function Navbar() {
+interface NavbarProps {
+  onOpenMobileMenu?: () => void;
+}
+
+export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const navigate = useNavigate();
   const { username, setAccessToken, setUserRole } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -56,15 +60,25 @@ export default function Navbar() {
     .slice(0, 2) || "SA";
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200/90 flex items-center justify-between px-6 flex-shrink-0 z-20">
-      {/* Left: Platform Super Admin Badge */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-indigo-50/60 border border-indigo-200/60">
+    <header className="h-16 bg-white border-b border-gray-200/90 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-20 gap-2">
+      {/* Left: Mobile Menu + Platform Super Admin Badge */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {onOpenMobileMenu && (
+          <button
+            type="button"
+            onClick={onOpenMobileMenu}
+            aria-label="Open navigation menu"
+            className="md:hidden p-2 rounded-xl text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-indigo-50/60 border border-indigo-200/60 min-w-0">
           <ShieldCheck className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-          <span className="text-xs font-semibold text-gray-900 truncate max-w-[200px] sm:max-w-[320px]">
+          <span className="text-xs font-semibold text-gray-900 truncate max-w-[120px] sm:max-w-[320px]">
             Platform Overview
           </span>
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white tracking-wider uppercase">
+          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white tracking-wider uppercase flex-shrink-0">
             Root Admin
           </span>
         </div>

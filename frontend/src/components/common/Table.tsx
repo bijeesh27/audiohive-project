@@ -94,7 +94,7 @@ function Table<T>({
 
         {/* Pagination */}
         {!loading && !error && data.length > 0 && (
-          <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4">
             <button
               onClick={() => onPageChange(Math.max(1, page - 1))}
               disabled={page === 1}

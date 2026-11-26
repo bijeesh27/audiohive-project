@@ -9,15 +9,20 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { API_ROUTES } from "../../../constants/Api_Routes";
 
 interface SidebarProps {
+  mobile?: boolean;
+  onClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
 export default function Sidebar({
+  mobile = false,
+  onClose,
   isCollapsed: controlledCollapsed,
   onToggleCollapse,
 }: SidebarProps) {
@@ -31,8 +36,11 @@ export default function Sidebar({
     }
   });
 
-  const isCollapsed =
-    controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
+  const isCollapsed = mobile
+    ? false
+    : controlledCollapsed !== undefined
+    ? controlledCollapsed
+    : internalCollapsed;
 
   const toggleCollapse = () => {
     if (onToggleCollapse) {
@@ -82,8 +90,10 @@ export default function Sidebar({
     <aside
       aria-label="Super Admin Navigation Sidebar"
       className={`${
-        isCollapsed ? "w-20" : "w-64"
-      } bg-white border-r border-gray-200 flex-shrink-0 hidden md:flex flex-col h-full transition-all duration-200 select-none z-30`}
+        mobile
+          ? "flex w-full"
+          : `${isCollapsed ? "w-20" : "w-64"} hidden md:flex`
+      } bg-white border-r border-gray-200 flex-shrink-0 flex-col h-full transition-all duration-200 select-none z-30`}
     >
       {/* Brand & Super Admin Label Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100">
@@ -104,6 +114,16 @@ export default function Sidebar({
             </div>
           )}
         </div>
+        {mobile && onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation menu"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Nav List */}
@@ -121,6 +141,7 @@ export default function Sidebar({
               <Link
                 key={item.name}
                 to={item.path}
+                onClick={() => mobile && onClose?.()}
                 title={isCollapsed ? item.name : undefined}
                 className={`relative flex items-center ${
                   isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
@@ -153,23 +174,25 @@ export default function Sidebar({
       </div>
 
       {/* Collapse Toggle Footer (No duplicate logout) */}
-      <div className="p-3 border-t border-gray-100 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={toggleCollapse}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={`flex items-center ${
-            isCollapsed ? "justify-center w-full" : "justify-between w-full px-2"
-          } py-2 text-xs font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors`}
-        >
-          {!isCollapsed && <span className="text-[11px] text-gray-400">Collapse menu</span>}
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-gray-500" />
-          ) : (
-            <ChevronLeft className="w-4 h-4 text-gray-400" />
-          )}
-        </button>
-      </div>
+      {!mobile && (
+        <div className="p-3 border-t border-gray-100 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={`flex items-center ${
+              isCollapsed ? "justify-center w-full" : "justify-between w-full px-2"
+            } py-2 text-xs font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors`}
+          >
+            {!isCollapsed && <span className="text-[11px] text-gray-400">Collapse menu</span>}
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronLeft className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

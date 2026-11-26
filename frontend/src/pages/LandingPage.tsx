@@ -30,12 +30,12 @@ const LandingPage: FC = () => {
     <div className="min-h-screen bg-brand-bg text-brand-text">
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-brand-border bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 shadow-md shadow-indigo-500/20">
-              <span className="text-base font-extrabold text-white">A</span>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 lg:px-10 gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 shadow-md shadow-indigo-500/20">
+              <span className="text-sm sm:text-base font-extrabold text-white">A</span>
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">AudioHive</span>
+            <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">AudioHive</span>
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
@@ -50,20 +50,21 @@ const LandingPage: FC = () => {
             </a>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
             <button
               type="button"
               onClick={handleLogin}
-              className="text-sm font-semibold text-slate-700 transition hover:text-indigo-600 px-3 py-2"
+              className="text-xs sm:text-sm font-semibold text-slate-700 transition hover:text-indigo-600 px-2.5 sm:px-3 py-2 whitespace-nowrap"
             >
               Log In
             </button>
             <button
               type="button"
               onClick={handleCreateOrganization}
-              className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-300/40 transition hover:opacity-95 hover:shadow-indigo-300/60"
+              className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-md shadow-indigo-300/40 transition hover:opacity-95 hover:shadow-indigo-300/60 whitespace-nowrap"
             >
-              Create Organization
+              <span className="hidden sm:inline">Create Organization</span>
+              <span className="sm:hidden">Get Started</span>
             </button>
           </div>
         </div>
