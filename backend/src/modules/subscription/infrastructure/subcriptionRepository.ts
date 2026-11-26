@@ -1,4 +1,5 @@
 import { BaseRepository } from "../../../shared/common/baseRepository";
+import { OrganizationModel } from "../../organization/infrastructure/organizationSchema";
 import { IsubscriptionRepository } from "../domain/IsubscriptionRepository";
 import { ISubscriptionDocument } from "./subscriptionSchema";
 import { SubscriptionModel } from "./subscriptionSchema";
@@ -32,4 +33,6 @@ export class SubscriptionRepository
   async getAllSubscriptions(): Promise<ISubscriptionDocument[]> {
    return await SubscriptionModel.find()
   }
+
+  
 }

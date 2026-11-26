@@ -6,6 +6,7 @@ import {
   Check,
   Video,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import { MeetingActionsMenu } from "./MeetingActionsMenu";
 import type { MeetingItem } from "../../types/meetings";
@@ -17,6 +18,7 @@ interface MeetingCardProps {
   onCancel: (meeting: MeetingItem) => void;
   onDelete: (meeting: MeetingItem) => void;
   onJoin: (meeting: MeetingItem) => void;
+  onViewSummary?: (meeting: MeetingItem) => void;
 }
 
 const AVATAR_BG_COLORS = [
@@ -34,6 +36,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
   onCancel,
   onDelete,
   onJoin,
+  onViewSummary,
 }) => {
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -249,8 +252,17 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
             )}
           </div>
 
-          {/* Join Call Button */}
-          {canJoinNow ? (
+          {/* Join Call / AI Summary Button */}
+          {isCompleted && !isCancelled && onViewSummary ? (
+            <button
+              type="button"
+              onClick={() => onViewSummary(meeting)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 border border-indigo-200/70 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600" aria-hidden="true" />
+              <span>AI Summary</span>
+            </button>
+          ) : canJoinNow ? (
             <button
               type="button"
               onClick={() => onJoin(meeting)}

@@ -15,6 +15,7 @@ import { MeetingCardSkeleton } from "../../components/meeting/MeetingCardSkeleto
 import { MeetingEmptyState } from "../../components/meeting/MeetingEmptyState";
 import { ConfirmDialog } from "../../components/meeting/ConfirmDialog";
 import { ScheduleMeetingModal } from "../../components/meeting/ScheduleMeetingModal";
+import { MeetingSummaryModal } from "../../components/meeting/MeetingSummaryModal";
 import { VideoCallPanel } from "../../components/room/VideoCallPanel";
 import type {
   MeetingItem,
@@ -42,6 +43,7 @@ export const MeetingsPage: React.FC = () => {
 
   // Modal and Active Meeting Call states
   const [activeMeetingCall, setActiveMeetingCall] = useState<MeetingItem | null>(null);
+  const [summaryMeeting, setSummaryMeeting] = useState<MeetingItem | null>(null);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<MeetingItem | null>(null);
 
@@ -242,9 +244,15 @@ export const MeetingsPage: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => setActiveMeetingCall(null)}
+              onClick={() => {
+                const endedMeeting = activeMeetingCall;
+                setActiveMeetingCall(null);
+                if (endedMeeting) {
+                  setSummaryMeeting(endedMeeting);
+                }
+              }}
               className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              title="Close meeting view"
+              title="End meeting view & open AI Summary"
             >
               <X className="w-4 h-4" />
             </button>
@@ -319,6 +327,7 @@ export const MeetingsPage: React.FC = () => {
             })
           }
           onJoin={(m) => setActiveMeetingCall(m)}
+          onViewSummary={(m) => setSummaryMeeting(m)}
         />
       )}
 
@@ -345,6 +354,13 @@ export const MeetingsPage: React.FC = () => {
         error={confirmState.error}
         onConfirm={handleConfirmAction}
         onClose={() => setConfirmState((p) => ({ ...p, isOpen: false }))}
+      />
+
+      {/* AI Meeting Summary Modal */}
+      <MeetingSummaryModal
+        isOpen={Boolean(summaryMeeting)}
+        meeting={summaryMeeting}
+        onClose={() => setSummaryMeeting(null)}
       />
     </div>
   );

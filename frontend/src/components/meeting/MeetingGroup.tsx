@@ -10,6 +10,7 @@ interface MeetingGroupProps {
   onCancel: (meeting: MeetingItem) => void;
   onDelete: (meeting: MeetingItem) => void;
   onJoin: (meeting: MeetingItem) => void;
+  onViewSummary?: (meeting: MeetingItem) => void;
 }
 
 interface GroupedMeetings {
@@ -26,6 +27,7 @@ export const MeetingGroup: React.FC<MeetingGroupProps> = ({
   onCancel,
   onDelete,
   onJoin,
+  onViewSummary,
 }) => {
   // Format section heading based on date and tab
   const getGroupLabel = (date: Date): { key: string; label: string } => {
@@ -112,6 +114,7 @@ export const MeetingGroup: React.FC<MeetingGroupProps> = ({
                 onCancel={onCancel}
                 onDelete={onDelete}
                 onJoin={onJoin}
+                onViewSummary={onViewSummary}
               />
             ))}
           </div>
