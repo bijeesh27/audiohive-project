@@ -33,6 +33,7 @@ export class CreateMeetingUseCase
 
     const randomSuffix = crypto.randomBytes(4).toString("hex");
     const meetingCode = `meet-${randomSuffix}`;
+    console.log("meeting code",meetingCode)
 
     const participantObjectIds = (participants || [])
       .filter((id) => mongoose.Types.ObjectId.isValid(id))

@@ -9,4 +9,6 @@ export interface IsubscriptionRepository{
     updateSubscription(subscriptionId:string,data:Partial<ISubscriptionDocument>):Promise<void>
     deleteSubscription(subscriptionId:string):Promise<void>
     getAllSubscriptions():Promise<ISubscriptionDocument[]>
+
+    
 }
